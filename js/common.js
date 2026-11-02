@@ -1,6 +1,12 @@
 /* Shared helpers: script loading with CDN fallback, wake lock, SW registration, icons. */
 (function () {
+  const loading = {};   // each library loads once, even if several parts of the page ask at the same time
   function loadScript(urls) {
+    const key = urls.join('|');
+    if (!loading[key]) loading[key] = loadScriptOnce(urls).catch((e) => { delete loading[key]; throw e; });
+    return loading[key];
+  }
+  function loadScriptOnce(urls) {
     return new Promise((resolve, reject) => {
       const list = urls.slice();
       (function next() {
@@ -94,5 +100,59 @@
 
   function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
-  window.PBCommon = { seg, loadScript, LIBS, keepAwake, registerSW, store, ICON, PALETTE, esc };
+  // Splash screen: DinkyKong logo for 5 seconds, then fade out
+  (function splash() {
+    const el = document.getElementById('splash'); if (!el) return;
+    let seen = false; try { seen = el.dataset.once && sessionStorage.getItem('aopb.splash'); } catch (e) {}   // app launch: always; remote: once per visit
+    if (seen) { el.remove(); return; }
+    try { sessionStorage.setItem('aopb.splash', '1'); } catch (e) {}
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 600); }, 5000);
+  })();
+
+  /* "Install app" helper: wires any button to the browser's install prompt, with iPhone / TV / menu fallbacks. */
+  let deferredInstall = null; const installBtns = [];
+  const isStandalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredInstall = e; installBtns.forEach((f) => f()); });
+  window.addEventListener('appinstalled', () => { deferredInstall = null; installBtns.forEach((f) => f(true)); });
+  function installHelp() {
+    const ua = navigator.userAgent;
+    if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'On iPhone / iPad (Safari): tap the Share button, then “Add to Home Screen”.';
+    if (/Safari/.test(ua) && !/Chrome|Chromium|Edg|Android/.test(ua)) return 'In Safari on Mac: choose File › “Add to Dock”.';
+    if (/Android TV|AFT|SmartTV|SMART-TV|Tizen|Web0S|webOS|BRAVIA|GoogleTV/i.test(ua)) return 'On a TV: open the browser menu and choose “Add to home” or “Bookmark”, or just keep this page open full screen. On a laptop or phone use Chrome or Edge to install.';
+    if (/Firefox/.test(ua)) return 'Firefox can’t install apps on most devices. Open this page in Chrome or Edge, then tap “Install app”.';
+    return 'Open the browser menu (⋮ or the install icon in the address bar) and choose “Install app” or “Add to Home screen”.';
+  }
+  function installButton(btn, opts) {
+    if (!btn) return;
+    opts = opts || {};
+    const update = (done) => { btn.classList.toggle('hidden', !!done || isStandalone()); };
+    installBtns.push(update); update();
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (deferredInstall) { const p = deferredInstall; deferredInstall = null; p.prompt(); try { const r = await p.userChoice; if (r.outcome === 'accepted') update(true); } catch (err) {} return; }
+      (opts.onHelp || alert)(installHelp());
+    });
+  }
+
+  /* Donation confirmation hours: 8:00 AM – 10:00 PM, Philippine time */
+  const HOURS = { open: 8, close: 22, label: '8:00 AM – 10:00 PM' };
+  function phHour() {
+    try { return Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Asia/Manila' }).format(new Date())) % 24; }
+    catch (e) { return (new Date().getUTCHours() + 8) % 24; }
+  }
+  const approvalOpen = () => { const h = phHour(); return h >= HOURS.open && h < HOURS.close; };
+
+  /* "🟢 18 online now · 🏓 5 courts scoring · 👥 342 players" */
+  function liveText(s) {
+    const n = (x) => Number(x || 0).toLocaleString();
+    const parts = ['<span class="lv-dot"></span><b>' + n(s.online) + '</b> online now'];
+    if (s.courts) parts.push('<b>' + n(s.courts) + '</b> ' + (s.courts === 1 ? 'court' : 'courts') + ' scoring');
+    if (s.players) parts.push('<b>' + n(s.players) + '</b> players joined');
+    return parts.join('<i>·</i>');
+  }
+
+  // LIVE trial codes are shown as DK-XXXX-XXXX
+  const fmtTrial = (c) => { c = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); return c.length === 10 ? c.slice(0, 2) + '-' + c.slice(2, 6) + '-' + c.slice(6) : c; };
+
+  window.PBCommon = { fmtTrial, liveText, HOURS, approvalOpen, seg, loadScript, LIBS, keepAwake, registerSW, store, ICON, PALETTE, esc, installButton, installHelp, isStandalone };
 })();

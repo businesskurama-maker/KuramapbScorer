@@ -1,0 +1,26 @@
+{
+  "name": "DinkyKong PB Scorer — Owner",
+  "short_name": "DK Owner",
+  "description": "Approve payments and manage passes for the pickleball scorer.",
+  "id": "/owner/",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#060a16",
+  "theme_color": "#060a16",
+  "icons": [
+    {
+      "src": "../icons/admin-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "../icons/admin-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

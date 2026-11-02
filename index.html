@@ -2,20 +2,52 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>
+/* If this phone was being used as a remote, reopen the remote (e.g. after the app was closed by accident). */
+(function () {
+  try {
+    var q = new URLSearchParams(location.search), role = q.get('role');
+    if (role === 'display') { localStorage.setItem('aopb.role', 'display'); return; }
+    if (sessionStorage.getItem('aopb.tabRole') === 'display') return;   // this tab is a scoreboard: never turn it into a remote
+    var r = localStorage.getItem('aopb.role'), c = JSON.parse(localStorage.getItem('aopb.remoteCode') || '""'), at = +localStorage.getItem('aopb.remoteAt') || 0;
+    if (r === 'remote' && c && c.length === 6 && Date.now() - at < 24 * 3600e3) location.replace('remote.html?c=' + c);
+  } catch (e) {}
+})();
+</script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Kurama Pickleball Scorer — Display</title>
+<title>DinkyKong Pickleball Scorer — Display</title>
 <meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-title" content="DinkyKong PB">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Josefin+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="icons/dinkykong-logo.png">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
+<div class="splash" id="splash" aria-hidden="true"><img src="icons/dinkykong-logo.png" alt="DinkyKong Pickleball Club"><div class="splash-bar"><i></i></div></div>
+<div class="chooser hidden" id="chooser" role="dialog" aria-label="Use this device as">
+  <div class="dk-anim" id="dkAnim" aria-hidden="true">
+    <span class="dk-glow"></span>
+    <video class="dk-video" id="dkVideo" muted loop playsinline preload="auto" poster="icons/dinkykong-logo.png"></video>
+  </div>
+  <h1>Use this device as</h1>
+  <div class="chooser-opts">
+    <button class="chooser-opt primary" id="asDisplay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>Scoreboard</b><span>TV · tablet · laptop</span></button>
+    <button class="chooser-opt" id="asRemote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg><b>Remote</b><span>Phone · scan the scoreboard</span></button>
+    <button class="chooser-opt live-opt" id="asLive"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="9" height="8" rx="1.5"/><rect x="13" y="3" width="9" height="8" rx="1.5"/><rect x="2" y="13" width="9" height="8" rx="1.5"/><rect x="13" y="13" width="9" height="8" rx="1.5"/></svg><b>LIVE <i>OBS</i></b><span>2–6 courts · one screen</span></button>
+  </div>
+  <p class="live-stats hidden" id="lobbyStats"></p>
+  <p class="chooser-count" id="chooserCount">Starting as Scoreboard in 30 s</p>
+  <button class="install-pill hidden" id="installApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Install app on this phone, TV or laptop</button>
+  <p class="install-help hidden" id="installHelp"></p>
+</div>
 <main class="display" id="display">
   <header class="d-top">
     <span aria-hidden="true"></span>
@@ -45,6 +77,7 @@
     <div class="d-left">
       <div class="credit"><span>Developer:</span><img src="icons/kurama-mark.png" alt="Kurama Information Technology Solutions"><span>by <b>CHI</b></span></div>
       <div class="history" id="history"></div>
+      <div class="legal"><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></div>
     </div>
     <div class="callout" id="callout">0-0-2</div>
     <div class="keys">← → rally won · U undo · S switch · Q pair</div>
@@ -59,10 +92,11 @@
     <div class="pair-card">
       <div class="qr-box" id="qrBig"></div>
       <div class="pair-text">
-        <div class="eyebrow">Kurama Pickleball Scorer</div>
+        <div class="eyebrow">DinkyKong Pickleball Scorer</div>
         <h1 id="pairTitle">Scan to use your phone as the remote</h1>
         <p id="pairBody">Open your phone camera, point it at the code and tap the link. Several phones can join the same screen.</p>
         <div class="pair-status" id="pairStatus"></div>
+        <div class="live-stats hidden" id="pairStats"></div>
         <div><div class="eyebrow">Or enter code</div><div class="code" id="codeBig">······</div></div>
         <div class="url" id="urlBig"></div>
         <div class="pair-actions">
@@ -76,9 +110,20 @@
 
   <div class="overlay denied hidden" id="deniedOverlay">
     <div class="winner">
-      <div class="eyebrow">Kurama Pickleball Scorer</div>
+      <div class="eyebrow">DinkyKong Pickleball Scorer</div>
       <h1 id="deniedTitle">Access denied</h1>
       <div class="hint" id="deniedBody"></div>
+      <div class="hint support-tv">Concerns? dinkykongsupport@gmail.com</div>
+    </div>
+  </div>
+
+  <div class="idle-banner hidden" id="idleBanner"></div>
+
+  <div class="overlay bye hidden" id="byeOverlay">
+    <div class="winner">
+      <img src="icons/dinkykong-logo.png" alt="" class="bye-logo">
+      <h1 id="byeTitle">Thanks for playing!</h1>
+      <div class="hint" id="byeBody">Restarting for the next players…</div>
     </div>
   </div>
 

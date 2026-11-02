@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DinkyKong LIVE — OBS lower third</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Josefin+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/strip.css">
+<style>
+  /* OBS Browser Source: 1920 × 264, transparent background */
+  html, body { margin: 0; padding: 0; background: transparent !important; overflow: hidden; }
+  body { width: 100vw; height: 100vh; display: flex; align-items: flex-end; }
+  #strip { width: 100vw; transition: opacity .4s, transform .4s; }
+  #strip.off { opacity: 0; transform: translateY(20%); }
+  .obs-note { position: fixed; left: 12px; bottom: 12px; font: 600 14px system-ui, sans-serif; color: #fff; background: rgba(0,0,0,.7); padding: 8px 12px; border-radius: 8px; }
+  .obs-note.hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="lv-strip off" id="strip"></div>
+<div class="obs-note hidden" id="note"></div>
+<script>window.PB_OBS = true;</script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/strip.js"></script>
+<script>
+(function () {
+  const key = new URLSearchParams(location.search).get('k');
+  const strip = document.getElementById('strip'), note = document.getElementById('note');
+  const say = (t) => { note.textContent = t; note.classList.toggle('hidden', !t); };
+  if (!key) { say('Missing OBS link key — copy the link again from the LIVE screen.'); return; }
+  let last = 0, relay = null, lastMsg = null;
+  const brand = { id: null, logo: null, caption: '' };
+  function show(m) {
+    last = Date.now(); lastMsg = m;
+    if (m.brand && m.brand !== brand.id && relay) relay.send({ t: 'brand?' });   // logo changed → fetch it once
+    if (!m.on) { strip.classList.add('off'); say('LIVE pass not active on the LIVE screen'); return; }
+    say(''); PBStrip.render(strip, m.courts || [], { logo: brand.logo, caption: m.caption != null ? m.caption : brand.caption }); strip.classList.remove('off');
+  }
+  PBAuth.relay('dk-obs-' + key, (m) => {
+    if (m && m.t === 'obs') show(m);
+    if (m && m.t === 'brand') { brand.id = m.id; brand.logo = m.logo || null; brand.caption = m.caption || ''; if (lastMsg) show(lastMsg); }
+  }).then((r) => {
+    relay = r; if (!r) { say('Sign-in service not configured'); return; }
+    r.send({ t: 'sync' });
+    setInterval(() => { if (Date.now() - last > 12000) r.send({ t: 'sync' }); }, 6000);
+  }).catch(() => say('Could not connect — check the internet connection'));
+  // Hide quietly if the LIVE screen goes away for a while
+  setInterval(() => { if (last && Date.now() - last > 30000) { strip.classList.add('off'); } }, 5000);
+})();
+</script>
+</body>
+</html>

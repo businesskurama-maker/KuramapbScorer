@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PB Scorer Admin</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#060a16">
+<link rel="icon" href="icons/admin-192.png">
+<link rel="manifest" href="owner/manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/admin-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PB Owner">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Josefin+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<style>
+  .admin { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; display: flex; flex-direction: column; gap: 20px; }
+  .admin header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .admin h1 { margin: 0; font-family: var(--font-score); font-weight: 400; font-size: 40px; letter-spacing: .06em; }
+  .card { background: var(--navy-800); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+  .card h2 { margin: 0 0 12px; font-family: var(--font-score); font-weight: 400; font-size: 26px; letter-spacing: .06em; }
+  .topup { display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 10px; }
+  .topup .text-in { text-transform: none; }
+  @media (max-width: 700px) { .topup { grid-template-columns: 1fr 1fr; } .topup .text-in:first-child { grid-column: 1 / -1; } }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; }
+  td.num { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .u { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .u img { width: 30px; height: 30px; border-radius: 50%; background: var(--navy-700); flex: none; }
+  .u small { display: block; color: var(--ink-3); }
+  .quick { display: flex; gap: 6px; flex-wrap: wrap; }
+  .quick button { border: 1px solid var(--line); background: none; color: var(--ink); border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .quick button:hover { border-color: var(--ball); }
+  .pass-on { color: var(--ok); }
+  .msg { min-height: 1.3em; font-size: 14px; }
+  .msg.ok { color: var(--ok); } .msg.bad { color: var(--danger); }
+  .table-wrap { overflow-x: auto; }
+  .center { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
+  .center p { color: var(--ink-2); max-width: 420px; line-height: 1.5; }
+  .delta-pos { color: var(--ok); } .delta-neg { color: var(--ink-2); }
+  .install-bar { display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 16px; border: 1px solid rgba(57,255,20,.35); background: rgba(57,255,20,.06); }
+  .install-bar.hidden { display: none; }
+  .owner-title { display: flex; align-items: center; gap: 10px; position: relative; }
+  .owner-title img { width: 40px; height: 40px; border-radius: 10px; }
+  .bell-badge { min-width: 30px; height: 30px; padding: 0 9px; border-radius: 999px; background: #ff3b5c; color: #fff; font: 700 16px/30px 'Josefin Sans', system-ui, sans-serif; text-align: center; letter-spacing: 0; box-shadow: 0 0 0 3px rgba(255,59,92,.25); animation: bellPulse 1.6s ease-in-out infinite; }
+  .bell-badge.hidden { display: none; }
+  @keyframes bellPulse { 50% { box-shadow: 0 0 0 9px rgba(255,59,92,0); } }
+  .hdr-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .install-owner { display: inline-flex; align-items: center; gap: 6px; border-color: rgba(57,255,20,.5) !important; color: var(--ball) !important; }
+  .install-owner svg { width: 16px; height: 16px; }
+  .install-owner.hidden { display: none; }
+  .alert-card { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; border-color: rgba(255,181,71,.45) !important; background: rgba(255,181,71,.06) !important; }
+  .alert-card.on { border-color: rgba(57,255,20,.45) !important; background: rgba(57,255,20,.05) !important; }
+  .alert-ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: rgba(255,181,71,.15); color: #ffb547; }
+  .alert-card.on .alert-ic { background: rgba(57,255,20,.15); color: var(--ball); }
+  .alert-ic svg { width: 26px; height: 26px; }
+  .alert-txt b { display: block; font-size: 16px; }
+  .alert-txt span { display: block; font-size: 13px; color: var(--ink-2); line-height: 1.45; margin-top: 2px; }
+  .alert-card .big-btn { padding: 10px 18px; font-size: 13px; white-space: nowrap; }
+  .live-toast { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 50; max-width: calc(100vw - 24px); padding: 14px 20px; border-radius: 16px; background: #39ff14; color: #071006; font-weight: 700; box-shadow: 0 16px 40px rgba(0,0,0,.45); cursor: pointer; }
+  .live-toast.hidden { display: none; }
+  .pay-msg { margin-top: 12px; padding: 12px 14px; border-radius: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; line-height: 1.45; border: 1px solid rgba(57,255,20,.4); background: rgba(57,255,20,.07); }
+  .pay-msg.warn { border-color: rgba(255,181,71,.5); background: rgba(255,181,71,.08); }
+  .pay-msg.bad { border-color: rgba(255,80,100,.5); background: rgba(255,80,100,.08); }
+  .pay-msg.hidden { display: none; }
+  .pay-msg .undo-btn, #reviewed .undo-btn { padding: 7px 14px; border-radius: 10px; border: 1px solid #ffb547; background: transparent; color: #ffcf7a; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+  .live-tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .12em; color: #fff; background: #ff2e4d; border-radius: 4px; padding: 2px 5px 1px; margin-right: 4px; }
+  .trial-gen { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+  .trial-gen .big-btn { padding: 12px 18px; font-size: 13px; white-space: nowrap; }
+  .trial-new { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin: 12px 0; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255,46,77,.45); background: rgba(255,46,77,.07); }
+  .trial-new.hidden { display: none; }
+  .trial-new b { display: block; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 28px; letter-spacing: .12em; color: #fff; margin-top: 4px; }
+  .trial-new small { display: block; color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+  .trial-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tcode { font-family: ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: .08em; font-weight: 700; }
+  .tst { font-size: 12px; font-weight: 700; letter-spacing: .06em; }
+  .tst.unused { color: #ffcf7a; } .tst.active { color: var(--ball); } .tst.done { color: var(--ink-3); } .tst.off { color: var(--danger); }
+  @media (max-width: 560px) { .trial-gen { grid-template-columns: 1fr; } }
+  .pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .pager:empty { display: none; }
+  .pager .pg-info { font-size: 13px; color: var(--ink-2); letter-spacing: .03em; }
+  .pager .pg-btns { display: flex; gap: 6px; align-items: center; }
+  .pager .pg-num { min-width: 34px; height: 34px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+  .pager .pg-num.on { background: var(--ball); color: #071006; border-color: var(--ball); font-weight: 700; }
+  .pager .pg-num:disabled { opacity: .35; cursor: default; }
+  .pager .pg-gap { color: var(--ink-3); padding: 0 2px; }
+  .hours-note { display: flex; align-items: center; gap: 8px; margin: -4px 0 12px; font-size: 13px; color: var(--ink-2); }
+  .hours-note b { color: var(--ink); }
+  .hours-note .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ball); }
+  .hours-note.off .dot { background: #ffb547; }
+  #pending tr.fresh td { animation: freshRow 2.4s ease-out; }
+  @keyframes freshRow { from { background: rgba(57,255,20,.25); } to { background: transparent; } }
+  @media (max-width: 640px) { .alert-card { grid-template-columns: auto 1fr; } .alert-card .big-btn { grid-column: 1 / -1; } }
+  .install-bar img { width: 44px; height: 44px; border-radius: 12px; }
+  .install-bar b { display: block; font-size: 15px; }
+  .install-bar span { display: block; font-size: 13px; color: var(--ink-2); line-height: 1.4; }
+  .install-bar .big-btn { padding: 10px 18px; font-size: 13px; }
+  .admin h1 { font-size: clamp(28px, 6vw, 40px); }
+  @media (max-width: 640px) {
+    .admin { padding: 16px 12px 48px; gap: 14px; }
+    .card { padding: 14px; }
+    .install-bar { grid-template-columns: auto 1fr auto; }
+    .install-bar .big-btn { grid-column: 1 / -1; }
+    .topup { grid-template-columns: 1fr 1fr; }
+    .topup .text-in:first-child, .topup .big-btn { grid-column: 1 / -1; }
+    table, tbody, tr, td { display: block; width: 100%; }
+    thead { display: none; }
+    tr { border: 1px solid var(--line); border-radius: 14px; padding: 6px 12px; margin-bottom: 10px; background: rgba(255,255,255,.02); }
+    td { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 0; padding: 7px 0; text-align: right; }
+    td::before { content: attr(data-label); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; text-align: left; flex: none; }
+    td[data-label=""]::before, td:not([data-label])::before { display: none; }
+    td[colspan] { justify-content: flex-start; text-align: left; }
+    .u { justify-content: flex-end; text-align: right; }
+    .act { width: 100%; } .act button { flex: 1; padding: 12px; }
+    td:has(.act) { padding-top: 10px; }
+  }
+  .pill { font-family: var(--font-ui); font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 999px; background: #ffb547; color: var(--navy-950); }
+  .pill.zero { background: var(--navy-700); color: var(--ink-2); }
+  .ref { font-family: ui-monospace, Menlo, monospace; font-size: 16px; font-weight: 700; letter-spacing: .12em; }
+  .dup { color: #ffb547; font-size: 11px; display: block; }
+  .act { display: flex; gap: 6px; }
+  .act button { border: 0; border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+  .act .ok { background: var(--ok); color: var(--navy-950); } .act .no { background: none; border: 1px solid var(--line); color: var(--danger); }
+</style>
+</head>
+<body>
+<main class="admin">
+  <header>
+    <h1 class="owner-title"><img src="icons/admin-192.png" alt="">DinkyKong · Owner <span class="bell-badge hidden" id="bellBadge">0</span></h1>
+    <div class="hdr-actions">
+      <button class="mini-btn install-owner hidden" id="hdrInstall"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Install Owner app</button>
+      <div class="r-status" id="who" style="cursor:default"><span class="dot"></span><span id="whoTxt">Loading…</span></div>
+    </div>
+  </header>
+  <div class="live-toast hidden" id="liveToast"></div>
+
+  <div class="install-bar hidden" id="installBar">
+    <img src="icons/admin-192.png" alt="">
+    <div><b>Install the Owner app</b><span id="installHint">Get donation alerts at a glance and open the owner page in one tap.</span></div>
+    <button class="big-btn" id="installBtn">Install</button>
+    <button class="close-x" id="installX" aria-label="Dismiss">×</button>
+  </div>
+
+  <section class="center hidden" id="bootErr">
+    <h1 style="font-family:var(--font-score);font-weight:400;font-size:34px;margin:0">Couldn’t connect</h1>
+    <p id="bootErrTxt"></p>
+    <button class="big-btn" id="bootRetry" style="min-width:220px">Retry</button>
+    <p class="note">If this keeps happening, close other DinkyKong tabs and try again.</p>
+  </section>
+
+  <section class="center hidden" id="needLogin">
+    <img src="icons/kurama-mark.png" alt="" style="width:72px">
+    <h1 style="font-family:var(--font-score);font-weight:400;font-size:36px;margin:0">Admin sign-in</h1>
+    <p>Sign in with the Google account that has admin access.</p>
+    <button class="big-btn google" id="loginBtn" style="min-width:280px">Continue with Google</button>
+  </section>
+
+  <section class="center hidden" id="notAdmin">
+    <h1 style="font-family:var(--font-score);font-weight:400;font-size:36px;margin:0;color:var(--danger)">Not an admin</h1>
+    <p id="notAdminTxt"></p>
+    <button class="big-btn ghost" id="logout2">Sign out</button>
+  </section>
+
+  <section class="center hidden" id="notConfigured">
+    <h1 style="font-family:var(--font-score);font-weight:400;font-size:36px;margin:0">Supabase not configured</h1>
+    <p>Add your Supabase URL and anon key to <b>js/config.js</b> to turn on sign-in and credits.</p>
+  </section>
+
+  <div id="panel" class="hidden" style="display:flex;flex-direction:column;gap:20px">
+    <div class="card alert-card" id="alertCard">
+      <div class="alert-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+      <div class="alert-txt"><b id="alertTitle">Donation alerts are off on this device</b><span id="alertBody">Turn them on to get a notification and a badge on the app icon the moment a player donates — even when this app is closed.</span></div>
+      <button class="big-btn" id="alertBtn">Turn on alerts</button>
+    </div>
+    <div class="card">
+      <h2 style="display:flex;justify-content:space-between;align-items:center">Donations to confirm <span class="pill" id="pendCount">0</span></h2>
+      <div class="hours-note" id="hoursNote"><span class="dot"></span><span>Players are told donations are confirmed <b>8:00 AM – 10:00 PM</b> (PH time) daily.</span></div>
+      <p class="note" style="margin:-4px 0 12px">Within confirmation hours players are told approval takes 5 minutes to 2 hours. Open your InstaPay / bank / e-wallet history and match the <b>amount</b> and the <b>last 6 digits</b> of the reference before approving.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>When</th><th>User</th><th>Package</th><th>Amount</th><th>Ref (last 6)</th><th></th></tr></thead>
+        <tbody id="pending"></tbody>
+      </table></div>
+      <div class="pay-msg hidden" id="pMsg"></div>
+      <details style="margin-top:12px" id="reviewedBox"><summary class="note" style="cursor:pointer">Recently reviewed · approved by mistake? Use <b>Undo</b></summary>
+        <div class="table-wrap"><table><thead><tr><th>When</th><th>User</th><th>Package</th><th>Ref</th><th>Status</th><th></th></tr></thead><tbody id="reviewed"></tbody></table></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2 style="display:flex;align-items:center;gap:10px">LIVE trial codes <span class="live-tag" style="font-size:12px">LIVE</span></h2>
+      <p class="note" style="margin:-4px 0 12px">Give an organizer a code to try LIVE (multi-court + OBS) for free. They type it on the LIVE screen — no sign-in or payment. Each code works <b>once</b>, unlocks LIVE for <b>1 hour</b> from the moment it’s entered, and must be used within 7 days.</p>
+      <div class="trial-gen"><input class="text-in" id="trialNote" maxlength="40" placeholder="Who is it for? (optional)" style="text-transform:none"><button class="big-btn" id="trialGo">Generate 1-hour code</button></div>
+      <div class="trial-new hidden" id="trialNew">
+        <div><span class="eyebrow">New code · 1 hour of LIVE</span><b id="trialCode"></b><small id="trialFor"></small></div>
+        <div class="trial-btns"><button class="btn primary" id="trialCopy">Copy code</button><button class="btn" id="trialShare">Copy message</button></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Code</th><th>For</th><th>Created</th><th>Status</th><th></th></tr></thead>
+        <tbody id="trials"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h2>Add time manually</h2>
+      <div class="topup">
+        <input class="text-in" id="tEmail" type="email" placeholder="user@gmail.com" autocomplete="off">
+        <input class="text-in" id="tAmount" type="number" value="24" step="1" placeholder="Hours">
+        <input class="text-in" id="tNote" placeholder="Note (e.g. GCash ref)">
+        <button class="big-btn" id="tGo">Add</button>
+      </div>
+      <p class="note" style="margin-top:10px">Hours are added to the user’s time bank (24 = 1 day, 72 = 3 days, 168 = 1 week, 720 = 1 month). Negative removes hours. The user must have signed in once.</p>
+      <div class="msg" id="tMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="display:flex;justify-content:space-between;align-items:center">Users <button class="mini-btn" id="reload">Refresh</button></h2>
+      <input class="text-in" id="search" placeholder="Search name or email" style="text-transform:none;margin-bottom:10px">
+      <div class="table-wrap"><table>
+        <thead><tr><th>User</th><th>Time bank</th><th>Pass</th><th>Phone</th><th>Quick add</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+      <div class="pager" id="usersPager"></div>
+    </div>
+
+    <div class="card">
+      <h2>Recent activity</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>When</th><th>User</th><th>Change</th><th>Reason</th></tr></thead>
+        <tbody id="ledger"></tbody>
+      </table></div>
+      <div class="pager" id="ledgerPager"></div>
+    </div>
+
+    <button class="big-btn ghost" id="logout" style="align-self:flex-start">Sign out</button>
+  </div>
+</main>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

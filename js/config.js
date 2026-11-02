@@ -5,5 +5,7 @@
  */
 window.PB_CONFIG = {
   supabaseUrl: 'https://wwyebsroqypdkeqtiylv.supabase.co',
-  supabaseAnonKey: 'sb_publishable_SZwLunxKKG4EX4ytGcZs6A_R526LibB'
+  supabaseAnonKey: 'sb_publishable_SZwLunxKKG4EX4ytGcZs6A_R526LibB',
+  // Public key for owner donation alerts (web push). The matching private key stays on the server.
+  vapidPublicKey: 'BHQkHCcSS667tABSCh1u_o5fewgqo-roVy7JyHEFIqPhNSGqBZlOqEIFlOeMsVKa1bMrChzMk_EBvbgezYmMHoo'
 };

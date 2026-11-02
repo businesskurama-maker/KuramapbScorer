@@ -9,6 +9,8 @@
   let state = store.get('aopb.state', null);
   if (!state || state.v !== 1) state = E.newMatch();
   state = E.ensure(state);
+  // A refresh after a finished match starts a fresh match (same names & settings) instead of sticking on the winner screen
+  if (state.matchOver) { state = E.newMatch(state.settings); store.set('aopb.state', state); }
 
   let code = store.get('aopb.code', null);
   if (!code) { code = PBLink.makeCode(); store.set('aopb.code', code); }
@@ -111,7 +113,7 @@
   let license = store.get('aopb.license', null); // {until, name, email}
   const verified = new Set();                     // remote ids that signed in this session
   function licensed() { return !AUTH || (license && new Date(license.until).getTime() > Date.now()); }
-  function hhmm(d) { return new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+  function hhmm(d) { const t = new Date(d); const far = t - Date.now() > 20 * 3600e3; return (far ? t.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' : '') + t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 
   function setPairMsg(text, kind) {
     const el = $('pairStatus'); if (!el) return;
@@ -121,16 +123,34 @@
   function showDenied(title, body) {
     $('deniedTitle').textContent = title; $('deniedBody').textContent = body;
     $('deniedOverlay').classList.remove('hidden');
-    clearTimeout(showDenied.t); showDenied.t = setTimeout(() => $('deniedOverlay').classList.add('hidden'), 9000);
+    showPair(true);   // the QR page sits underneath, so the board is ready for the next scan
+    clearTimeout(showDenied.t);
+    showDenied.t = setTimeout(() => {   // short notice, then back to the QR page
+      $('deniedOverlay').classList.add('hidden');
+      if (!licensed()) { showPair(true); setPairMsg('No scoring time yet? Support DinkyKong on your phone, then scan again'); }
+    }, 5000);
   }
 
   async function onRemoteMessage(msg, reply, id) {
+    if (msg.t === 'release') { restartBoard('exit'); return; }   // remote signed out / exited the scoreboard
     if (msg.t !== 'auth') return;
     if (!AUTH) { verified.add(id); reply({ t: 'authok', free: true }); return; }
     setPairMsg('Checking account…');
     let res;
-    try { res = await PBAuth.verifyToken(msg.token, { charge: !licensed() }); }
+    try { res = await PBAuth.verifyToken(msg.token, { device: msg.device }); }
     catch (e) { res = { ok: false, reason: 'ERROR' }; }
+    if (msg.silent) {   // periodic re-check: keep playing quietly, or end the pass if the owner undid the approval
+      if (res.ok) {
+        if (res.until) { license = { until: res.until, name: res.name || '', email: res.email || '' }; store.set('aopb.license', license); renderLicense(); }
+        reply({ t: 'authok', silent: true, until: res.until });
+      } else if (res.reason === 'NO_CREDITS') {
+        verified.delete(id);
+        if (!verified.size) { license = null; store.del('aopb.license'); renderLicense(); }
+        reply({ t: 'denied', reason: res.reason, email: res.email });
+        showDenied('Pass ended', 'The scoring time on ' + (res.email || 'this account') + ' was changed by the owner. Support DinkyKong on your phone to keep playing.');
+      }
+      return;
+    }
     if (res.ok) {
       verified.add(id);
       if (res.until) { license = { until: res.until, name: res.name || '', email: res.email || '' }; store.set('aopb.license', license); }
@@ -143,9 +163,10 @@
     } else {
       reply({ t: 'denied', reason: res.reason, email: res.email });
       const who = res.email ? res.email : 'this account';
-      if (res.reason === 'NO_CREDITS') { showDenied('Access denied', 'No credits on ' + who + '. Buy credits, then scan again.'); setPairMsg('Denied: no credits on ' + who, 'bad'); }
+      if (res.reason === 'NO_CREDITS') { showDenied('Access denied', 'No scoring time on ' + who + '. Support the DinkyKong fund on your phone to unlock time, then scan again.'); setPairMsg('Denied: no pass on ' + who, 'bad'); }
+      else if (res.reason === 'OTHER_DEVICE') { showDenied('Access denied', who + ' is locked to another phone. Passes cannot be shared.'); setPairMsg('Denied: account locked to another phone', 'bad'); }
       else if (res.reason === 'NOT_SIGNED_IN') setPairMsg('Phone connected · waiting for Google sign-in');
-      else { showDenied('Could not verify', 'Check the internet connection and try again.'); setPairMsg('Verification failed', 'bad'); }
+      else setPairMsg('Choose a pass on your phone to start');
     }
   }
 
@@ -157,12 +178,15 @@
     else { el.classList.remove('ok'); $('passTxt').textContent = 'Sign-in needed'; }
   }
 
+  // Every 5 minutes ask signed-in remotes to re-check their pass (picks up an approval the owner undid)
+  setInterval(() => { if (AUTH && link && verified.size) link.broadcastMsg({ t: 'recheck' }); }, 5 * 60 * 1000);
+
   // Pass expiry: lock the board and ask remotes to sign in again (another credit is used).
   setInterval(() => {
     if (AUTH && license && !licensed()) {
       license = null; store.del('aopb.license'); verified.clear();
       if (link) link.broadcastMsg({ t: 'reauth' });
-      showPair(true); setPairMsg('24-hour pass ended · scan to continue (uses 1 credit)');
+      showPair(true); setPairMsg('Pass ended · scan to continue');
     }
     renderLicense();
   }, 20000);
@@ -212,6 +236,7 @@
     if (st.state === 'online') {
       chip.classList.add(n ? 'ok' : 'warn');
       txt.textContent = n ? n + (n === 1 ? ' remote' : ' remotes') : 'Code ' + code;
+      if (st.joined) used = true;
       if (st.joined && AUTH && !licensed()) setPairMsg('Phone connected · waiting for Google sign-in');
       else if (st.joined && !everPaired) { everPaired = true; showPair(false); toast('REMOTE CONNECTED'); }
       else if (st.joined) toast('REMOTE CONNECTED');
@@ -236,6 +261,44 @@
     code = PBLink.makeCode(); store.set('aopb.code', code);
     drawQr(); startLink(); showPair(true);
   }
+
+  /* ---------- Live "who's online" status for the lobby / QR screen ---------- */
+  let liveHandle = null;
+  const boardLive = () => !!(link && link.remotes > 0 && licensed());
+  PBAuth.live('b-' + Math.random().toString(36).slice(2, 10), { r: 'board', live: false }, (s) => {
+    ['lobbyStats', 'pairStats'].forEach((id) => { const el = $(id); if (!el) return; el.innerHTML = PBCommon.liveText(s); el.classList.remove('hidden'); });
+  }).then((h) => { liveHandle = h; }).catch(() => {});
+  let lastLive = false;
+  setInterval(() => { const v = boardLive(); if (liveHandle && v !== lastLive) { lastLive = v; liveHandle.update({ r: 'board', live: v }); } }, 5000);
+
+  /* ---------- Restart for the next players ---------- */
+  // When the remote signs out or exits, or no remote is connected for 3 minutes, the board resets:
+  // new code, fresh match, pass cleared, back to the splash + lobby, then a new QR.
+  const IDLE_MS = 3 * 60 * 1000;
+  let used = false, restarting = false, aloneSince = 0;
+  function restartBoard(reason) {
+    if (restarting) return; restarting = true;
+    try { if (link) link.broadcastMsg({ t: 'reset' }); } catch (e) {}
+    store.del('aopb.license'); license = null; verified.clear();
+    store.set('aopb.state', E.newMatch());
+    store.set('aopb.code', PBLink.makeCode());
+    $('byeTitle').textContent = reason === 'idle' ? 'Scoreboard is free' : 'Thanks for playing!';
+    $('byeBody').textContent = reason === 'idle' ? 'No remote connected for 3 minutes · restarting for the next players…' : 'Remote signed out · restarting for the next players…';
+    $('idleBanner').classList.add('hidden');
+    $('byeOverlay').classList.remove('hidden');
+    setTimeout(() => { try { if (link) link.destroy(); } catch (e) {} location.replace('./'); }, 3000);
+  }
+  setInterval(() => {
+    const n = link ? link.remotes : 0;
+    const banner = $('idleBanner');
+    if (!used || restarting || n > 0) { aloneSince = 0; banner.classList.add('hidden'); return; }
+    if (!aloneSince) aloneSince = Date.now();
+    const left = IDLE_MS - (Date.now() - aloneSince);
+    if (left <= 0) { restartBoard('idle'); return; }
+    const sec = Math.ceil(left / 1000);
+    banner.textContent = 'No remote connected · scoreboard restarts in ' + Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+    banner.classList.remove('hidden');
+  }, 1000);
 
   /* ---------- Fullscreen / UI ---------- */
   function fullscreen() {
@@ -266,6 +329,7 @@
   // Keyboard / TV-remote control
   document.addEventListener('keydown', (e) => {
     if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    if (!$('chooser').classList.contains('hidden')) return;
     const k = e.key;
     const pairOpen = !$('pairOverlay').classList.contains('hidden');
     if (pairOpen && (k === 'Escape' || k === 'Backspace')) { showPair(false); e.preventDefault(); return; }
@@ -287,16 +351,50 @@
     if (e.key === 'aopb.state' && e.newValue) { try { state = E.ensure(JSON.parse(e.newValue)); render(); } catch (err) {} }
   });
 
+  /* ---------- Device role chooser (Scoreboard is the default) ---------- */
+  (function chooser() {
+    const q = new URLSearchParams(location.search);
+    if (q.get('role') === 'display' || q.get('c')) return;   // every launch / restart shows the lobby
+    const el = $('chooser'); let left = 30, t;
+    // DinkyKong animation: transparent WebM (Chrome, Android, TVs); animated WebP on Safari/iOS (no WebM alpha there)
+    const startAnim = () => {
+      const v = $('dkVideo'); const ua = navigator.userAgent;
+      const safari = /iP(hone|ad|od)/.test(ua) || (/Safari/.test(ua) && !/Chrome|Chromium|CriOS|Android|Edg/.test(ua));
+      const webm = !!(v.canPlayType && v.canPlayType('video/webm; codecs="vp9"'));
+      if (safari || !webm) { const img = new Image(); img.className = 'dk-video'; img.alt = ''; img.src = 'icons/dk-anim.webp'; v.replaceWith(img); return; }
+      v.src = 'icons/dk-anim.webm'; v.play().catch(() => {});
+    };
+    const stopAnim = () => { const v = $('dkVideo'); if (v && v.pause) { v.pause(); v.removeAttribute('src'); v.load(); } };
+    const pickDisplay = () => { clearInterval(t); stopAnim(); try { sessionStorage.setItem('aopb.tabRole', 'display'); } catch (e) {} try { localStorage.setItem('aopb.role', 'display'); } catch (e) {} el.classList.add('hidden'); keepAwake(); };
+    $('asDisplay').onclick = pickDisplay;
+    const pause = () => { clearInterval(t); $('chooserCount').textContent = 'Choose Scoreboard or Remote'; };
+    PBCommon.installButton($('installApp'), { onHelp: (h) => { pause(); const p = $('installHelp'); p.textContent = h; p.classList.remove('hidden'); } });
+    $('installApp').addEventListener('click', pause);
+    $('asLive').onclick = () => { clearInterval(t); stopAnim(); location.href = 'live.html'; };
+    $('asRemote').onclick = () => { clearInterval(t); try { localStorage.setItem('aopb.role', 'remote'); } catch (e) {} location.href = 'remote.html?scan=1'; };
+    el.addEventListener('keydown', (e) => {   // TV remote arrows move between the three choices
+      const opts = [$('asDisplay'), $('asRemote'), $('asLive')]; const i = Math.max(0, opts.indexOf(document.activeElement));
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') opts[Math.min(2, i + 1)].focus();
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') opts[Math.max(0, i - 1)].focus();
+      e.stopPropagation();
+    });
+    const start = () => {
+      el.classList.remove('hidden'); $('asDisplay').focus(); startAnim();
+      t = setInterval(() => { left--; $('chooserCount').textContent = 'Starting as Scoreboard in ' + left + ' s'; if (left <= 0) pickDisplay(); }, 1000);
+    };
+    setTimeout(start, document.getElementById('splash') ? 5200 : 0);
+  })();
+
   /* ---------- Boot ---------- */
   if (AUTH) {
     $('pairTitle').textContent = 'Scan to sign in and start scoring';
-    $('pairBody').textContent = 'Scan with your phone camera and continue with Google. Each sign-in starts a 24-hour pass that uses 1 credit, so buy credits before scanning.';
+    $('pairBody').textContent = 'Scan with your phone camera and continue with Google. A donation to the DinkyKong support fund unlocks scoring time (PHP 50 = 24 hours) on one account and one phone.';
     if (licensed()) setPairMsg('Pass active until ' + hhmm(license.until) + ' · scan to connect a phone', 'ok');
   }
   renderLicense();
   render();
   drawQr();
-  showPair(true);
+  showPair(true);          // every refresh shows the pairing QR; it hides itself when a remote (re)connects
   keepAwake();
   Promise.allSettled([loadScript(LIBS.qr), loadScript(LIBS.peer)]).then(() => { drawQr(); startLink(); });
 })();

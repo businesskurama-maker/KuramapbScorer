@@ -1,20 +1,57 @@
 {
-  "name": "Kurama Pickleball Scorer",
-  "short_name": "KuramaPB Scorer",
+  "name": "DinkyKong Pickleball Scorer",
+  "short_name": "DinkyKong PB",
   "description": "Full-screen pickleball scoreboard for TVs and tablets, controlled from your phone.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
-  "display_override": ["fullscreen", "standalone"],
-  "background_color": "#010308",
-  "theme_color": "#060a16",
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
+  "background_color": "#120622",
+  "theme_color": "#120622",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
-    { "name": "Scoreboard", "url": "./", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Remote", "url": "./remote.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+    {
+      "name": "Scoreboard",
+      "url": "./?role=display",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Remote",
+      "url": "./remote.html?scan=1",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

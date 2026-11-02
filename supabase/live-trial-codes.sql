@@ -1,0 +1,2 @@
+-- Already applied (migration "live_trial_codes"). LIVE trial codes: owner-generated, single use, 1 hour of LIVE from redemption, must be used within 7 days.
+-- Tables/RPCs: live_codes, admin_create_live_code(note), admin_revoke_live_code(code), redeem_live_code(code, screen).

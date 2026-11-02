@@ -18,8 +18,17 @@
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
+  // Team A and Team B can never share a color: if they match, Team B gets the next distinct one.
+  const TEAM_COLORS = ['#39FF14', '#00E5FF', '#FF2E88', '#FFE600', '#B26BFF', '#FF6B1A'];
+  function distinctColors(colors) {
+    const c = (colors && colors.length === 2 ? colors : DEFAULT_SETTINGS.colors).map(String);
+    if (c[0].toLowerCase() !== c[1].toLowerCase()) return c;
+    return [c[0], TEAM_COLORS.find((x) => x.toLowerCase() !== c[0].toLowerCase())];
+  }
+
   function newMatch(settings) {
     const s = Object.assign(clone(DEFAULT_SETTINGS), settings ? clone(settings) : {});
+    s.colors = distinctColors(s.colors);
     return {
       v: 1,
       settings: s,
@@ -181,7 +190,7 @@
   // Cosmetic changes that don't reset the match.
   function rename(st, names, colors, players) {
     if (names) st.settings.names = names.map((n, i) => String(n || (i ? 'TEAM B' : 'TEAM A')).slice(0, 18));
-    if (colors) st.settings.colors = colors;
+    if (colors) st.settings.colors = distinctColors(colors);
     if (players) st.settings.players = cleanPlayers(players);
     st.updatedAt = Date.now();
     return st;
@@ -210,7 +219,7 @@
     if (!st.history) st.history = [];
     // Old default palette → new electric defaults
     const old = { '#d7f03c': '#39FF14', '#4fc3f7': '#00E5FF' };
-    st.settings.colors = st.settings.colors.map((c) => old[String(c).toLowerCase()] || c);
+    st.settings.colors = distinctColors(st.settings.colors.map((c) => old[String(c).toLowerCase()] || c));
     return st;
   }
 

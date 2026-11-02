@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DinkyKong LIVE — Multi-court scoreboard</title>
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Josefin+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/live.css">
+</head>
+<body class="live-body">
+<main class="live" id="live">
+  <header class="lv-top">
+    <a class="lv-brand" href="./" title="Back to the lobby"><img src="icons/dinkykong-logo.png" alt=""><span>DINKYKONG <b>LIVE</b></span></a>
+    <div class="lv-courts-pick" role="group" aria-label="Number of courts">
+      <span>Courts</span>
+      <div class="seg lv-seg" id="nPick"><button data-n="2">2</button><button data-n="3">3</button><button data-n="4">4</button><button data-n="5">5</button><button data-n="6">6</button></div>
+    </div>
+    <div class="lv-actions">
+      <span class="chip hidden" id="livePass"><span class="dot"></span><span id="livePassTxt"></span></span>
+      <button class="chip" id="qrBtn" title="Show every court's QR code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>Court QR codes</button>
+      <button class="chip obs-chip" id="obsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 15h20"/></svg>OBS lower third</button>
+      <button class="icon-btn" id="fsBtn" title="Full screen" aria-label="Full screen"></button>
+    </div>
+  </header>
+
+  <section class="lv-grid" id="grid"></section>
+
+  <div class="lv-strip-wrap hidden" id="stripWrap"><div class="lv-strip" id="strip"></div></div>
+</main>
+
+<!-- Organizer activation -->
+<div class="overlay lv-overlay hidden" id="actOverlay">
+  <div class="pair-card lv-act">
+    <div class="qr-box" id="actQr"></div>
+    <div class="pair-text">
+      <div class="eyebrow">DinkyKong LIVE · organizer</div>
+      <h1>Scan to activate LIVE</h1>
+      <p>Organizer: scan with your phone and sign in with the same Google account you use for the scoreboard. A <b>LIVE pass</b> — from <b>PHP 20 / hour</b> (PHP 50 / 4 hours · PHP 150 / day · PHP 300 / 3 days) — unlocks every court on this screen and the OBS lower third. Referees just scan their court’s QR — no sign-in needed.</p>
+      <div class="pair-status" id="actStatus"></div>
+      <div><div class="eyebrow">Or type this code on the organizer’s phone</div><div class="code" id="actCode">······</div></div>
+      <div class="trial-box">
+        <span class="eyebrow">Have a trial code?</span>
+        <div class="trial-row"><input class="text-in" id="trialIn" maxlength="14" placeholder="DK-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn primary" id="trialBtn">Activate 1 hour</button></div>
+        <div class="trial-err" id="trialErr"></div>
+      </div>
+      <div class="pair-actions"><a class="btn" href="./">Back to lobby</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- All court QR codes -->
+<div class="overlay lv-overlay hidden" id="qrOverlay">
+  <div class="lv-qr-sheet">
+    <div class="lv-sheet-head"><h2>Court QR codes</h2><p>Each referee scans their court’s code with their phone. No sign-in needed while LIVE is active.</p><button class="btn primary" id="qrClose">Done</button></div>
+    <div class="lv-qr-grid" id="qrGrid"></div>
+  </div>
+</div>
+
+<!-- OBS setup -->
+<div class="overlay lv-overlay hidden" id="obsOverlay">
+  <div class="lv-obs-sheet">
+    <div class="lv-sheet-head"><h2>OBS lower third</h2><p>All active courts in one 16:2.2 strip with a transparent background. It updates live as referees score.</p></div>
+    <div class="lv-obs-preview"><div class="lv-strip" id="obsPreview"></div></div>
+    <div class="lv-brand-edit">
+      <div class="lv-logo-box"><img id="logoPrev" src="icons/dinkykong-logo.png" alt="Lower third logo"></div>
+      <div class="lv-brand-fields">
+        <span class="eyebrow">Lower third logo &amp; caption</span>
+        <div class="lv-brand-btns">
+          <label class="btn primary lv-upload">Upload logo<input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>
+          <button class="btn" id="logoReset">Use DinkyKong logo</button>
+        </div>
+        <input class="text-in" id="captionIn" maxlength="18" placeholder="Caption under the logo (e.g. CITY OPEN 2026)">
+        <small class="lv-hint">PNG with a transparent background looks best. The logo is resized automatically and appears in OBS within seconds.</small>
+      </div>
+    </div>
+    <label class="eyebrow" for="obsUrl">Browser Source URL</label>
+    <div class="lv-copy"><input class="text-in" id="obsUrl" readonly><button class="btn primary" id="obsCopy">Copy link</button></div>
+    <ol class="lv-steps">
+      <li>In OBS: <b>Sources → + → Browser</b>.</li>
+      <li>Paste the link into <b>URL</b>. Set <b>Width 1920</b> and <b>Height 264</b>.</li>
+      <li>Drag it to the bottom of your scene. The background is already transparent.</li>
+    </ol>
+    <label class="lv-toggle"><input type="checkbox" id="stripToggle"><span></span>Show the lower third on this screen too <small>(for window or screen capture)</small></label>
+    <div class="pair-actions"><button class="btn" id="obsNew" title="Make a new private link (the old one stops working)">New link</button><button class="btn primary" id="obsClose">Done</button></div>
+  </div>
+</div>
+
+<div class="toast lv-toast" id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/link.js"></script>
+<script src="js/strip.js"></script>
+<script src="js/live.js"></script>
+</body>
+</html>

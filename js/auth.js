@@ -10,28 +10,84 @@
   const listeners = new Set();
   const emit = () => listeners.forEach((f) => { try { f(api); } catch (e) {} });
 
-  async function init() {
+  // Sign-in lock that only waits within this tab. supabase-js's default lock is shared by every open tab of the
+  // site, so a frozen background tab (common on Android) could block sign-in forever ("Loading…").
+  const tabLocks = {};
+  async function tabLock(name, _timeout, fn) {
+    const prev = tabLocks[name] || Promise.resolve();
+    let release; const mine = new Promise((r) => { release = r; });
+    tabLocks[name] = prev.then(() => mine);
+    await prev.catch(() => {});
+    try { return await fn(); } finally { release(); }
+  }
+  const withTimeout = (p, ms, label) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(label || 'TIMEOUT')), ms))]);
+  let initPromise = null;
+  function init() { if (!initPromise) initPromise = doInit().catch((e) => { initPromise = null; throw e; }); return initPromise; }
+  async function doInit() {
     if (!enabled) { emit(); return api; }
-    await PBCommon.loadScript(SB_URLS);
-    sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' }
+    await withTimeout(PBCommon.loadScript(SB_URLS), 20000, 'Could not load the sign-in library — check the internet connection');
+    if (!sb) sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce', lock: tabLock }
     });
-    const { data } = await sb.auth.getSession();
+    const { data } = await withTimeout(sb.auth.getSession(), 15000, 'Sign-in is taking too long — check the internet connection');
     user = data.session ? data.session.user : null;
     if (user) await refresh(); else emit();
     sb.auth.onAuthStateChange((_ev, session) => {
       const was = user && user.id;
       user = session ? session.user : null;
-      if ((user && user.id) !== was) { profile = null; refresh(); }
+      // never call Supabase directly inside this callback (it can deadlock); do it on the next tick
+      if ((user && user.id) !== was) { profile = null; setTimeout(refresh, 0); }
     });
     return api;
+  }
+
+  /* Live "who's online" presence for the lobby. Each open scoreboard / phone joins one shared channel.
+   * onUpdate gets { online, boards, courts, phones, players, active }. Returns { update(state) }. */
+  let liveClient = null;
+  async function getLiveClient() {
+    await PBCommon.loadScript(SB_URLS);
+    if (!liveClient) liveClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'aopb-live' }
+    });
+    return liveClient;
+  }
+  /* Internet relay for the phone <-> scoreboard link (works on any network, no WebRTC needed). */
+  async function relay(name, onMsg) {
+    if (!enabled) return null;
+    const c = await getLiveClient();
+    const ch = c.channel(name, { config: { broadcast: { self: false, ack: false } } });
+    ch.on('broadcast', { event: 'm' }, (e) => { try { onMsg(e.payload); } catch (err) {} }).subscribe();
+    return {
+      send(p) { try { ch.send({ type: 'broadcast', event: 'm', payload: p }); } catch (e) {} },
+      close() { try { c.removeChannel(ch); } catch (e) {} }
+    };
+  }
+  async function live(id, state, onUpdate) {
+    if (!enabled) return null;
+    const c = await getLiveClient();
+    let stats = {}, cur = state;
+    const ch = c.channel('dk-online', { config: { presence: { key: id } } });
+    const tally = () => {
+      let boards = 0, courts = 0, phones = 0;
+      Object.values(ch.presenceState()).forEach((arr) => {
+        const m = (arr && arr[0]) || {};
+        if (m.r === 'board') { boards++; if (m.live) courts++; } else phones++;
+      });
+      onUpdate({ online: boards + phones, boards, courts, phones, players: stats.players, active: stats.active_passes });
+    };
+    ch.on('presence', { event: 'sync' }, tally)
+      .subscribe((s) => { if (s === 'SUBSCRIBED') ch.track(cur).catch(() => {}); });
+    const loadStats = async () => { try { const { data } = await c.rpc('app_stats'); if (data) { stats = data; tally(); } } catch (e) {} };
+    loadStats(); setInterval(loadStats, 120000);
+    return { update(s) { cur = s; ch.track(s).catch(() => {}); } };
   }
 
   async function refresh() {
     if (!sb || !user) { profile = null; emit(); return null; }
     // The profile row is created by a database trigger right after first sign-in; retry briefly.
     for (let i = 0; i < 4; i++) {
-      const { data, error } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      let data = null, error = null;
+      try { ({ data, error } = await withTimeout(sb.from('profiles').select('*').eq('id', user.id).maybeSingle(), 12000)); } catch (e) { error = e; }
       if (!error && data) { profile = data; break; }
       await new Promise((r) => setTimeout(r, 600));
     }
@@ -39,11 +95,11 @@
     return profile;
   }
 
-  function signIn() {
+  function signIn(returnTo) {
     if (!sb) return;
     return sb.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: location.href, queryParams: { prompt: 'select_account' } }
+      options: { redirectTo: returnTo ? new URL(returnTo, location.href).href : location.href, queryParams: { prompt: 'select_account' } }
     });
   }
   async function signOut() { if (sb) await sb.auth.signOut(); user = null; profile = null; emit(); }
@@ -64,8 +120,14 @@
 
   // Admin helpers
   async function listUsers() {
-    const { data, error } = await sb.from('profiles').select('id,email,full_name,avatar_url,credits,pass_until,is_admin,created_at').order('created_at', { ascending: false });
+    const { data, error } = await sb.from('profiles').select('id,email,full_name,avatar_url,credits,hours_balance,bound_device,pass_until,live_hours,live_until,is_admin,created_at').order('created_at', { ascending: false });
     if (error) throw error; return data;
+  }
+  async function ledgerPage(page, size) {
+    const from = page * size;
+    const { data, error, count } = await sb.from('credit_ledger').select('id,user_id,delta,reason,created_at', { count: 'exact' })
+      .order('created_at', { ascending: false }).range(from, from + size - 1);
+    if (error) throw error; return { rows: data, total: count || 0 };
   }
   async function ledger(limit) {
     const { data, error } = await sb.from('credit_ledger').select('id,user_id,delta,reason,created_at').order('created_at', { ascending: false }).limit(limit || 50);
@@ -96,15 +158,60 @@
     });
     const { data: who } = await c.auth.getUser(token);
     if (!who || !who.user) return { ok: false, reason: 'NOT_SIGNED_IN' };
-    const { data: until, error } = charge ? await c.rpc('start_day_pass') : { data: null, error: null };
+    const live = !!(opts && opts.live);   // LIVE screen: start the organizer's LIVE pass instead of the solo pass
+    const { data: until, error } = await c.rpc(live ? 'start_live_pass' : 'start_pass', { p_device: (opts && opts.device) || '' });
     const uid = who && who.user ? who.user.id : null;
     const { data: prof } = uid ? await c.from('profiles').select('email,full_name,credits,pass_until').eq('id', uid).maybeSingle() : { data: null };
     if (error) {
       const m = String(error.message || '');
-      const reason = m.includes('NO_CREDITS') ? 'NO_CREDITS' : (m.includes('JWT') || m.includes('NOT_SIGNED_IN')) ? 'NOT_SIGNED_IN' : 'ERROR';
+      const reason = m.includes('NO_LIVE_PASS') ? 'NO_LIVE_PASS' : m.includes('NO_CREDITS') ? 'NO_CREDITS' : m.includes('OTHER_DEVICE') ? 'OTHER_DEVICE' : (m.includes('JWT') || m.includes('NOT_SIGNED_IN')) ? 'NOT_SIGNED_IN' : 'ERROR';
       return { ok: false, reason, email: prof && prof.email, name: prof && prof.full_name };
     }
     return { ok: true, until, email: prof && prof.email, name: prof && prof.full_name, credits: prof && prof.credits };
+  }
+
+  // ---- Packages & payments ----
+  const FALLBACK_PACKAGES = [
+    { code: 'day', label: '24 hours', hours: 24, price_php: 50 }, { code: '3day', label: '3 days', hours: 72, price_php: 150 },
+    { code: 'week', label: '1 week', hours: 168, price_php: 300 }, { code: 'month', label: '1 month', hours: 720, price_php: 800 }];
+  async function packages(kind) {   // 'solo' (default) or 'live'
+    kind = kind || 'solo';
+    if (!sb) return kind === 'live' ? LIVE_FALLBACK : FALLBACK_PACKAGES;
+    const { data, error } = await sb.from('packages').select('code,label,hours,price_php,kind').eq('kind', kind).order('sort');
+    return (!error && data && data.length) ? data : (kind === 'live' ? LIVE_FALLBACK : FALLBACK_PACKAGES);
+  }
+  const LIVE_FALLBACK = [
+    { code: 'live1h', label: 'LIVE · 1 hour', hours: 1, price_php: 20, kind: 'live' },
+    { code: 'live4h', label: 'LIVE · 4 hours', hours: 4, price_php: 50, kind: 'live' },
+    { code: 'live', label: 'LIVE · 1 day', hours: 24, price_php: 150, kind: 'live' },
+    { code: 'live3d', label: 'LIVE · 3 days', hours: 72, price_php: 300, kind: 'live' }];
+  function liveUntil() { return profile && profile.live_until ? new Date(profile.live_until) : null; }
+  function errCode(e) { const m = String((e && e.message) || e || ''); const k = m.match(/[A-Z_]{6,}/); return k ? k[0] : m; }
+  async function requestPurchase(pkg, ref) {
+    const { data, error } = await sb.rpc('request_purchase', { p_package: pkg, p_reference: ref });
+    if (error) throw new Error(errCode(error)); return data;
+  }
+  async function myPurchases() {
+    if (!sb || !user) return [];
+    const { data } = await sb.from('purchases').select('id,package,amount_php,reference,status,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10);
+    return data || [];
+  }
+  async function adminPurchases(status) {
+    let q = sb.from('purchases').select('id,user_id,package,hours,amount_php,reference,status,created_at,reviewed_at,note').order('created_at', { ascending: status === 'pending' }).limit(100);
+    if (status) q = q.eq('status', status);
+    const { data, error } = await q; if (error) throw error; return data;
+  }
+  async function reviewPurchase(id, approve, note) {
+    const { data, error } = await sb.rpc('admin_review_purchase', { p_id: id, p_approve: approve, p_note: note || null });
+    if (error) throw new Error(errCode(error)); return data;
+  }
+  async function addHours(email, hours, note) {
+    const { data, error } = await sb.rpc('admin_add_hours', { target_email: email, p_hours: hours, note: note || null });
+    if (error) throw new Error(errCode(error)); return data;
+  }
+  async function resetDevice(uid) {
+    const { error } = await sb.rpc('admin_reset_device', { target: uid });
+    if (error) throw new Error(errCode(error));
   }
 
   // Free mode counts as "allowed"
@@ -112,7 +219,27 @@
 
   const api = {
     enabled, init, refresh, signIn, signOut, startPass, passActive, passUntil, allowed, accessToken, verifyToken,
-    listUsers, ledger, addCredits,
+    async savePush(sub) {
+      const j = sub.toJSON();
+      const { error } = await sb.rpc('save_push_subscription', { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+      if (error) throw error;
+    },
+    async deletePush(endpoint) { await sb.rpc('delete_push_subscription', { p_endpoint: endpoint }); },
+    get client() { return sb; },
+    async undoApproval(id) { const { data, error } = await sb.rpc('admin_undo_approval', { p_id: id }); if (error) throw new Error(error.message); return data; },
+    live, relay, liveUntil,
+    // LIVE trial codes
+    async redeemLiveCode(code, screen) {
+      if (!enabled) return { ok: true, until: new Date(Date.now() + 3600e3).toISOString() };
+      const c = await getLiveClient();
+      const { data, error } = await c.rpc('redeem_live_code', { p_code: code, p_screen: screen });
+      if (error) { const m = String(error.message || ''); return { ok: false, reason: (m.match(/BAD_CODE|USED_CODE|EXPIRED_CODE/) || ['ERROR'])[0] }; }
+      return { ok: true, until: data };
+    },
+    async createLiveCode(note) { const { data, error } = await sb.rpc('admin_create_live_code', { p_note: note || null }); if (error) throw new Error(error.message); return data; },
+    async listLiveCodes() { const { data, error } = await sb.from('live_codes').select('code,note,minutes,created_at,expires_at,redeemed_at,revoked').order('created_at', { ascending: false }).limit(30); if (error) throw error; return data; },
+    async revokeLiveCode(code) { const { error } = await sb.rpc('admin_revoke_live_code', { p_code: code }); if (error) throw new Error(error.message); },
+    listUsers, ledger, ledgerPage, addCredits, packages, requestPurchase, myPurchases, adminPurchases, reviewPurchase, addHours, resetDevice,
     get user() { return user; }, get profile() { return profile; },
     onChange(f) { listeners.add(f); return () => listeners.delete(f); }
   };

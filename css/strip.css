@@ -1,0 +1,29 @@
+/* DinkyKong LIVE lower third — 16:2.2 strip (1920 × 264). Used on the LIVE screen and in OBS (obs.html). */
+.lv-strip { width: 100%; aspect-ratio: 1920 / 264; container-type: inline-size; position: relative; font-family: 'Josefin Sans', 'Futura', system-ui, sans-serif; color: #fff; }
+.lv-strip .lt { position: absolute; inset: 0; display: grid; grid-template-columns: auto 1fr; gap: .8cqw; align-items: stretch; padding: 1cqw 1.2cqw; }
+.lt-brand { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3cqw; padding: 0 1.1cqw; border-radius: 1cqw; background: linear-gradient(160deg, rgba(91,42,156,.95), rgba(20,8,40,.95)); box-shadow: 0 .4cqw 1.6cqw rgba(0,0,0,.45); }
+.lt-brand img { height: 6.4cqw; width: auto; max-width: 12cqw; object-fit: contain; filter: drop-shadow(0 .2cqw .4cqw rgba(0,0,0,.5)); }
+.lt-brand b { max-width: 12cqw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lt-brand span { display: flex; align-items: center; gap: .4cqw; font-size: 1.05cqw; letter-spacing: .14em; line-height: 1; }
+.lt-brand b { font-weight: 700; color: #ffd21f; }
+.lt-brand i { font-style: normal; font-weight: 700; color: #fff; background: #ff2e4d; border-radius: .3cqw; padding: .2cqw .45cqw .1cqw; letter-spacing: .1em; }
+.lt-courts { display: grid; grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); gap: .7cqw; min-width: 0; }
+.lt-court { display: grid; grid-template-rows: auto 1fr 1fr; min-width: 0; border-radius: 1cqw; overflow: hidden; background: rgba(6, 9, 20, .9); box-shadow: 0 .4cqw 1.6cqw rgba(0,0,0,.45), inset 0 0 0 .08cqw rgba(255,255,255,.08); }
+.lt-head { display: flex; align-items: center; justify-content: space-between; gap: .6cqw; padding: .45cqw .9cqw .3cqw; background: rgba(255,255,255,.06); font-size: 1cqw; letter-spacing: .16em; line-height: 1; white-space: nowrap; }
+.lt-head b { color: #00E5FF; font-weight: 700; }
+.lt-head span { color: rgba(255,255,255,.6); overflow: hidden; text-overflow: ellipsis; }
+.lt-row { display: grid; grid-template-columns: .45cqw minmax(0, 1fr) auto auto auto; align-items: center; gap: .55cqw; padding: 0 .9cqw 0 0; min-width: 0; border-top: .06cqw solid rgba(255,255,255,.06); }
+.lt-bar { align-self: stretch; background: var(--c); }
+.lt-name { font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: min(1.75cqw, calc(9.5cqw / var(--n, 1))); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lt-pips { display: flex; gap: .25cqw; }
+.lt-pips i { width: .62cqw; height: .62cqw; border-radius: 50%; border: .12cqw solid var(--c); opacity: .9; }
+.lt-pips i.on { background: var(--c); }
+.lt-ball { width: .9cqw; height: .9cqw; border-radius: 50%; background: #ffd21f; box-shadow: 0 0 .6cqw rgba(255,210,31,.8); visibility: hidden; }
+.lt-row.srv .lt-ball { visibility: visible; }
+.lt-score { font-family: 'Bebas Neue', 'Oswald', 'Arial Narrow', Impact, sans-serif; font-size: 3.6cqw; line-height: 1; min-width: 2.6cqw; text-align: right; color: var(--c); text-shadow: 0 0 1cqw color-mix(in srgb, var(--c) 60%, transparent); font-variant-numeric: tabular-nums; padding-top: .3cqw; }
+.lt-row.won .lt-name::after { content: ' ✓'; color: var(--c); }
+.lt-wait { display: grid; place-items: center; border-radius: 1cqw; background: rgba(6, 9, 20, .8); font-size: 1.6cqw; letter-spacing: .2em; color: rgba(255,255,255,.6); }
+/* Court header: room for the full letter height (fixes clipped "TO 11") */
+.lt-head { align-items: center; line-height: 1.35; padding: .3cqw .9cqw .25cqw; }
+.lt-head b, .lt-head span { display: block; line-height: 1.35; padding-top: .12em; }
+.lt-head span { color: rgba(255,255,255,.75); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
