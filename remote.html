@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Kurama Pickleball Scorer — Remote</title>
+<meta name="theme-color" content="#0b1228">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Josefin+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<main class="remote" id="app">
+  <header class="r-head">
+    <div class="brand-sm"><img src="icons/kurama-mark.png" alt=""><span>KURAMA <b>PB SCORER</b></span></div>
+    <button class="r-status" id="status"><span class="dot"></span><span id="statusTxt">Not paired</span></button>
+  </header>
+
+  <!-- Join -->
+  <section class="join hidden" id="join">
+    <img class="mark" src="icons/kurama-mark.png" alt="">
+    <h1>Pair with a screen</h1>
+    <p>Open the scorer website on your TV or tablet, then scan its QR code with your phone camera — or type the 6‑character code below.</p>
+    <input class="code-input" id="codeIn" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" inputmode="text">
+    <div class="err" id="joinErr"></div>
+    <button class="big-btn" id="joinBtn">Connect</button>
+  </section>
+
+  <!-- Controller -->
+  <section id="ctrl" class="hidden" style="display:flex;flex-direction:column;gap:12px;flex:1">
+    <div class="r-board">
+      <div class="r-side" id="bL"><div class="n"><i></i><span></span></div><div class="s">0</div><div class="g"></div></div>
+      <div class="r-call"><div class="c" id="call">0-0-2</div><div class="x" id="callX">Game 1</div></div>
+      <div class="r-side right" id="bR"><div class="n"><span></span><i></i></div><div class="s">0</div><div class="g"></div></div>
+    </div>
+
+    <div class="gate hidden" id="gate">
+      <img class="mark" src="icons/kurama-mark.png" alt="">
+      <h2 id="gateTitle">Sign in to start scoring</h2>
+      <p id="gateBody">Each sign-in starts a 24-hour pass that uses 1 credit.</p>
+      <button class="big-btn google" id="gateGoogle"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h6a5.1 5.1 0 0 1-2.2 3.4v2.8h3.6c2.1-1.9 3.2-4.8 3.2-8.2z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.8c-1 .7-2.2 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.5H2.1v2.9A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.8 14.1a6.6 6.6 0 0 1 0-4.2V7H2.1a11 11 0 0 0 0 10l3.7-2.9z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2A11 11 0 0 0 2.1 7l3.7 2.9C6.7 7.3 9.1 5.4 12 5.4z"/></svg>Continue with Google</button>
+      <button class="big-btn hidden" id="gateRetry">Try again</button>
+      <button class="big-btn ghost hidden" id="gateSwitch">Use another account</button>
+    </div>
+
+    <div class="rally-btns" id="rallyBtns">
+      <button class="rally" id="rL"><span class="lbl">Rally won by</span><span class="mid"><span class="nm"></span><span class="who"></span></span><span class="what"></span></button>
+      <button class="rally" id="rR"><span class="lbl">Rally won by</span><span class="mid"><span class="nm"></span><span class="who"></span></span><span class="what"></span></button>
+    </div>
+    <button class="next-game hidden" id="nextBtn">Start game 2</button>
+
+    <div class="r-row">
+      <button class="tool" id="undoBtn"><span id="iUndo"></span>Undo</button>
+      <button class="tool" id="swapBtn"><span id="iSwap"></span>Switch</button>
+      <button class="tool" id="serveBtn"><span id="iServe"></span>Server</button>
+      <button class="tool" id="setBtn"><span id="iGear"></span>Match</button>
+    </div>
+  </section>
+</main>
+
+<!-- Settings sheet -->
+<div class="sheet-wrap hidden" id="sheet">
+  <div class="sheet" role="dialog" aria-label="Match settings">
+    <h2>Match setup <button class="close-x" id="sheetX" aria-label="Close">×</button></h2>
+    <div class="account hidden" id="account">
+      <img id="accAvatar" alt="">
+      <div><b id="accName"></b><span id="accInfo"></span></div>
+      <button class="mini-btn" id="accOut">Sign out</button>
+    </div>
+    <div class="field">
+      <span class="eyebrow">Teams</span>
+      <div class="team-edit">
+        <input class="text-in" id="nA" maxlength="18" placeholder="Team name">
+        <div class="player-row"><input class="text-in" id="pA0" maxlength="16" placeholder="Player 1 (starts right)"><input class="text-in pl2" id="pA1" maxlength="16" placeholder="Player 2"></div>
+        <div class="swatches" id="swA"></div>
+        <button class="mini-btn dbl-only" id="ptA">⇄ Swap court positions</button>
+      </div>
+      <div class="team-edit">
+        <input class="text-in" id="nB" maxlength="18" placeholder="Team name">
+        <div class="player-row"><input class="text-in" id="pB0" maxlength="16" placeholder="Player 1 (starts right)"><input class="text-in pl2" id="pB1" maxlength="16" placeholder="Player 2"></div>
+        <div class="swatches" id="swB"></div>
+        <button class="mini-btn dbl-only" id="ptB">⇄ Swap court positions</button>
+      </div>
+      <button class="big-btn ghost" id="applyNames">Update names &amp; colors</button>
+    </div>
+    <div class="field"><span class="eyebrow">Format</span><div class="seg" data-k="mode"><button data-v="doubles">Doubles</button><button data-v="singles">Singles</button></div></div>
+    <div class="field"><span class="eyebrow">Scoring</span><div class="seg" data-k="scoring"><button data-v="sideout">Side-out</button><button data-v="rally">Rally</button></div></div>
+    <div class="field"><span class="eyebrow">Points to win (win by 2)</span><div class="seg" data-k="target"><button data-v="11">11</button><button data-v="15">15</button><button data-v="21">21</button></div></div>
+    <div class="field"><span class="eyebrow">Games</span><div class="seg" data-k="bestOf"><button data-v="1">1 game</button><button data-v="3">Best of 3</button><button data-v="5">Best of 5</button></div></div>
+    <div class="field"><span class="eyebrow">First serve</span><div class="seg" data-k="firstServer"><button data-v="0" id="fs0">A</button><button data-v="1" id="fs1">B</button></div></div>
+    <div class="sheet-actions">
+      <button class="big-btn ghost" id="unpair">Change screen</button>
+      <button class="big-btn" id="newMatch">Start new match</button>
+    </div>
+    <p class="note">Player 1 starts in the right-hand court. Names and colors update without resetting the score; “Swap court positions” fixes the scoreboard if partners lined up the other way. Starting a new match resets the score.</p>
+  </div>
+</div>
+
+<div class="flash" id="flash"></div>
+
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/link.js"></script>
+<script src="js/remote.js"></script>
+</body>
+</html>

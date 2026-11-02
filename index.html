@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kurama Pickleball Scorer — Display</title>
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Josefin+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<main class="display" id="display">
+  <header class="d-top">
+    <span aria-hidden="true"></span>
+    <div class="d-meta" id="meta">GAME <b>1</b> · TO 11</div>
+    <div class="d-status">
+      <span class="chip hidden" id="passChip"><span class="dot"></span><span id="passTxt"></span></span>
+      <button class="chip" id="linkChip" title="Show pairing QR (Q)"><span class="dot"></span><span id="linkTxt">Starting…</span></button>
+      <button class="icon-btn" id="fsBtn" title="Full screen (F)" aria-label="Full screen"></button>
+    </div>
+  </header>
+
+  <section class="court" id="court">
+    <div class="team" id="teamL">
+      <div class="team-head"><div class="team-name"></div><div class="team-players"></div></div>
+      <div class="team-score"></div>
+      <div class="team-foot"><div class="serve-tag"></div><div class="pips"></div></div>
+    </div>
+    <div class="team" id="teamR">
+      <div class="team-head"><div class="team-name"></div><div class="team-players"></div></div>
+      <div class="team-score"></div>
+      <div class="team-foot"><div class="pips"></div><div class="serve-tag"></div></div>
+    </div>
+    <div class="toast" id="toast"></div>
+  </section>
+
+  <footer class="d-bottom">
+    <div class="d-left">
+      <div class="credit"><span>Developer:</span><img src="icons/kurama-mark.png" alt="Kurama Information Technology Solutions"><span>by <b>CHI</b></span></div>
+      <div class="history" id="history"></div>
+    </div>
+    <div class="callout" id="callout">0-0-2</div>
+    <div class="keys">← → rally won · U undo · S switch · Q pair</div>
+  </footer>
+
+  <div class="mini-qr hidden" id="miniQr">
+    <div class="qr-box" id="qrMini"></div>
+    <div><div class="eyebrow">Remote code</div><div class="code" id="codeMini"></div></div>
+  </div>
+
+  <div class="overlay hidden" id="pairOverlay">
+    <div class="pair-card">
+      <div class="qr-box" id="qrBig"></div>
+      <div class="pair-text">
+        <div class="eyebrow">Kurama Pickleball Scorer</div>
+        <h1 id="pairTitle">Scan to use your phone as the remote</h1>
+        <p id="pairBody">Open your phone camera, point it at the code and tap the link. Several phones can join the same screen.</p>
+        <div class="pair-status" id="pairStatus"></div>
+        <div><div class="eyebrow">Or enter code</div><div class="code" id="codeBig">······</div></div>
+        <div class="url" id="urlBig"></div>
+        <div class="pair-actions">
+          <button class="btn primary" id="pairClose">Show scoreboard</button>
+          <button class="btn" id="pairFs">Full screen</button>
+          <button class="btn" id="pairNew" title="Generate a new code (disconnects remotes)">New code</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay denied hidden" id="deniedOverlay">
+    <div class="winner">
+      <div class="eyebrow">Kurama Pickleball Scorer</div>
+      <h1 id="deniedTitle">Access denied</h1>
+      <div class="hint" id="deniedBody"></div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="endOverlay">
+    <div class="winner">
+      <div class="eyebrow" id="endEyebrow">Match winner</div>
+      <h1 id="endName">TEAM A</h1>
+      <div class="games" id="endGames"></div>
+      <div class="hint" id="endHint">Start a new match from the remote</div>
+    </div>
+  </div>
+</main>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/link.js"></script>
+<script src="js/display.js"></script>
+</body>
+</html>

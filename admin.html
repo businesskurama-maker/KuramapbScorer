@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PB Scorer Admin</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#060a16">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Josefin+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<style>
+  .admin { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; display: flex; flex-direction: column; gap: 20px; }
+  .admin header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .admin h1 { margin: 0; font-family: var(--font-score); font-weight: 400; font-size: 40px; letter-spacing: .06em; }
+  .card { background: var(--navy-800); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+  .card h2 { margin: 0 0 12px; font-family: var(--font-score); font-weight: 400; font-size: 26px; letter-spacing: .06em; }
+  .topup { display: grid; grid-template-columns: 2fr 1fr 2fr auto; gap: 10px; }
+  .topup .text-in { text-transform: none; }
+  @media (max-width: 700px) { .topup { grid-template-columns: 1fr 1fr; } .topup .text-in:first-child { grid-column: 1 / -1; } }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; }
+  td.num { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .u { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .u img { width: 30px; height: 30px; border-radius: 50%; background: var(--navy-700); flex: none; }
+  .u small { display: block; color: var(--ink-3); }
+  .quick { display: flex; gap: 6px; flex-wrap: wrap; }
+  .quick button { border: 1px solid var(--line); background: none; color: var(--ink); border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .quick button:hover { border-color: var(--ball); }
+  .pass-on { color: var(--ok); }
+  .msg { min-height: 1.3em; font-size: 14px; }
+  .msg.ok { color: var(--ok); } .msg.bad { color: var(--danger); }
+  .table-wrap { overflow-x: auto; }
+  .center { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
+  .center p { color: var(--ink-2); max-width: 420px; line-height: 1.5; }
+  .delta-pos { color: var(--ok); } .delta-neg { color: var(--ink-2); }
+</style>
+</head>
+<body>
+<main class="admin">
+  <header>
+    <h1>PB Scorer · Credits</h1>
+    <div class="r-status" id="who" style="cursor:default"><span class="dot"></span><span id="whoTxt">Loading…</span></div>
+  </header>
+
+  <section class="center hidden" id="needLogin">
+    <img src="icons/kurama-mark.png" alt="" style="width:72px">
+    <h1 style="font-family:var(--font-score);font-weight:400;font-size:36px;margin:0">Admin sign-in</h1>
+    <p>Sign in with the Google account that has admin access.</p>
+    <button class="big-btn google" id="loginBtn" style="min-width:280px">Continue with Google</button>
+  </section>
+
+  <section class="center hidden" id="notAdmin">
+    <h1 style="font-family:var(--font-score);font-weight:400;font-size:36px;margin:0;color:var(--danger)">Not an admin</h1>
+    <p id="notAdminTxt"></p>
+    <button class="big-btn ghost" id="logout2">Sign out</button>
+  </section>
+
+  <section class="center hidden" id="notConfigured">
+    <h1 style="font-family:var(--font-score);font-weight:400;font-size:36px;margin:0">Supabase not configured</h1>
+    <p>Add your Supabase URL and anon key to <b>js/config.js</b> to turn on sign-in and credits.</p>
+  </section>
+
+  <div id="panel" class="hidden" style="display:flex;flex-direction:column;gap:20px">
+    <div class="card">
+      <h2>Add credits</h2>
+      <div class="topup">
+        <input class="text-in" id="tEmail" type="email" placeholder="user@gmail.com" autocomplete="off">
+        <input class="text-in" id="tAmount" type="number" value="1" step="1" placeholder="Credits">
+        <input class="text-in" id="tNote" placeholder="Note (e.g. GCash ref)">
+        <button class="big-btn" id="tGo">Add</button>
+      </div>
+      <p class="note" style="margin-top:10px">1 credit = one 24-hour scoring pass. Use a negative number to remove credits. The user must have signed in once before you can top them up.</p>
+      <div class="msg" id="tMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="display:flex;justify-content:space-between;align-items:center">Users <button class="mini-btn" id="reload">Refresh</button></h2>
+      <input class="text-in" id="search" placeholder="Search name or email" style="text-transform:none;margin-bottom:10px">
+      <div class="table-wrap"><table>
+        <thead><tr><th>User</th><th>Credits</th><th>Pass</th><th>Quick add</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h2>Recent activity</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>When</th><th>User</th><th>Change</th><th>Reason</th></tr></thead>
+        <tbody id="ledger"></tbody>
+      </table></div>
+    </div>
+
+    <button class="big-btn ghost" id="logout" style="align-self:flex-start">Sign out</button>
+  </div>
+</main>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
