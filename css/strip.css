@@ -34,3 +34,12 @@
 
 /* Fewer courts: keep the strip compact and centred instead of stretching one card across the screen */
 .lv-strip .lt { margin: 0 auto; max-width: var(--maxw, 100%); }
+
+/* 3-number call pop-up: replaces both scores for 3 s */
+.lt-court { position: relative; }
+.lt-call { position: absolute; right: .9cqw; top: 1.9cqw; bottom: .3cqw; display: flex; align-items: center; justify-content: flex-end; padding-left: 1cqw;
+  font-family: 'Bebas Neue', 'Oswald', 'Arial Narrow', Impact, sans-serif; font-size: min(6.2cqw, calc(30cqw / var(--n, 1))); line-height: 1; letter-spacing: .04em;
+  color: #FFE600; text-shadow: 0 0 1.2cqw rgba(255,230,0,.75), 0 0 .3cqw rgba(255,230,0,.9);
+  background: linear-gradient(90deg, rgba(6,9,20,0), rgba(6,9,20,.92) 18%); animation: ltCall .35s ease-out; }
+.lt-court.flash .lt-score, .lt-court.flash .lt-ball { visibility: hidden; }
+@keyframes ltCall { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
