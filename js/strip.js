@@ -9,7 +9,8 @@
       n: index + 1,
       names: s.names.slice(0, 2), colors: s.colors.slice(0, 2),
       score: state.score.slice(0, 2), games: state.games.slice(0, 2),
-      serving: state.matchOver ? -1 : state.serving,
+      serving: state.matchOver || state.playForServe ? -1 : state.serving,
+      pfs: !!state.playForServe,
       gameNo: state.gameNo, bestOf: s.bestOf, target: s.target,
       over: !!state.matchOver, winner: state.winner,
       call: window.PBEngine ? PBEngine.callout(state) : '',
@@ -21,7 +22,7 @@
   function pick(list) { const a = list.filter((c) => c.active); return a.length ? a : list; }
 
   function card(c) {
-    const meta = c.over ? 'FINAL' : (c.bestOf > 1 ? 'G' + c.gameNo + ' · BO' + c.bestOf : 'TO ' + c.target);
+    const meta = c.over ? 'FINAL' : c.pfs ? 'PLAY FOR SERVE' : (c.bestOf > 1 ? 'G' + c.gameNo + ' · BO' + c.bestOf : 'TO ' + c.target);
     const row = (t) => {
       const won = c.over && c.winner === t;
       const pips = c.bestOf > 1 ? '<span class="lt-pips">' + Array.from({ length: Math.ceil(c.bestOf / 2) }, (_, i) => '<i class="' + (i < c.games[t] ? 'on' : '') + '"></i>').join('') + '</span>' : '';

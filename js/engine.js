@@ -12,7 +12,7 @@
     names: ['TEAM A', 'TEAM B'],
     players: [['', ''], ['', '']], // [team][0] starts in the right-hand court
     colors: ['#39FF14', '#00E5FF'],   // electric green / electric cyan
-    firstServer: 0,
+    firstServer: 0,         // 0 | 1 | 'pfs' (play for serve: a rally decides who serves first)
     autoSwap: true          // switch ends between games + at midpoint of deciding game
   };
 
@@ -29,15 +29,18 @@
   function newMatch(settings) {
     const s = Object.assign(clone(DEFAULT_SETTINGS), settings ? clone(settings) : {});
     s.colors = distinctColors(s.colors);
+    const pfs = s.firstServer === 'pfs';
+    const first = pfs ? 0 : (s.firstServer === 1 ? 1 : 0);
     return {
+      playForServe: pfs,      // true until the serve rally is played
       v: 1,
       settings: s,
       score: [0, 0],
       games: [0, 0],
       gameNo: 1,
       gameLog: [],            // [{a,b,winner}]
-      serving: s.firstServer,
-      gameFirstServer: s.firstServer,
+      serving: first,
+      gameFirstServer: first,
       serverNum: s.mode === 'doubles' && s.scoring === 'sideout' ? 2 : 1,
       pos: [[0, 1], [0, 1]],  // pos[team] = [player in right court, player in left court]
       serverPlayer: 0,        // index into settings.players[serving]
@@ -103,8 +106,30 @@
     }
   }
 
+  // Play for serve: the winner of the serve rally serves first (no point is scored).
+  function serveRally(st, team) {
+    pushHistory(st);
+    st.playForServe = false; st.serveDecided = true;
+    st.serving = team; st.gameFirstServer = team;
+    st.serverNum = st.settings.mode === 'doubles' && st.settings.scoring === 'sideout' ? 2 : 1;
+    st.serverPlayer = st.settings.mode === 'doubles' ? st.pos[team][0] : 0;
+    st.lastEvent = { type: 'pfs', team, t: Date.now() };
+    st.updatedAt = Date.now();
+    return st;
+  }
+  // Start a serve rally on a match that hasn't started yet.
+  function startPfs(st) {
+    if (st.rallies > 0 || st.gameNo > 1 || st.score[0] + st.score[1] > 0 || st.playForServe || st.serveDecided) return st;
+    pushHistory(st);
+    st.playForServe = true;
+    st.lastEvent = { type: 'pfsStart', team: null, t: Date.now() };
+    st.updatedAt = Date.now();
+    return st;
+  }
+
   function rally(st, team) {
     if (st.gameOver || st.matchOver) return st;
+    if (st.playForServe) return serveRally(st, team);
     pushHistory(st);
     st.rallies += 1;
     const s = st.settings;
@@ -177,10 +202,11 @@
   function setServer(st, team) {
     if (st.score[0] + st.score[1] > 0 || st.gameOver) return st;
     pushHistory(st);
+    st.playForServe = false;
     st.serving = team;
     st.gameFirstServer = team;
     st.serverNum = st.settings.mode === 'doubles' && st.settings.scoring === 'sideout' ? 2 : 1;
-    if (st.gameNo === 1) st.settings.firstServer = team;
+    if (st.gameNo === 1 && st.settings.firstServer !== 'pfs') st.settings.firstServer = team;
     st.serverPlayer = st.settings.mode === 'doubles' ? st.pos[team][0] : 0;
     st.lastEvent = { type: 'server', team, t: Date.now() };
     st.updatedAt = Date.now();
@@ -217,6 +243,7 @@
     if (st.serverPlayer == null) st.serverPlayer = st.pos[st.serving][0];
     st.settings.players = cleanPlayers(st.settings.players);
     if (!st.history) st.history = [];
+    if (st.playForServe == null) st.playForServe = false;
     // Old default palette → new electric defaults
     const old = { '#d7f03c': '#39FF14', '#4fc3f7': '#00E5FF' };
     st.settings.colors = distinctColors(st.settings.colors.map((c) => old[String(c).toLowerCase()] || c));
@@ -239,6 +266,7 @@
       case 'server': return setServer(st, action.team === 1 ? 1 : 0);
       case 'rename': return rename(st, action.names, action.colors, action.players);
       case 'partners': return partners(st, action.team === 1 ? 1 : 0);
+      case 'pfs': return startPfs(st);
       case 'new': return newMatch(Object.assign({}, st.settings, action.settings || {}, { players: cleanPlayers((action.settings || st.settings).players) }));
       default: return st;
     }
@@ -246,6 +274,7 @@
 
   // The spoken score call, e.g. "4-2-1" (doubles side-out) or "4-2".
   function callout(st) {
+    if (st.playForServe) return '';
     const srv = st.serving, rcv = 1 - srv;
     const base = st.score[srv] + '-' + st.score[rcv];
     if (st.settings.mode === 'doubles' && st.settings.scoring === 'sideout') return base + '-' + st.serverNum;
@@ -270,6 +299,7 @@
     })));
     p.serveSide = serveSide(st);
     p.deciding = isDecidingGame(st);
+    p.pfs = !!st.playForServe;
     return p;
   }
 

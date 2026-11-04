@@ -96,7 +96,7 @@
     renderCtrl();
     if (s.lastEvent && s.lastEvent.t !== prevEv && prevEv) {
       const names = s.settings.names;
-      const m = { partners: 'Positions fixed', sideout: 'Side out → ' + names[s.serving], second: '2nd server', game: 'Game → ' + names[s.lastEvent.team], match: 'Match → ' + names[s.lastEvent.team], swap: s.lastEvent.auto ? 'Switch ends!' : 'Sides swapped' };
+      const m = { pfs: names[s.serving] + ' serves first', pfsStart: 'Play for serve', partners: 'Positions fixed', sideout: 'Side out → ' + names[s.serving], second: '2nd server', game: 'Game → ' + names[s.lastEvent.team], match: 'Match → ' + names[s.lastEvent.team], swap: s.lastEvent.auto ? 'Switch ends!' : 'Sides swapped' };
       if (m[s.lastEvent.type]) { flash(m[s.lastEvent.type]); if (s.lastEvent.auto || s.lastEvent.type === 'game' || s.lastEvent.type === 'match') buzz([40, 60, 40]); }
     }
   }
@@ -341,6 +341,7 @@
 
   function outcome(team) {
     if (!st) return '';
+    if (st.pfs) return 'Serves first';
     const s = st.settings;
     if (s.scoring === 'rally') return team === st.serving ? 'Point' : 'Point + serve';
     if (team === st.serving) return 'Point';
@@ -357,14 +358,17 @@
     const s = st.settings;
     const left = st.swapped ? 1 : 0, right = 1 - left;
     [[$('bL'), left], [$('bR'), right]].forEach(([el, t]) => {
-      el.querySelector('.n span').textContent = s.names[t] + (st.serving === t && !st.matchOver ? ' •' : '');
+      el.querySelector('.n span').textContent = s.names[t] + (st.serving === t && !st.matchOver && !st.pfs ? ' •' : '');
       el.querySelector('.n i').style.background = s.colors[t];
       el.querySelector('.s').innerHTML = seg(st.score[t], 2);
       el.querySelector('.s').style.color = s.colors[t];
       el.querySelector('.g').textContent = s.bestOf > 1 ? 'GAMES ' + st.games[t] : '';
     });
-    $('call').innerHTML = seg(st.call);
-    $('callX').textContent = (st.hasPlayers ? st.serverName + ' · ' : (s.bestOf > 1 ? 'Game ' + st.gameNo + ' · ' : '')) + 'serve ' + st.serveSide.toLowerCase();
+    $('call').innerHTML = st.pfs ? '<span class="pfs-call">SERVE RALLY</span>' : seg(st.call);
+    $('callX').textContent = st.pfs ? 'Tap who won the rally' : (st.hasPlayers ? st.serverName + ' · ' : (s.bestOf > 1 ? 'Game ' + st.gameNo + ' · ' : '')) + 'serve ' + st.serveSide.toLowerCase();
+    $('rallyBtns').classList.toggle('pfs', !!st.pfs);
+    const fresh = !st.pfs && !st.serveDecided && st.rallies === 0 && st.gameNo === 1 && st.score[0] + st.score[1] === 0 && !st.matchOver;
+    $('pfsBtn').classList.toggle('hidden', !fresh || !!gateState);
 
     [[$('rL'), left], [$('rR'), right]].forEach(([b, t]) => {
       b.style.setProperty('--c', s.colors[t]);
@@ -373,7 +377,7 @@
       b.querySelector('.what').textContent = outcome(t);
       b.querySelector('.who').innerHTML = st.hasPlayers ? st.court[t].map((p) => p.serving ? '<b>● ' + esc(p.name) + '</b>' : esc(p.name)).join('<br>') : '';
       b.disabled = !connected || st.gameOver || st.matchOver;
-      b.classList.toggle('is-serving', st.serving === t && !st.matchOver);
+      b.classList.toggle('is-serving', st.serving === t && !st.matchOver && !st.pfs);
     });
 
     const over = st.gameOver || st.matchOver;
@@ -397,6 +401,7 @@
   $('undoBtn').onclick = () => send({ a: 'undo' });
   $('swapBtn').onclick = () => send({ a: 'swap' });
   $('serveBtn').onclick = () => { if (st) send({ a: 'server', team: 1 - st.serving }); };
+  $('pfsBtn').onclick = () => { if (send({ a: 'pfs' })) flash('Play for serve'); };
   $('nextBtn').onclick = () => { if (!st) return; if (st.matchOver) openSheet(); else send({ a: 'next' }); };
 
   /* ---------- Settings sheet ---------- */

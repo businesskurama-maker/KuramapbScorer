@@ -29,7 +29,7 @@
   function renderTeam(el, team, pub) {
     const s = state.settings;
     el.style.setProperty('--c', s.colors[team]);
-    el.classList.toggle('serving', state.serving === team && !state.matchOver);
+    el.classList.toggle('serving', state.serving === team && !state.matchOver && !state.playForServe);
     el.querySelector('.team-name').textContent = s.names[team];
     const scoreEl = el.querySelector('.team-score');
     if (scoreEl.dataset.v !== String(state.score[team])) {
@@ -68,7 +68,8 @@
     parts.push(s.scoring === 'rally' ? 'RALLY' : (s.mode === 'doubles' ? 'DOUBLES' : 'SINGLES'));
     $('meta').innerHTML = parts.join(' · ');
 
-    $('callout').innerHTML = seg(E.callout(state));
+    $('callout').innerHTML = state.playForServe ? '<span class="pfs-call">SERVE RALLY</span>' : seg(E.callout(state));
+    $('pfsBanner').classList.toggle('hidden', !state.playForServe);
     $('history').innerHTML = state.gameLog.map((g, i) => '<span>G' + (i + 1) + ' <b>' + g.a + '–' + g.b + '</b></span>').join('');
 
     // End-of-game / match overlay
@@ -94,7 +95,7 @@
     const ev = state.lastEvent;
     if (ev && ev.t !== lastEventT) {
       lastEventT = ev.t;
-      const map = { partners: 'POSITIONS FIXED', sideout: 'SIDE OUT', second: '2ND SERVER', swap: ev.auto ? 'SWITCH ENDS' : 'SIDES SWAPPED', undo: 'UNDO', newgame: 'GAME ' + state.gameNo };
+      const map = { pfs: (s.names[ev.team] || '') + ' SERVES FIRST', partners: 'POSITIONS FIXED', sideout: 'SIDE OUT', second: '2ND SERVER', swap: ev.auto ? 'SWITCH ENDS' : 'SIDES SWAPPED', undo: 'UNDO', newgame: 'GAME ' + state.gameNo };
       if (map[ev.type]) toast(map[ev.type], ev.team != null ? s.colors[ev.team] : null);
     }
     prevScore = state.score.slice();
@@ -104,6 +105,10 @@
   function toast(text, color) {
     const t = $('toast');
     t.textContent = text; t.style.color = color || 'var(--ball)';
+    // long messages (e.g. "KONG SMASHERS SERVES FIRST") shrink to fit the screen width
+    t.style.fontSize = '';
+    const maxW = window.innerWidth * 0.92, w = t.scrollWidth;
+    if (w > maxW) t.style.fontSize = (parseFloat(getComputedStyle(t).fontSize) * maxW / w).toFixed(1) + 'px';
     t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
     clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1700);
   }

@@ -89,7 +89,7 @@
     el.querySelectorAll('.lvc-team').forEach((tEl, side) => {
       const t = side === 0 ? left : 1 - left;
       tEl.style.setProperty('--c', s.colors[t]);
-      tEl.classList.toggle('serving', st.serving === t && !st.matchOver);
+      tEl.classList.toggle('serving', st.serving === t && !st.matchOver && !st.playForServe);
       tEl.querySelector('.lvc-name').textContent = s.names[t];
       const sc = tEl.querySelector('.lvc-score');
       if (sc.dataset.v !== String(st.score[t])) {
@@ -97,10 +97,10 @@
         sc.dataset.v = st.score[t]; sc.innerHTML = seg(st.score[t], 2);
         if (up) { sc.classList.remove('bump'); void sc.offsetWidth; sc.classList.add('bump'); }
       }
-      tEl.querySelector('.lvc-srv').innerHTML = st.serving === t && !st.matchOver ? ICON.ball + '<span>' + esc(pub.hasPlayers ? pub.serverName : (s.mode === 'doubles' && s.scoring === 'sideout' ? (st.serverNum === 1 ? '1st server' : '2nd server') : 'Serving')) + '</span>' : '';
+      tEl.querySelector('.lvc-srv').innerHTML = st.serving === t && !st.matchOver && !st.playForServe ? ICON.ball + '<span>' + esc(pub.hasPlayers ? pub.serverName : (s.mode === 'doubles' && s.scoring === 'sideout' ? (st.serverNum === 1 ? '1st server' : '2nd server') : 'Serving')) + '</span>' : '';
       tEl.querySelector('.lvc-pips').innerHTML = s.bestOf > 1 ? Array.from({ length: Math.ceil(s.bestOf / 2) }, (_, i) => '<i class="' + (i < st.games[t] ? 'on' : '') + '"></i>').join('') : '';
     });
-    el.querySelector('.lvc-call').innerHTML = st.matchOver ? '' : seg(E.callout(st));
+    el.querySelector('.lvc-call').innerHTML = st.matchOver ? '' : st.playForServe ? '<span class="pfs-call">PLAY FOR SERVE</span>' : seg(E.callout(st));
     const ref = c.remotes > 0;
     el.classList.toggle('has-ref', ref);
     el.querySelector('.lvc-ref').classList.toggle('ok', ref);
