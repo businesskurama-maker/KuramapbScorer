@@ -99,8 +99,48 @@
       const scoreEv = { point: 1, sideout: 1, second: 1, undo: 1, server: 1 }[ev.type] && !state.gameOver && !state.matchOver && !state.playForServe;
       if (scoreEv) callFlash(map[ev.type] || '', ev.team != null ? s.colors[ev.team] : null);   // big score call so small screens can read it
       else if (map[ev.type]) toast(map[ev.type], ev.team != null ? s.colors[ev.team] : null);
+      announce(ev);
     }
     prevScore = state.score.slice();
+  }
+
+  // Voice: a loud female voice calls the score (e.g. "four, two, one") and announces the winner
+  function nameItem(t) {
+    const n = String(state.settings.names[t] || '').trim();
+    if (!n || /^TEAM [AB]$/i.test(n)) return t ? 'teamb' : 'teama';
+    return { tts: n.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()), fallback: t ? 'teamb' : 'teama' };
+  }
+  function announce(ev) {
+    if (!window.PBVoice || state.settings.voice === 0) return;
+    const V = PBVoice, call = V.callItems(E.callout(state)), gap = { gap: .18 };
+    let items = null;
+    switch (ev.type) {
+      case 'point': case 'undo': case 'server': items = state.gameOver || state.matchOver || state.playForServe ? null : call; break;
+      case 'sideout': items = ['sideout', gap].concat(call); break;
+      case 'second': items = ['second', gap].concat(call); break;
+      case 'pfsStart': items = ['pfs']; break;
+      case 'pfs': items = [nameItem(ev.team), 'servesfirst', gap].concat(call); break;
+      case 'newgame': items = ['gameno', V.num(state.gameNo), gap].concat(call); break;
+      case 'game': case 'match': {
+        const g = state.gameLog[state.gameLog.length - 1] || { a: 0, b: 0 };
+        const ws = ev.team ? g.b : g.a, ls = ev.team ? g.a : g.b;
+        items = ev.type === 'match' ? ['match', gap, nameItem(ev.team), 'winsmatch', gap, V.num(ws), V.num(ls)]
+                                    : ['game', gap, nameItem(ev.team), 'winsgame', gap, V.num(ws), V.num(ls)];
+        break;
+      }
+    }
+    if (items && items.length) V.say(items);
+  }
+  // Browsers only play sound after a tap/click on the page: show a chip until the voice is unlocked
+  function updateSoundChip() {
+    const c = $('soundChip'); if (!c) return;
+    const need = window.PBVoice && PBVoice.supported && state.settings.voice !== 0 && !PBVoice.ready();
+    c.classList.toggle('hidden', !need);
+  }
+  if ($('soundChip')) {
+    $('soundChip').onclick = () => { if (window.PBVoice) { PBVoice.unlock(); setTimeout(() => { PBVoice.say(PBVoice.callItems(E.callout(state))); updateSoundChip(); }, 150); } };
+    if (window.PBVoice) { PBVoice.load(); PBVoice.onState(updateSoundChip); }
+    setInterval(updateSoundChip, 2000); setTimeout(updateSoundChip, 300);
   }
 
   // Big score call (e.g. 4-2-1) shown for a few seconds after every rally, readable on laptops and tablets

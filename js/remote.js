@@ -447,6 +447,7 @@
   document.querySelectorAll('.seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.onclick = () => {
     const k = seg.dataset.k; const v = b.dataset.v;
     draft[k] = /^\d+$/.test(v) ? Number(v) : v; paintSheet();
+    if (k === 'voice' && st && send({ a: 'voice', on: draft.voice === 1 })) flash(draft.voice ? 'Voice calls on' : 'Voice calls off');
     if (k === 'courtChange' && st && send({ a: 'midswap', on: draft.courtChange === 1 })) flash(draft.courtChange ? 'Court change at half: on' : 'No court change at half');
   }));
   ['nA', 'nB'].forEach((id) => $(id).addEventListener('input', paintSheet));

@@ -848,3 +848,5 @@ body.mode-live .r-head .brand-sm span::after { content: 'LIVE'; margin-left: 8px
 .call-flash { top: 0; right: 0; bottom: 0; left: 0; background: rgba(3, 6, 16, .62); }
 @media (orientation: portrait) { .call-flash { top: 0; bottom: 0; } }
 .call-flash .cf-call .seg7 .off { fill: #FFE600; opacity: .07; filter: none; }
+.d-sound { color: #04120a !important; background: var(--ball, #39ff14) !important; border-color: transparent !important; font-weight: 700; animation: soundPulse 1.4s ease-in-out infinite; }
+@keyframes soundPulse { 50% { box-shadow: 0 0 0 .5em rgba(57,255,20,.25); } }

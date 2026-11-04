@@ -14,6 +14,7 @@
     colors: ['#39FF14', '#00E5FF'],   // electric green / electric cyan
     firstServer: 0,         // 0 | 1 | 'pfs' (play for serve: a rally decides who serves first)
     autoSwap: true,         // switch ends between games
+    voice: 1,               // 1: loud voice calls the score and the winner on the scoreboard · 0: silent
     courtChange: 0          // 0 (default): no court change at half · 1: change court at the half of the deciding game
   };
 
@@ -246,6 +247,7 @@
     if (!st.history) st.history = [];
     if (st.playForServe == null) st.playForServe = false;
     if (st.settings.courtChange == null) st.settings.courtChange = 0;
+    if (st.settings.voice == null) st.settings.voice = 1;
     delete st.settings.midSwap;
     // Old default palette → new electric defaults
     const old = { '#d7f03c': '#39FF14', '#4fc3f7': '#00E5FF' };
@@ -270,6 +272,7 @@
       case 'rename': return rename(st, action.names, action.colors, action.players);
       case 'partners': return partners(st, action.team === 1 ? 1 : 0);
       case 'pfs': return startPfs(st);
+      case 'voice': st.settings.voice = action.on ? 1 : 0; return st;
       case 'midswap': st.settings.courtChange = action.on ? 1 : 0; return st;   // change court at half: on/off, no reset
       case 'new': return newMatch(Object.assign({}, st.settings, action.settings || {}, { players: cleanPlayers((action.settings || st.settings).players) }));
       default: return st;
