@@ -111,7 +111,7 @@
     $('cfLabel').classList.toggle('hidden', !label);
     $('cfCall').innerHTML = seg(E.callout(state));
     f.classList.remove('show'); void f.offsetWidth; f.classList.add('show');
-    clearTimeout(flashT); flashT = setTimeout(() => f.classList.remove('show'), 2600);
+    clearTimeout(flashT); flashT = setTimeout(() => f.classList.remove('show'), 3000);
   }
   let toastT;
   function toast(text, color) {

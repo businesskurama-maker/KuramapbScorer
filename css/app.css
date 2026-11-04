@@ -830,3 +830,6 @@ body.mode-live .r-head .brand-sm span::after { content: 'LIVE'; margin-left: 8px
 @media (orientation: portrait) { .call-flash { bottom: auto; top: 50%; transform: translate(-50%, -50%) scale(.92); } .call-flash.show { transform: translate(-50%, -50%) scale(1); } .cf-call .seg7 { height: min(11vh, 22vw); } }
 /* the always-on call in the footer is larger too */
 @media (orientation: landscape) { .callout .seg7 { height: clamp(36px, 8.6vh, 110px); } .callout { padding: 1vh 2.6vh; } }
+/* Cleaner board: the 3-number call only pops up for 3 s after a score/serve change; the two big scores stay */
+.d-bottom .callout { display: none; }
+@media (orientation: portrait) { .d-bottom .callout { display: none; } }
