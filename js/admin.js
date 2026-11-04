@@ -149,7 +149,7 @@
   };
   const copy = async (text, btn) => { try { await navigator.clipboard.writeText(text); const o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => (btn.textContent = o), 1500); } catch (e) { prompt('Copy this:', text); } };
   $('trialCopy').onclick = () => lastTrial && copy(lastTrial.code, $('trialCopy'));
-  $('trialShare').onclick = () => lastTrial && copy('Your DinkyKong LIVE trial code: ' + lastTrial.code + '\nOpen https://dinkykong.pro on your TV or laptop, choose LIVE, then type the code under “Have a trial code?”. It unlocks LIVE (2–6 courts + OBS lower third) for 1 hour from when you enter it. Use it within 7 days.', $('trialShare'));
+  $('trialShare').onclick = () => lastTrial && copy('Your DinkyKong LIVE trial code: ' + lastTrial.code + '\nOpen https://dinkykong.pro on your TV or laptop, choose LIVE, then type the code under “Have a trial code?”. It unlocks LIVE (1–6 courts + OBS lower third) for 1 hour from when you enter it. Use it within 7 days.', $('trialShare'));
 
   async function loadAll() {
     try {

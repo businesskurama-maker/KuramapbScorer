@@ -1,4 +1,4 @@
-/* DinkyKong LIVE: 2–6 courts on one screen, each with its own code/QR and referee remote,
+/* DinkyKong LIVE: 1–6 courts on one screen, each with its own code/QR and referee remote,
  * plus an OBS lower third fed live through the internet relay. Unlocked by the organizer's LIVE pass. */
 (function () {
   const { seg, store, ICON, keepAwake, registerSW, loadScript, LIBS, esc } = PBCommon;
