@@ -445,7 +445,7 @@
   document.querySelectorAll('.seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.onclick = () => {
     const k = seg.dataset.k; const v = b.dataset.v;
     draft[k] = /^\d+$/.test(v) ? Number(v) : v; paintSheet();
-    if (k === 'midSwap' && st && send({ a: 'midswap', on: draft.midSwap === 1 })) flash(draft.midSwap ? 'Court change at half: on' : 'No court change at half');
+    if (k === 'courtChange' && st && send({ a: 'midswap', on: draft.courtChange === 1 })) flash(draft.courtChange ? 'Court change at half: on' : 'No court change at half');
   }));
   ['nA', 'nB'].forEach((id) => $(id).addEventListener('input', paintSheet));
   function names() { return [$('nA').value.trim().toUpperCase() || 'TEAM A', $('nB').value.trim().toUpperCase() || 'TEAM B']; }
