@@ -187,3 +187,5 @@
 .lv-act .pair-actions { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(8px, 1vw, 14px); }
 .lv-act .pair-actions .btn { width: 100%; justify-content: center; text-align: center; white-space: nowrap; margin: 0; min-height: clamp(38px, 5.4vh, 54px); }
 @media (orientation: portrait) { .lv-act .pair-text { max-width: 88vw; } .lv-act .pair-text h1 { font-size: min(4.4dvh, 8vw); } .lv-act .code { font-size: min(5.4dvh, 9.6vw); } .lv-act .pair-text p { font-size: min(1.7dvh, 3.4vw); } }
+@media (orientation: landscape) and (max-height: 520px) { .lv-act .pair-text p { font-size: min(3dvh, 1.6vw); line-height: 1.3; } .lv-act .pair-text h1 { font-size: min(8dvh, 4vw); } .lv-act .code { font-size: min(9dvh, 5vw); } .lv-act .pair-card { padding-top: 2dvh; padding-bottom: 2dvh; } }
+@media (orientation: landscape) and (max-height: 520px) { .lv-act .pair-text { gap: 1.2dvh; } .lv-act .trial-box { padding: 1.4dvh 12px; gap: 1dvh; } .lv-act .trial-row .text-in, .lv-act .trial-row .btn, .lv-act .pair-actions .btn { min-height: 0; padding-top: 1.6dvh; padding-bottom: 1.6dvh; } .lv-act .eyebrow { font-size: 9px; } }

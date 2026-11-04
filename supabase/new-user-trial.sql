@@ -1,0 +1,5 @@
+-- New users get 2 free days of everything (scoreboard + LIVE/OBS). Applied as migration new_user_two_day_trial.
+-- profiles.trial_until = sign-up time + 2 days (set by handle_new_user).
+-- trial_devices: one free trial per phone (a second Google account on the same phone gets no new trial).
+-- start_pass / start_live_pass: if the trial is active on this phone, the pass runs until trial_until
+-- without using any donated hours; donated hours are kept for after the trial.
