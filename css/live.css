@@ -170,3 +170,20 @@
   .lv-act .trial-row .btn { padding: 8px 10px; font-size: 11px; }
   .lv-act .qr-box canvas, .lv-act .qr-box img, .lv-act .qr-box svg, .lv-act .qr-off { width: min(20dvh, 48vw); height: min(20dvh, 48vw); }
 }
+.menu-btn { display: inline-flex; align-items: center; gap: .5em; text-decoration: none; }
+.menu-btn svg { width: 1.2em; height: 1.2em; }
+
+/* LIVE activation card: tidy layout */
+.lv-act { gap: clamp(20px, 4vw, 64px); align-items: center; }
+.lv-act .pair-text { max-width: min(46vw, 640px); gap: clamp(8px, 1.7vh, 20px); }
+.lv-act .pair-text h1 { font-size: min(7.5vh, 4.4vw); line-height: .95; }
+.lv-act .pair-text p { font-size: clamp(13px, min(2vh, 1.25vw), 19px); line-height: 1.45; }
+.lv-act .pair-status:empty, .lv-act .trial-err:empty { display: none; }
+.lv-act .code { font-size: min(8vh, 5.6vw); letter-spacing: .26em; }
+.lv-act .trial-box { padding: clamp(10px, 1.6vh, 16px) clamp(12px, 1.4vw, 18px); gap: clamp(6px, 1vh, 10px); }
+.lv-act .trial-row { align-items: stretch; }
+.lv-act .trial-row .text-in, .lv-act .trial-row .btn { min-height: clamp(38px, 5.4vh, 54px); }
+.lv-act .trial-row .btn { padding-left: clamp(14px, 1.6vw, 26px); padding-right: clamp(14px, 1.6vw, 26px); }
+.lv-act .pair-actions { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(8px, 1vw, 14px); }
+.lv-act .pair-actions .btn { width: 100%; justify-content: center; text-align: center; white-space: nowrap; margin: 0; min-height: clamp(38px, 5.4vh, 54px); }
+@media (orientation: portrait) { .lv-act .pair-text { max-width: 88vw; } .lv-act .pair-text h1 { font-size: min(4.4dvh, 8vw); } .lv-act .code { font-size: min(5.4dvh, 9.6vw); } .lv-act .pair-text p { font-size: min(1.7dvh, 3.4vw); } }

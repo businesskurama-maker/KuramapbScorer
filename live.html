@@ -19,7 +19,7 @@
 <body class="live-body">
 <main class="live" id="live">
   <header class="lv-top">
-    <a class="lv-brand" href="./" title="Back to the lobby"><img src="icons/dinkykong-logo.png" alt=""><span>DINKYKONG <b>LIVE</b></span></a>
+    <a class="lv-brand" href="./?menu=1" title="Main menu"><img src="icons/dinkykong-logo.png" alt=""><span>DINKYKONG <b>LIVE</b></span></a>
     <div class="lv-courts-pick" role="group" aria-label="Number of courts">
       <span>Courts</span>
       <div class="seg lv-seg" id="nPick"><button data-n="2">2</button><button data-n="3">3</button><button data-n="4">4</button><button data-n="5">5</button><button data-n="6">6</button></div>
@@ -52,7 +52,7 @@
         <div class="trial-row"><input class="text-in" id="trialIn" maxlength="14" placeholder="DK-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn primary" id="trialBtn">Activate 1 hour</button></div>
         <div class="trial-err" id="trialErr"></div>
       </div>
-      <div class="pair-actions"><a class="btn" href="./">Back to lobby</a></div>
+      <div class="pair-actions"><button class="btn" id="actFs">Full screen</button><a class="btn menu-btn" href="./?menu=1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>Main menu</a></div>
     </div>
   </div>
 </div>

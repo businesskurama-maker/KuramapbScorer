@@ -316,6 +316,7 @@
   let toastT;
   function toast(t) { const el = $('toast'); el.textContent = t; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 1800); }
   $('fsBtn').innerHTML = ICON.full;
+  $('actFs').onclick = () => $('fsBtn').click();
   $('fsBtn').onclick = () => { const d = document.documentElement; if (!document.fullscreenElement) (d.requestFullscreen || function () {}).call(d); else document.exitFullscreen(); keepAwake(); };
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') ['qrOverlay', 'obsOverlay'].forEach((id) => $(id).classList.add('hidden')); });
 
