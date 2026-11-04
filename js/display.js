@@ -483,7 +483,7 @@
   /* ---------- Boot ---------- */
   if (AUTH) {
     $('pairTitle').textContent = 'Scan to sign in and start scoring';
-    $('pairBody').textContent = 'Scan with your phone camera and continue with Google. New players get 2 days free. After that, a donation to the DinkyKong support fund unlocks scoring time (PHP 50 = 24 hours) on one account and one phone.';
+    $('pairBody').textContent = 'Scan with your phone camera and continue with Google. New players get 7 days free. After that, a donation to the DinkyKong support fund unlocks scoring time (PHP 50 = 24 hours) on one account and one phone.';
     if (licensed()) setPairMsg('Pass active until ' + hhmm(license.until) + ' · scan to connect a phone', 'ok');
   }
   renderLicense();

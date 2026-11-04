@@ -126,7 +126,7 @@
     if (offer) renderGatePkgs();
     if (state === 'denied') { lastDenied = opts; refreshPending(); } else $('gatePending').classList.add('hidden');
     const p = PBAuth.profile;
-    if (state === 'signin') { $('gateTitle').textContent = 'Sign in to start scoring'; $('gateBody').textContent = 'Continue with Google. New here? Your first 2 days are free — every feature, including LIVE for OBS. After that, a PHP 50 donation unlocks 24 hours.'; }
+    if (state === 'signin') { $('gateTitle').textContent = 'Sign in to start scoring'; $('gateBody').textContent = 'Continue with Google. New here? Your first 7 days are free — every feature, including LIVE for OBS. After that, a PHP 50 donation unlocks 24 hours.'; }
     if (state === 'checking') { $('gateTitle').textContent = 'Checking your pass…'; $('gateBody').textContent = 'One moment.'; }
     if (state === 'denied') {
       const who = opts.email || (p && p.email) || 'This account';
@@ -135,11 +135,11 @@
         ? who + ' is already used on another phone. Passes work on one account and one phone only. Ask the owner to reset the phone lock if you changed phones.'
         : 'Signed in as ' + who + '. Pick a donation to the support fund, send it with InstaPay, and your scoring time unlocks once the developer confirms it.';
       if (opts.reason === 'OTHER_DEVICE') $('gateBody').textContent += ' Email dinkykongsupport@gmail.com.';
-      if (!locked && p && p.trial_until && new Date(p.trial_until) <= new Date()) $('gateBody').textContent = 'Your 2 free days have ended — thanks for trying DinkyKong! ' + $('gateBody').textContent;
+      if (!locked && p && p.trial_until && new Date(p.trial_until) <= new Date()) $('gateBody').textContent = 'Your 7 free days have ended — thanks for trying DinkyKong! ' + $('gateBody').textContent;
       if (liveEnded) { $('gateTitle').textContent = 'LIVE pass ended'; $('gateBody').textContent = 'The organizer’s LIVE pass for this screen has ended. Ask them to renew it on the LIVE screen, then tap Try again.'; }
       else if (shopKind === 'live' && !locked) { $('gateTitle').textContent = 'Get a LIVE pass'; $('gateBody').textContent = 'Signed in as ' + who + '. Pick how long you need LIVE — from PHP 20 per hour. It unlocks up to 6 courts on one screen, a referee remote for every court and the OBS lower third.'; }
     }
-    if (state === 'signin' && mode === 'act') { $('gateTitle').textContent = 'Organizer sign-in'; $('gateBody').textContent = 'Sign in with Google to activate LIVE on this screen. New accounts get 2 free days. After that, a LIVE pass (from PHP 20 / hour) covers every court and the OBS lower third.'; }
+    if (state === 'signin' && mode === 'act') { $('gateTitle').textContent = 'Organizer sign-in'; $('gateBody').textContent = 'Sign in with Google to activate LIVE on this screen. New accounts get 7 free days. After that, a LIVE pass (from PHP 20 / hour) covers every court and the OBS lower third.'; }
     renderCtrl();
   }
 
