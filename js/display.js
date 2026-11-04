@@ -175,12 +175,36 @@
     }
   }
 
+  // QR screen: who is signed in on this scoreboard right now, with a way to hand it to someone else
+  function renderPairUser() {
+    const box = $('pairUser'); if (!box) return;
+    const on = AUTH && licensed() && license;
+    box.classList.toggle('hidden', !on);
+    $('pairTitle').textContent = on ? 'Scan to connect a phone' : (AUTH ? 'Scan to sign in and start scoring' : 'Scan to use your phone as the remote');
+    if (!on) return;
+    const nm = license.name || (license.email ? license.email.split('@')[0] : 'Signed-in player');
+    $('puName').textContent = nm;
+    const n = link ? link.remotes : 0;
+    $('puPass').textContent = (license.email && license.name ? license.email + ' · ' : '') + 'Pass until ' + hhmm(license.until) + (n ? ' · ' + n + (n === 1 ? ' phone' : ' phones') : '');
+  }
+  function newUser() {
+    const nm = (license && (license.name || license.email)) || 'the current player';
+    if (!window.confirm('Connect a new user? ' + nm + ' will be signed out of this scoreboard and the score resets. Their pass time stays on their account.')) return;
+    try { if (link) link.broadcastMsg({ t: 'reset' }); } catch (e) {}
+    store.del('aopb.license'); license = null; verified.clear();
+    state = E.newMatch(); save(); render();
+    renderLicense();
+    setTimeout(() => { rotateCode(); setPairMsg('Ready for a new user · scan to sign in'); }, 400);   // let remotes get the reset first
+  }
+  $('puNew').onclick = newUser;
+
   function renderLicense() {
     const el = $('passChip'); if (!el) return;
     if (!AUTH) { el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
     if (licensed()) { el.classList.add('ok'); $('passTxt').textContent = 'Pass until ' + hhmm(license.until); }
     else { el.classList.remove('ok'); $('passTxt').textContent = 'Sign-in needed'; }
+    renderPairUser();
   }
 
   // Every 5 minutes ask signed-in remotes to re-check their pass (picks up an approval the owner undid)
@@ -226,12 +250,14 @@
 
   function showPair(show) {
     $('pairOverlay').classList.toggle('hidden', !show);
+    if (show) renderPairUser();
     if (show) setTimeout(() => $('pairClose').focus(), 50);
     updateMini();
   }
   function updateMini() {
     const pairOpen = !$('pairOverlay').classList.contains('hidden');
     $('miniQr').classList.toggle('hidden', pairOpen || !link || (link.remotes > 0 && licensed()));
+    if (pairOpen) renderPairUser();
   }
 
   function setLinkStatus(st) {

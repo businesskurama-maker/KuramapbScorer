@@ -776,3 +776,18 @@ body.mode-live .r-head .brand-sm span::after { content: 'LIVE'; margin-left: 8px
 .dk-anim { overflow: visible; }
 .dk-anim .dk-video { position: absolute; left: 50%; top: 50%; width: 120%; height: 120%; transform: translate(-50%, -50%); object-fit: fill; max-width: none; }
 .dk-glow { inset: -4% -6%; }
+
+/* QR screen: who is signed in right now */
+.pair-user { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: clamp(8px, 1vw, 16px); padding: clamp(8px, 1.3vh, 14px) clamp(10px, 1.2vw, 18px); border-radius: clamp(12px, 1.6vh, 18px); border: 1px solid rgba(57,255,20,.4); background: rgba(57,255,20,.07); max-width: 100%; }
+.pair-user.hidden { display: none; }
+.pu-dot { width: .7em; height: .7em; border-radius: 50%; background: #39ff14; box-shadow: 0 0 10px #39ff14; font-size: clamp(12px, 1.8vh, 18px); }
+.pu-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
+.pu-who small { font-size: clamp(9px, 1.25vh, 13px); letter-spacing: .16em; text-transform: uppercase; color: #39ff14; font-weight: 700; }
+.pu-who b { font-size: clamp(13px, 2vh, 22px); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pu-who span { font-size: clamp(11px, 1.5vh, 16px); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pair-user .pu-new { white-space: nowrap; border-color: rgba(57,255,20,.5); color: #fff; }
+@media (orientation: portrait) { .pair-user { grid-template-columns: auto 1fr; width: 100%; } .pair-user .pu-new { grid-column: 1 / -1; width: 100%; justify-content: center; } }
+/* someone is signed in: the sign-in explainer steps aside for the "connected" card */
+.pair-text:has(.pair-user:not(.hidden)) #pairBody { display: none; }
+.pair-text:has(.pair-user:not(.hidden)) .pair-status:empty { display: none; }
+.pair-text:has(.pair-user:not(.hidden)) .pair-status.ok { display: none; }
