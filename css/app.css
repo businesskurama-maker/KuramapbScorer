@@ -833,3 +833,18 @@ body.mode-live .r-head .brand-sm span::after { content: 'LIVE'; margin-left: 8px
 /* Cleaner board: the 3-number call only pops up for 3 s after a score/serve change; the two big scores stay */
 .d-bottom .callout { display: none; }
 @media (orientation: portrait) { .d-bottom .callout { display: none; } }
+
+/* Score call v2: fills the court, electric yellow, background blurred while it shows */
+.call-flash { inset: 0; left: 0; bottom: auto; transform: none; display: grid; place-content: center; justify-items: center; gap: 1.5vh;
+  padding: 2vh 2vw; border: 0; border-radius: 2vh; box-shadow: none; color: #FFE600;
+  background: rgba(3, 6, 16, .55); -webkit-backdrop-filter: blur(18px) saturate(.7); backdrop-filter: blur(18px) saturate(.7);
+  transition: opacity .3s ease; }
+.call-flash.show { transform: none; }
+.call-flash .cf-call .seg7 { height: min(52vh, 24vw); max-width: 92vw; }
+.call-flash .cf-call .seg7 .on { filter: drop-shadow(0 0 1.2vh #FFE600) drop-shadow(0 0 4vh rgba(255,230,0,.55)); }
+.call-flash .cf-call .seg7 .off, .call-flash .cf-call .seg7 [class*="off"] { opacity: .06; }
+.call-flash .cf-label { font-size: clamp(22px, 7vh, 90px); text-shadow: 0 0 3vh currentColor; }
+@media (orientation: portrait) { .call-flash { top: 0; transform: none; } .call-flash.show { transform: none; } .call-flash .cf-call .seg7 { height: min(22vh, 26vw); } }
+.call-flash { top: 0; right: 0; bottom: 0; left: 0; background: rgba(3, 6, 16, .62); }
+@media (orientation: portrait) { .call-flash { top: 0; bottom: 0; } }
+.call-flash .cf-call .seg7 .off { fill: #FFE600; opacity: .07; filter: none; }
