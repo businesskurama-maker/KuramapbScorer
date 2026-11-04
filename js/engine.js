@@ -121,7 +121,7 @@
   }
   // Start a serve rally on a match that hasn't started yet.
   function startPfs(st) {
-    if (st.rallies > 0 || st.gameNo > 1 || st.score[0] + st.score[1] > 0 || st.playForServe || st.serveDecided) return st;
+    if (st.gameNo > 1 || st.score[0] + st.score[1] > 0 || st.playForServe || st.gameOver || st.matchOver) return st;
     pushHistory(st);
     st.playForServe = true;
     st.lastEvent = { type: 'pfsStart', team: null, t: Date.now() };

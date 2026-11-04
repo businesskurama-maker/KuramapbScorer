@@ -369,7 +369,8 @@
     $('call').innerHTML = st.pfs ? '<span class="pfs-call">SERVE RALLY</span>' : seg(st.call);
     $('callX').textContent = st.pfs ? 'Tap who won the rally' : (st.hasPlayers ? st.serverName + ' · ' : (s.bestOf > 1 ? 'Game ' + st.gameNo + ' · ' : '')) + 'serve ' + st.serveSide.toLowerCase();
     $('rallyBtns').classList.toggle('pfs', !!st.pfs);
-    const fresh = !st.pfs && !st.serveDecided && st.rallies === 0 && st.gameNo === 1 && st.score[0] + st.score[1] === 0 && !st.matchOver;
+    // Play for serve stays available until the first point of the match (also after an undo back to 0-0)
+    const fresh = !st.pfs && st.gameNo === 1 && st.score[0] + st.score[1] === 0 && !st.matchOver && !st.gameOver;
     $('pfsBtn').classList.toggle('hidden', !fresh || !!gateState);
 
     [[$('rL'), left], [$('rR'), right]].forEach(([b, t]) => {
