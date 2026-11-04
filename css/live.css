@@ -212,3 +212,21 @@
 .lvc-flash-call .seg7 .off { fill: #FFE600; opacity: .07; }
 .lvc-flash-lbl { font-family: var(--font-score); font-size: clamp(14px, 11cqh, 8cqw); letter-spacing: .1em; line-height: 1; text-shadow: 0 0 2cqh currentColor; }
 .lvc-flash-lbl.hidden { display: none; }
+
+/* OBS sheet: compact, one screen */
+.lv-obs-sheet { width: min(1180px, 96vw); max-height: 96dvh; overflow: hidden; padding: clamp(12px, 2.2dvh, 26px) clamp(14px, 2vw, 28px); gap: clamp(8px, 1.4dvh, 16px); }
+.lv-obs-sheet .lv-sheet-head p { font-size: clamp(12px, 1.6dvh, 15px); }
+.lv-obs-sheet .lv-sheet-head h2 { font-size: clamp(22px, 3.6dvh, 38px); }
+.lv-obs-body { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: clamp(12px, 1.6vw, 24px); min-height: 0; align-items: start; }
+.lv-obs-left, .lv-obs-right { display: flex; flex-direction: column; gap: clamp(6px, 1.1dvh, 12px); min-width: 0; }
+.lv-obs-preview { padding: 0; border-radius: 12px; overflow: hidden; }
+.lv-obs-frame { position: relative; aspect-ratio: 16 / 9; max-height: 44dvh; margin: 0 auto; container-type: size; }
+.lv-obs-frame .lv-strip { position: absolute; left: 3cqw; right: 3cqw; bottom: 4cqh; width: auto; }
+.lv-steps { font-size: clamp(12px, 1.5dvh, 14px); line-height: 1.5; }
+.lv-brand-edit { grid-template-columns: auto 1fr; gap: 10px 12px; padding: 10px; }
+.lv-brand-edit .lv-cap, .lv-brand-edit .lv-hint { grid-column: 1 / -1; }
+.lv-logo-box { width: clamp(56px, 8dvh, 84px); height: clamp(56px, 8dvh, 84px); }
+.lv-toggle { padding: 8px 12px; font-size: 14px; }
+.lv-obs-right .pair-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lv-obs-right .pair-actions .btn { width: 100%; justify-content: center; }
+@media (max-width: 820px) { .lv-obs-body { grid-template-columns: 1fr; } .lv-obs-sheet { overflow-y: auto; } .lv-obs-frame { max-height: 30dvh; } }

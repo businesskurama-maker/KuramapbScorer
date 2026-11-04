@@ -31,3 +31,6 @@
 /* Bigger scores in the lower third */
 .lt-score { font-size: min(4.8cqw, calc(26cqw / var(--n, 1))); min-width: 3cqw; }
 .lt-name { font-size: min(2cqw, calc(10.5cqw / var(--n, 1))); }
+
+/* Fewer courts: keep the strip compact and centred instead of stretching one card across the screen */
+.lv-strip .lt { margin: 0 auto; max-width: var(--maxw, 100%); }

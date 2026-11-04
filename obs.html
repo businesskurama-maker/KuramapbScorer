@@ -9,10 +9,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Josefin+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/strip.css">
 <style>
-  /* OBS Browser Source: 1920 × 264, transparent background */
+  /* OBS Browser Source: use your canvas size (e.g. 1920 × 1080). The strip sits at the bottom with safe margins
+     and scales with any size. (An old 1920 × 264 source still works: it just fills the width.) */
   html, body { margin: 0; padding: 0; background: transparent !important; overflow: hidden; }
-  body { width: 100vw; height: 100vh; display: flex; align-items: flex-end; }
-  #strip { width: 100vw; transition: opacity .4s, transform .4s; }
+  body { width: 100vw; height: 100vh; position: relative; }
+  #strip { position: absolute; left: 3vw; right: 3vw; bottom: 4.5vh; width: auto; transition: opacity .4s, transform .4s; }
+  @media (min-aspect-ratio: 5/1) { #strip { left: 0; right: 0; bottom: 0; } }
   #strip.off { opacity: 0; transform: translateY(20%); }
   .obs-note { position: fixed; left: 12px; bottom: 12px; font: 600 14px system-ui, sans-serif; color: #fff; background: rgba(0,0,0,.7); padding: 8px 12px; border-radius: 8px; }
   .obs-note.hidden { display: none; }

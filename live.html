@@ -68,29 +68,34 @@
 <!-- OBS setup -->
 <div class="overlay lv-overlay hidden" id="obsOverlay">
   <div class="lv-obs-sheet">
-    <div class="lv-sheet-head"><h2>OBS lower third</h2><p>All active courts in one 16:2.2 strip with a transparent background. It updates live as referees score.</p></div>
-    <div class="lv-obs-preview"><div class="lv-strip" id="obsPreview"></div></div>
-    <div class="lv-brand-edit">
-      <div class="lv-logo-box"><img id="logoPrev" src="icons/dinkykong-logo.png" alt="Lower third logo"></div>
-      <div class="lv-brand-fields">
-        <span class="eyebrow">Lower third logo &amp; caption</span>
-        <div class="lv-brand-btns">
-          <label class="btn primary lv-upload">Upload logo<input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>
-          <button class="btn" id="logoReset">Use DinkyKong logo</button>
+    <div class="lv-sheet-head"><h2>OBS lower third</h2><p>Every active court in one strip at the bottom of your stream, with a transparent background. It updates live as referees score.</p></div>
+    <div class="lv-obs-body">
+      <div class="lv-obs-left">
+        <div class="lv-obs-preview" aria-label="Preview of the 16:9 OBS scene"><div class="lv-obs-frame"><div class="lv-strip" id="obsPreview"></div></div></div>
+        <label class="eyebrow" for="obsUrl">Browser Source URL</label>
+        <div class="lv-copy"><input class="text-in" id="obsUrl" readonly><button class="btn primary" id="obsCopy">Copy link</button></div>
+        <ol class="lv-steps">
+          <li>OBS: <b>Sources → + → Browser</b>, paste the link.</li>
+          <li>Set <b>Width 1920 · Height 1080</b> (same as your canvas) — it fits the screen with safe margins by itself.</li>
+        </ol>
+      </div>
+      <div class="lv-obs-right">
+        <div class="lv-brand-edit">
+          <div class="lv-logo-box"><img id="logoPrev" src="icons/dinkykong-logo.png" alt="Lower third logo"></div>
+          <div class="lv-brand-fields">
+            <span class="eyebrow">Logo &amp; caption</span>
+            <div class="lv-brand-btns">
+              <label class="btn primary lv-upload">Upload logo<input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>
+              <button class="btn" id="logoReset">DinkyKong logo</button>
+            </div>
+          </div>
+          <input class="text-in lv-cap" id="captionIn" maxlength="18" placeholder="Caption under the logo (e.g. CITY OPEN 2026)">
+          <small class="lv-hint">PNG with a transparent background looks best. Changes show in OBS within seconds.</small>
         </div>
-        <input class="text-in" id="captionIn" maxlength="18" placeholder="Caption under the logo (e.g. CITY OPEN 2026)">
-        <small class="lv-hint">PNG with a transparent background looks best. The logo is resized automatically and appears in OBS within seconds.</small>
+        <label class="lv-toggle"><input type="checkbox" id="stripToggle"><span></span>Show it on this screen too <small>(window capture)</small></label>
+        <div class="pair-actions"><button class="btn" id="obsNew" title="Make a new private link (the old one stops working)">New link</button><button class="btn primary" id="obsClose">Done</button></div>
       </div>
     </div>
-    <label class="eyebrow" for="obsUrl">Browser Source URL</label>
-    <div class="lv-copy"><input class="text-in" id="obsUrl" readonly><button class="btn primary" id="obsCopy">Copy link</button></div>
-    <ol class="lv-steps">
-      <li>In OBS: <b>Sources → + → Browser</b>.</li>
-      <li>Paste the link into <b>URL</b>. Set <b>Width 1920</b> and <b>Height 264</b>.</li>
-      <li>Drag it to the bottom of your scene. The background is already transparent.</li>
-    </ol>
-    <label class="lv-toggle"><input type="checkbox" id="stripToggle"><span></span>Show the lower third on this screen too <small>(for window or screen capture)</small></label>
-    <div class="pair-actions"><button class="btn" id="obsNew" title="Make a new private link (the old one stops working)">New link</button><button class="btn primary" id="obsClose">Done</button></div>
   </div>
 </div>
 
