@@ -96,11 +96,23 @@
     if (ev && ev.t !== lastEventT) {
       lastEventT = ev.t;
       const map = { pfs: (s.names[ev.team] || '') + ' SERVES FIRST', partners: 'POSITIONS FIXED', sideout: 'SIDE OUT', second: '2ND SERVER', swap: ev.auto ? 'SWITCH ENDS' : 'SIDES SWAPPED', undo: 'UNDO', newgame: 'GAME ' + state.gameNo };
-      if (map[ev.type]) toast(map[ev.type], ev.team != null ? s.colors[ev.team] : null);
+      const scoreEv = { point: 1, sideout: 1, second: 1, undo: 1, server: 1 }[ev.type] && !state.gameOver && !state.matchOver && !state.playForServe;
+      if (scoreEv) callFlash(map[ev.type] || '', ev.team != null ? s.colors[ev.team] : null);   // big score call so small screens can read it
+      else if (map[ev.type]) toast(map[ev.type], ev.team != null ? s.colors[ev.team] : null);
     }
     prevScore = state.score.slice();
   }
 
+  // Big score call (e.g. 4-2-1) shown for a few seconds after every rally, readable on laptops and tablets
+  let flashT;
+  function callFlash(label, color) {
+    const f = $('callFlash'); if (!f) return;
+    $('cfLabel').textContent = label; $('cfLabel').style.color = color || 'var(--ball)';
+    $('cfLabel').classList.toggle('hidden', !label);
+    $('cfCall').innerHTML = seg(E.callout(state));
+    f.classList.remove('show'); void f.offsetWidth; f.classList.add('show');
+    clearTimeout(flashT); flashT = setTimeout(() => f.classList.remove('show'), 2600);
+  }
   let toastT;
   function toast(text, color) {
     const t = $('toast');
