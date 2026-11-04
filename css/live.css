@@ -143,3 +143,30 @@
 .trial-err { min-height: 1.2em; font-size: clamp(12px, 1.6vh, 15px); color: #ff8a9b; }
 .trial-err.ok { color: var(--ball); }
 @media (max-width: 560px) { .trial-row { grid-template-columns: 1fr; } }
+
+/* Fit-to-screen: LIVE activation card */
+@media (orientation: portrait) {
+  .lv-act .pair-text p { font-size: min(1.7dvh, 3.4vw); line-height: 1.4; }
+  .lv-act .trial-box { padding: 1dvh 12px; gap: .8dvh; }
+  .lv-act .pair-actions { justify-content: center; }
+}
+@media (max-height: 640px) and (orientation: landscape) {
+  .lv-act .pair-text { gap: 1.2dvh; }
+  .lv-act .pair-text h1 { font-size: min(6dvh, 4.2vw); }
+  .lv-act .pair-text p { font-size: min(2dvh, 2.2vw); line-height: 1.35; }
+  .lv-act .code { font-size: min(6.5dvh, 6vw); }
+  .lv-act .trial-box { padding: 1dvh 12px; gap: .6dvh; }
+  .lv-act .qr-box canvas, .lv-act .qr-box img, .lv-act .qr-box svg { width: min(52dvh, 34vw); height: min(52dvh, 34vw); }
+}
+@media (orientation: portrait) { .lv-act .qr-box canvas, .lv-act .qr-box img, .lv-act .qr-box svg, .lv-act .qr-off { width: min(24dvh, 52vw); height: min(24dvh, 52vw); } .lv-act .pair-text h1 { font-size: min(4.4dvh, 8vw); } }
+.lv-act .qr-off { width: min(46vh, 40vw); height: min(46vh, 40vw); }
+@media (orientation: portrait) and (max-height: 760px) {
+  .lv-act .pair-card { padding: 1.6dvh 4vw; gap: 1.2dvh; }
+  .lv-act .pair-text { gap: .9dvh; }
+  .lv-act .code { font-size: min(5dvh, 9vw); }
+  .lv-act .eyebrow { font-size: 10px; }
+  .lv-act .trial-row { grid-template-columns: 1fr auto; gap: 6px; }
+  .lv-act .trial-row .text-in { font-size: 13px; padding: 8px 10px; letter-spacing: .08em; min-width: 0; }
+  .lv-act .trial-row .btn { padding: 8px 10px; font-size: 11px; }
+  .lv-act .qr-box canvas, .lv-act .qr-box img, .lv-act .qr-box svg, .lv-act .qr-off { width: min(20dvh, 48vw); height: min(20dvh, 48vw); }
+}
