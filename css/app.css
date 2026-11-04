@@ -862,3 +862,9 @@ body.mode-live .voice-field, body.mode-act .voice-field { display: none; }   /* 
 .next-game.match-over { background: radial-gradient(circle at 50% 40%, rgba(255,214,0,.22), rgba(10,15,34,.95) 70%); color: #ffd84d; border: 3px solid #ffd600; box-shadow: 0 0 40px rgba(255,214,0,.25); }
 .next-game.match-over small { color: #e8ecff; }
 .end-btns .big-btn { white-space: nowrap; letter-spacing: .1em; }
+
+/* Organizer phone with LIVE on: only the LIVE card, one screen, no scrolling */
+#ctrl:has(#actDone:not(.hidden)) > :not(#actDone) { display: none !important; }
+.remote:has(#actDone:not(.hidden)) { height: 100dvh; min-height: 0; overflow: hidden; }
+.act-done { gap: clamp(8px, 1.8dvh, 14px); padding: clamp(16px, 3dvh, 28px) 20px; }
+.act-done h2 { font-size: clamp(28px, 5dvh, 38px); }

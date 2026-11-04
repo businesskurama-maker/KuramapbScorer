@@ -616,6 +616,7 @@
     const t = m.until ? new Date(m.until) : null;
     $('actUntil').textContent = t ? t.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'today';
     $('actDone').classList.remove('hidden');
+    setGate(null); $('shop').classList.add('hidden'); closeSheet();   // LIVE is on: nothing else to show on the organizer's phone
   }
   $('actDoneBtn').onclick = () => { leaveScreen(false, 'LIVE is still on. To referee a court, scan that court’s QR code.'); };
   $('actExitBtn').onclick = () => {
