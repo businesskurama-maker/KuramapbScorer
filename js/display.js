@@ -112,20 +112,21 @@
   }
   function announce(ev) {
     if (!window.PBVoice || state.settings.voice === 0) return;
-    const V = PBVoice, call = V.callItems(E.callout(state)), gap = { gap: .18 };
+    const V = PBVoice, call = V.callItems(E.callout(state)), gap = { gap: .3 };
+    const isDef = (t) => /^TEAM [AB]$/i.test(String(state.settings.names[t] || '').trim()) || !String(state.settings.names[t] || '').trim();
     let items = null;
     switch (ev.type) {
       case 'point': case 'undo': case 'server': items = state.gameOver || state.matchOver || state.playForServe ? null : call; break;
       case 'sideout': items = ['sideout', gap].concat(call); break;
       case 'second': items = ['second', gap].concat(call); break;
       case 'pfsStart': items = ['pfs']; break;
-      case 'pfs': items = [nameItem(ev.team), 'servesfirst', gap].concat(call); break;
-      case 'newgame': items = ['gameno', V.num(state.gameNo), gap].concat(call); break;
+      case 'pfs': items = (isDef(ev.team) ? [ev.team ? 'sf_b' : 'sf_a'] : [nameItem(ev.team), 'servesfirst']).concat([gap], call); break;
+      case 'newgame': items = [state.gameNo >= 2 && state.gameNo <= 5 ? 'g' + state.gameNo : 'game', gap].concat(call); break;
       case 'game': case 'match': {
         const g = state.gameLog[state.gameLog.length - 1] || { a: 0, b: 0 };
         const ws = ev.team ? g.b : g.a, ls = ev.team ? g.a : g.b;
-        items = ev.type === 'match' ? ['match', gap, nameItem(ev.team), 'winsmatch', gap, V.num(ws), V.num(ls)]
-                                    : ['game', gap, nameItem(ev.team), 'winsgame', gap, V.num(ws), V.num(ls)];
+        const who = isDef(ev.team) ? [(ev.type === 'match' ? 'wm_' : 'wg_') + (ev.team ? 'b' : 'a')] : [nameItem(ev.team), ev.type === 'match' ? 'winsmatch' : 'winsgame'];
+        items = [ev.type === 'match' ? 'match' : 'game', gap].concat(who, [gap], V.callItems(ws + '-' + ls));
         break;
       }
     }

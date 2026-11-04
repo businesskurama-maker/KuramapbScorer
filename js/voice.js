@@ -3,7 +3,16 @@
  * Custom team names are spoken with the device's own speech voice (a female one when available). */
 (function () {
   const BASE = 'sounds/voice/';
-  const KEYS = Array.from({ length: 31 }, (_, n) => 'n' + n).concat(['sideout', 'second', 'game', 'match', 'winsgame', 'winsmatch', 'teama', 'teamb', 'servesfirst', 'gameno', 'pfs']);
+  const KEYS = Array.from({ length: 31 }, (_, n) => 'n' + n).concat(['g2', 'g3', 'g4', 'g5', 'sideout', 'second', 'game', 'match', 'winsgame', 'winsmatch', 'teama', 'teamb', 'servesfirst', 'pfs', 'wg_a', 'wg_b', 'wm_a', 'wm_b', 'sf_a', 'sf_b']);
+  // Whole score calls ("four, two, one") are single natural recordings, fetched the first time they are needed
+  const pending = {};
+  function fetchClip(k) {
+    if (bufs[k]) return Promise.resolve(bufs[k]);
+    if (pending[k]) return pending[k];
+    if (!ensureCtx()) return Promise.resolve(null);
+    return (pending[k] = fetch(BASE + (k[0] === 'c' ? 'c/' + k.slice(1) : k) + '.mp3').then((r) => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+      .then((a) => new Promise((res, rej) => ctx.decodeAudioData(a, res, rej))).then((b) => (bufs[k] = b)).catch(() => null));
+  }
   const AC = window.AudioContext || window.webkitAudioContext;
   let ctx = null, out = null, bufs = {}, loading = null, gen = 0, active = [];
   const listeners = [];
@@ -51,7 +60,7 @@
       if (!window.speechSynthesis) return resolve(false);
       try {
         const u = new SpeechSynthesisUtterance(text); const v = pickVoice();
-        if (v) u.voice = v; u.lang = (v && v.lang) || 'en-US'; u.rate = 1; u.pitch = 1.1; u.volume = 1;
+        if (v) u.voice = v; u.lang = (v && v.lang) || 'en-US'; u.rate = .9; u.pitch = 1.05; u.volume = 1;
         let done = false; const fin = (ok) => { if (!done) { done = true; resolve(ok); } };
         u.onend = () => fin(true); u.onerror = () => fin(false);
         speechSynthesis.speak(u); setTimeout(() => fin(true), 400 + text.length * 120);
@@ -68,9 +77,10 @@
     for (const it of items) {
       if (my !== gen) return;
       if (typeof it === 'string') {
-        const b = bufs[it]; if (!b) continue;
+        let b = bufs[it];
+        if (!b) { b = await fetchClip(it); if (my !== gen) return; if (!b) { if (it[0] === 'c') { const fb = it.slice(1).split('-').map((x) => 'n' + x); for (const k of fb) { const bb = bufs[k]; if (!bb) continue; const src = ctx.createBufferSource(); src.buffer = bb; src.connect(out); t = Math.max(t, ctx.currentTime + .03); src.start(t); active.push(src); t += bb.duration + .12; } } continue; } t = Math.max(t, ctx.currentTime + .03); }
         const src = ctx.createBufferSource(); src.buffer = b; src.connect(out); src.start(t); active.push(src);
-        t += b.duration + .05;
+        t += b.duration + .12;
       } else if (it.gap) t += it.gap;
       else if (it.tts) {
         await sleep((t - ctx.currentTime) * 1000); if (my !== gen) return;
@@ -82,10 +92,12 @@
     }
   }
   const num = (n) => 'n' + Math.max(0, Math.min(30, n | 0));
-  const callItems = (call) => String(call || '').split('-').filter((x) => x !== '').map((x) => num(+x));
+  // "4-2-1" -> one natural clip; scores past 21 fall back to single numbers
+  const callItems = (call) => { const p = String(call || '').split('-').filter((x) => x !== '').map(Number); if (!p.length) return []; if (p.every((x) => x >= 0 && x <= 21) && (p.length === 2 || (p.length === 3 && p[2] >= 1 && p[2] <= 2))) return ['c' + p.join('-')]; return p.map(num); };
+  const prefetch = (call) => { const it = callItems(call); if (it.length === 1) fetchClip(it[0]); };
 
   window.PBVoice = {
-    say, num, callItems, unlock, load,
+    say, num, callItems, unlock, load, prefetch,
     ready: () => !!ctx && ctx.state === 'running',
     supported: !!AC,
     onState: (f) => listeners.push(f)

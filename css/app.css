@@ -851,3 +851,14 @@ body.mode-live .r-head .brand-sm span::after { content: 'LIVE'; margin-left: 8px
 .d-sound { color: #04120a !important; background: var(--ball, #39ff14) !important; border-color: transparent !important; font-weight: 700; animation: soundPulse 1.4s ease-in-out infinite; }
 @keyframes soundPulse { 50% { box-shadow: 0 0 0 .5em rgba(57,255,20,.25); } }
 body.mode-live .voice-field, body.mode-act .voice-field { display: none; }   /* LIVE screens stay silent */
+
+/* End of match: rematch or exit */
+.end-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.end-btns.hidden { display: none; }
+.end-btns .big-btn { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 18px 10px; font-size: 16px; }
+.end-btns svg { width: 22px; height: 22px; flex: none; }
+.end-btns .end-new { background: var(--ball); color: var(--navy-950); }
+.end-btns .end-exit { border-color: rgba(255,77,106,.6); color: #ffb3c0; }
+.next-game.match-over { background: radial-gradient(circle at 50% 40%, rgba(255,214,0,.22), rgba(10,15,34,.95) 70%); color: #ffd84d; border: 3px solid #ffd600; box-shadow: 0 0 40px rgba(255,214,0,.25); }
+.next-game.match-over small { color: #e8ecff; }
+.end-btns .big-btn { white-space: nowrap; letter-spacing: .1em; }

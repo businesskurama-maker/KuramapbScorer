@@ -386,7 +386,9 @@
     const gated = !!gateState;
     $('rallyBtns').classList.toggle('hidden', over || gated);
     $('nextBtn').classList.toggle('hidden', !over || gated);
-    if (st.matchOver) $('nextBtn').innerHTML = esc(s.names[st.winner]) + ' WINS!<small>Tap to set up a new match</small>';
+    $('endBtns').classList.toggle('hidden', !st.matchOver || gated);
+    $('nextBtn').classList.toggle('match-over', !!st.matchOver);
+    if (st.matchOver) $('nextBtn').innerHTML = '🏆 ' + esc(s.names[st.winner]) + ' WINS!<small>' + (st.gameLog.length > 1 ? 'Games ' + st.games[st.winner] + '–' + st.games[1 - st.winner] + ' · ' : '') + 'Tap to change teams or rules</small>';
     else if (st.gameOver) $('nextBtn').innerHTML = 'START GAME ' + (st.gameNo + 1) + '<small>' + esc(s.names[st.gameLog[st.gameLog.length - 1].winner]) + ' took game ' + st.gameNo + '</small>';
 
     $('undoBtn').disabled = !connected || !st.canUndo || !authed;
@@ -405,6 +407,13 @@
   $('serveBtn').onclick = () => { if (st) send({ a: 'server', team: 1 - st.serving }); };
   $('pfsBtn').onclick = () => { if (send({ a: 'pfs' })) flash('Play for serve'); };
   $('nextBtn').onclick = () => { if (!st) return; if (st.matchOver) openSheet(); else send({ a: 'next' }); };
+  // After the winner is announced: rematch with the same teams, or leave
+  $('endNew').onclick = () => { if (st && send({ a: 'new', settings: st.settings })) { flash('New match'); buzz && buzz(30); } };
+  $('endExit').onclick = () => {
+    if (!confirm('Exit? ' + (mode === 'live' ? 'This phone leaves the court.' : 'The scoreboard restarts and shows a new QR code for the next players.'))) return;
+    leaveScreen(true, mode === 'live' ? 'You left the court.' : 'Thanks for playing! The scoreboard is ready for the next players.');
+    setTimeout(toMenu, 700);
+  };
 
   /* ---------- Settings sheet ---------- */
   function swatches(el, team) {
