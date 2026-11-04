@@ -104,7 +104,7 @@
   (function splash() {
     const el = document.getElementById('splash'); if (!el) return;
     let seen = false; try { seen = el.dataset.once && sessionStorage.getItem('aopb.splash'); } catch (e) {}   // app launch: always; remote: once per visit
-    if (seen) { el.remove(); return; }
+    if (seen || /[?&]menu=1/.test(location.search)) { el.remove(); return; }
     try { sessionStorage.setItem('aopb.splash', '1'); } catch (e) {}
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 600); }, 5000);
   })();

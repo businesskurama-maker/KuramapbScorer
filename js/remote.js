@@ -461,6 +461,15 @@
   $('sheetX').onclick = closeSheet;
   $('sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') closeSheet(); });
   $('toDisplay').onclick = () => { try { localStorage.setItem('aopb.role', 'display'); } catch (e) {} store.del('aopb.remoteCode'); location.href = './?role=display'; };
+  // Main menu: forget the remote role on this phone and show the lobby (no countdown)
+  function toMenu() {
+    try { localStorage.removeItem('aopb.role'); } catch (e) {}
+    store.del('aopb.remoteCode');
+    try { if (typeof stopScan === 'function') stopScan(); } catch (e) {}
+    location.href = './?menu=1';
+  }
+  $('joinMenu').onclick = toMenu;
+  $('toMenu').onclick = () => { if (st && !confirm('Go to the main menu? This phone will stop controlling the scoreboard.')) return; toMenu(); };
   $('unpair').onclick = () => {
     if (!confirm('Exit this scoreboard? It will restart and show a new QR code for the next players.')) return;
     leaveScreen(true, 'You left the scoreboard. It is restarting for the next players.');

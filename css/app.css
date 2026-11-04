@@ -766,3 +766,7 @@ body.mode-live .r-head .brand-sm span::after { content: 'LIVE'; margin-left: 8px
 @media (max-height: 900px) and (orientation: portrait) { .join:has(.scanner:not(.hidden)) .join-logo { display: none; } }
 @media (max-height: 900px) { .join:has(.scanner:not(.hidden)) .join-logo { display: none; } .join .scanner { width: min(100%, 360px, 34dvh); } }
 @media (max-width: 380px) { #pairOverlay .pair-actions .btn { white-space: normal; letter-spacing: .08em; } }
+.menu-link { display: inline-flex; align-items: center; justify-content: center; gap: .5em; align-self: center; background: none; border: 1px solid var(--line); color: var(--ink-2); border-radius: 999px; padding: clamp(6px, 1.2dvh, 10px) 16px; font: 700 12px/1 var(--font-ui, system-ui); letter-spacing: .14em; text-transform: uppercase; cursor: pointer; }
+.menu-link svg { width: 16px; height: 16px; }
+.menu-link:hover, .menu-link:focus-visible { color: var(--ink); border-color: var(--ink-3); outline: none; }
+@media (max-height: 700px) { .join .scanner { width: min(100%, 30dvh); } .join:has(.scanner:not(.hidden)) .install-pill { display: none; } }

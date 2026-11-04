@@ -394,6 +394,7 @@
       open(false);
     };
     if (q.get('role') === 'display' || q.get('c')) return;   // every launch / restart shows the lobby
+    if (q.get('menu')) { history.replaceState(null, '', location.pathname); open(false); return; }   // back from the remote: wait for a choice
     setTimeout(() => open(true), document.getElementById('splash') ? 5200 : 0);
   })();
 
