@@ -850,3 +850,4 @@ body.mode-live .r-head .brand-sm span::after { content: 'LIVE'; margin-left: 8px
 .call-flash .cf-call .seg7 .off { fill: #FFE600; opacity: .07; filter: none; }
 .d-sound { color: #04120a !important; background: var(--ball, #39ff14) !important; border-color: transparent !important; font-weight: 700; animation: soundPulse 1.4s ease-in-out infinite; }
 @keyframes soundPulse { 50% { box-shadow: 0 0 0 .5em rgba(57,255,20,.25); } }
+body.mode-live .voice-field, body.mode-act .voice-field { display: none; }   /* LIVE screens stay silent */
