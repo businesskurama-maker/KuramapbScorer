@@ -770,3 +770,4 @@ body.mode-live .r-head .brand-sm span::after { content: 'LIVE'; margin-left: 8px
 .menu-link svg { width: 16px; height: 16px; }
 .menu-link:hover, .menu-link:focus-visible { color: var(--ink); border-color: var(--ink-3); outline: none; }
 @media (max-height: 700px) { .join .scanner { width: min(100%, 30dvh); } .join:has(.scanner:not(.hidden)) .install-pill { display: none; } }
+.eb-note { font-size: .9em; letter-spacing: .04em; text-transform: none; opacity: .7; font-weight: 600; }

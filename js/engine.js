@@ -13,7 +13,8 @@
     players: [['', ''], ['', '']], // [team][0] starts in the right-hand court
     colors: ['#39FF14', '#00E5FF'],   // electric green / electric cyan
     firstServer: 0,         // 0 | 1 | 'pfs' (play for serve: a rally decides who serves first)
-    autoSwap: true          // switch ends between games + at midpoint of deciding game
+    autoSwap: true,         // switch ends between games
+    midSwap: 1              // 1: change court at the half of the deciding game (6 in a game to 11) · 0: no change
   };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -95,7 +96,7 @@
   }
 
   function checkMidSwap(st) {
-    if (!st.settings.autoSwap || st.midSwapDone) return;
+    if (!st.settings.autoSwap || st.settings.midSwap === 0 || st.midSwapDone) return;
     // Change ends in the deciding game (or a single-game match) when a team first reaches the midpoint.
     if (!isDecidingGame(st)) return;
     const mid = Math.ceil(st.settings.target / 2); // 6 for 11, 8 for 15, 11 for 21
@@ -244,6 +245,7 @@
     st.settings.players = cleanPlayers(st.settings.players);
     if (!st.history) st.history = [];
     if (st.playForServe == null) st.playForServe = false;
+    if (st.settings.midSwap == null) st.settings.midSwap = 1;
     // Old default palette → new electric defaults
     const old = { '#d7f03c': '#39FF14', '#4fc3f7': '#00E5FF' };
     st.settings.colors = distinctColors(st.settings.colors.map((c) => old[String(c).toLowerCase()] || c));
@@ -267,6 +269,7 @@
       case 'rename': return rename(st, action.names, action.colors, action.players);
       case 'partners': return partners(st, action.team === 1 ? 1 : 0);
       case 'pfs': return startPfs(st);
+      case 'midswap': st.settings.midSwap = action.on ? 1 : 0; return st;   // change court at half: on/off, no reset
       case 'new': return newMatch(Object.assign({}, st.settings, action.settings || {}, { players: cleanPlayers((action.settings || st.settings).players) }));
       default: return st;
     }
