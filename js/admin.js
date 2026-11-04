@@ -196,6 +196,13 @@
   $('search').oninput = () => { userPage = 0; renderUsers(); };
   $('reload').onclick = loadAll;
   $('loginBtn').onclick = () => PBAuth.signIn();
+  let loginGis = false;
+  async function mountLoginGis() {
+    if (loginGis || !PBAuth.googleButtons) return; loginGis = true;
+    const ok = await PBAuth.mountGoogleButton($('loginGis'), { theme: 'filled_black' });
+    $('loginBtn').classList.toggle('hidden', ok); if (!ok) loginGis = false;
+  }
+  PBAuth.onGoogleError((m) => msg('Google sign-in failed: ' + m, 'bad'));
   $('logout').onclick = $('logout2').onclick = async () => { await PBAuth.signOut(); };
 
   PBAuth.onChange(() => {
@@ -203,7 +210,7 @@
     $('whoTxt').textContent = u ? u.email : 'Signed out';
     $('who').classList.toggle('ok', !!(p && p.is_admin));
     if (!PBAuth.enabled) return show('notConfigured');
-    if (!u) return show('needLogin');
+    if (!u) { show('needLogin'); mountLoginGis(); return; }
     if (!p) return;                       // still loading
     if (!p.is_admin) { $('notAdminTxt').textContent = u.email + ' does not have admin access.'; return show('notAdmin'); }
     show('panel'); loadAll(); refreshAlertCard(); startLive();

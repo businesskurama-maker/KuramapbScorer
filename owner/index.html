@@ -82,6 +82,8 @@
   .tst { font-size: 12px; font-weight: 700; letter-spacing: .06em; }
   .tst.unused { color: #ffcf7a; } .tst.active { color: var(--ball); } .tst.done { color: var(--ink-3); } .tst.off { color: var(--danger); }
   @media (max-width: 560px) { .trial-gen { grid-template-columns: 1fr; } }
+  .gis-box { display: flex; justify-content: center; }
+  .gis-box:empty { display: none; }
   .pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
   .pager:empty { display: none; }
   .pager .pg-info { font-size: 13px; color: var(--ink-2); letter-spacing: .03em; }
@@ -158,6 +160,7 @@
     <img src="icons/kurama-mark.png" alt="" style="width:72px">
     <h1 style="font-family:var(--font-score);font-weight:400;font-size:36px;margin:0">Admin sign-in</h1>
     <p>Sign in with the Google account that has admin access.</p>
+    <div class="gis-box" id="loginGis" style="min-height:44px"></div>
     <button class="big-btn google" id="loginBtn" style="min-width:280px">Continue with Google</button>
   </section>
 

@@ -633,3 +633,8 @@ body.mode-live .r-head .brand-sm span::after { content: 'LIVE'; margin-left: 8px
 .act-done .act-note { font-size: 13px; color: var(--ink-3); }
 .act-done .big-btn.act-exit { background: #ff2e4d; color: #fff; }
 .act-done .mini-btn { align-self: center; }
+
+/* Google's official sign-in button */
+.gis-box { display: flex; justify-content: center; min-height: 44px; }
+.gis-box.hidden { display: none; }
+.gis-box > div { max-width: 100%; }

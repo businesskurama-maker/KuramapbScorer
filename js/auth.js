@@ -95,6 +95,47 @@
     return profile;
   }
 
+  /* ---------- Google Identity Services: the sign-in happens on dinkykong.pro, so Google's screen shows
+   * our site instead of the Supabase address. Needs PB_CONFIG.googleClientId; without it the old redirect is used. */
+  const GIS_URL = ['https://accounts.google.com/gsi/client'];
+  let gisReady = null, gisNonce = null, gisWaiters = [];
+  const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  async function sha256hex(s) { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return Array.from(new Uint8Array(d), (b) => b.toString(16).padStart(2, '0')).join(''); }
+  function gisOn() { return !!(enabled && cfg.googleClientId); }
+  function initGis() {
+    if (!gisReady) gisReady = (async () => {
+      await init();
+      await withTimeout(PBCommon.loadScript(GIS_URL), 15000, 'Could not load Google sign-in');
+      gisNonce = b64url(crypto.getRandomValues(new Uint8Array(24)).buffer);
+      window.google.accounts.id.initialize({
+        client_id: cfg.googleClientId,
+        nonce: await sha256hex(gisNonce),
+        auto_select: false, cancel_on_tap_outside: true, itp_support: true, use_fedcm_for_prompt: true, context: 'signin',
+        callback: async (resp) => {
+          let err = null;
+          try {
+            const { error } = await sb.auth.signInWithIdToken({ provider: 'google', token: resp.credential, nonce: gisNonce });
+            if (error) err = error;
+          } catch (e) { err = e; }
+          if (err) gisWaiters.forEach((f) => { try { f(String(err.message || err)); } catch (e) {} });
+          // success: onAuthStateChange → refresh → listeners (no page reload needed)
+        }
+      });
+    })().catch((e) => { gisReady = null; throw e; });
+    return gisReady;
+  }
+  // Renders Google's official button inside `el`. Returns true when the Google button is shown.
+  async function mountGoogleButton(el, opts) {
+    if (!gisOn() || !el) return false;
+    try {
+      await initGis();
+      el.innerHTML = '';
+      window.google.accounts.id.renderButton(el, Object.assign({ type: 'standard', theme: 'filled_black', size: 'large', shape: 'pill', text: 'continue_with', logo_alignment: 'left', width: Math.min(400, Math.max(220, el.clientWidth || 320)) }, opts || {}));
+      return true;
+    } catch (e) { return false; }
+  }
+  function onGoogleError(f) { gisWaiters.push(f); }
+
   function signIn(returnTo) {
     if (!sb) return;
     return sb.auth.signInWithOAuth({
@@ -102,7 +143,11 @@
       options: { redirectTo: returnTo ? new URL(returnTo, location.href).href : location.href, queryParams: { prompt: 'select_account' } }
     });
   }
-  async function signOut() { if (sb) await sb.auth.signOut(); user = null; profile = null; emit(); }
+  async function signOut() {
+    if (sb) await sb.auth.signOut();
+    try { window.google && window.google.accounts && window.google.accounts.id.disableAutoSelect(); } catch (e) {}
+    user = null; profile = null; emit();
+  }
 
   function passUntil() { return profile && profile.pass_until ? new Date(profile.pass_until) : null; }
   function passActive() { const p = passUntil(); return !!p && p.getTime() > Date.now(); }
@@ -227,7 +272,7 @@
     async deletePush(endpoint) { await sb.rpc('delete_push_subscription', { p_endpoint: endpoint }); },
     get client() { return sb; },
     async undoApproval(id) { const { data, error } = await sb.rpc('admin_undo_approval', { p_id: id }); if (error) throw new Error(error.message); return data; },
-    live, relay, liveUntil,
+    live, relay, liveUntil, mountGoogleButton, onGoogleError, get googleButtons() { return gisOn(); },
     // LIVE trial codes
     async redeemLiveCode(code, screen) {
       if (!enabled) return { ok: true, until: new Date(Date.now() + 3600e3).toISOString() };

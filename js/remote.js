@@ -112,7 +112,9 @@
     shopKind = (state === 'denied' && (opts.reason === 'NO_LIVE_PASS' || mode === 'act')) ? 'live' : 'solo';
     g.classList.toggle('bad', locked);
     g.classList.toggle('offer', offer);
-    $('gateGoogle').classList.toggle('hidden', state !== 'signin');
+    $('gateGoogle').classList.toggle('hidden', state !== 'signin' || gisShown);
+    $('gateGis').classList.toggle('hidden', state !== 'signin' || !gisShown);
+    if (state === 'signin' && PBAuth.googleButtons && !gisShown) mountGis();
     $('gateRetry').classList.toggle('hidden', !(locked || liveEnded));
     $('gateSwitch').classList.toggle('hidden', !locked);
     $('gateBuy').classList.add('hidden');
@@ -276,6 +278,21 @@
   }
 
   $('gateGoogle').onclick = () => PBAuth.signIn();
+  // Google's own button (sign-in stays on dinkykong.pro). Falls back to the redirect button if it can't load.
+  var gisShown = false, gisTrying = false;
+  async function mountGis() {
+    if (gisTrying) return; gisTrying = true;
+    $('gateGis').classList.remove('hidden');
+    const ok = await PBAuth.mountGoogleButton($('gateGis'), { theme: 'filled_black' });
+    gisTrying = false; gisShown = ok;
+    const signin = gateState === 'signin';
+    $('gateGis').classList.toggle('hidden', !ok || !signin);
+    $('gateGoogle').classList.toggle('hidden', ok || !signin);
+  }
+  PBAuth.onGoogleError((m) => flash('Google sign-in failed — try again'));
+  // Signed in through Google's button (no page reload): continue to the pass check
+  let wasUser = !!PBAuth.user;
+  PBAuth.onChange(() => { const u = !!PBAuth.user; if (u && !wasUser && link && connected) { setGate('checking'); sendAuth(true); } wasUser = u; });
   $('gateRetry').onclick = async () => { await PBAuth.refresh(); if (mode === 'live' && link) { link.sendMsg({ t: 'auth', device }); return; } sendAuth(true); };
   // Switch to another Google account (e.g. the one that donated). Google's account picker opens.
   const switchAccount = async () => {
@@ -284,6 +301,12 @@
     try { sessionStorage.setItem('aopb.switched', '1'); } catch (e) {}
     leaveScreen(false);                       // disconnect from this scoreboard (it stays on its QR page)
     try { await PBAuth.signOut(); } catch (e) {}
+    if (PBAuth.googleButtons) {               // Google button mode: scan again, then pick the other account on the sign-in screen
+      try { sessionStorage.removeItem('aopb.switched'); } catch (e) {}
+      $('joinTitle').textContent = 'Scan again to continue';
+      $('joinHint').textContent = 'Signed out. Scan the scoreboard QR, then continue with your other Google account.';
+      startScan(); return;
+    }
     PBAuth.signIn('remote.html?scan=1');      // after picking the account, come back to the QR scanner
   };
   $('gateSwitch').onclick = switchAccount;
