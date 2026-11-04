@@ -359,20 +359,19 @@
   /* ---------- Device role chooser (Scoreboard is the default) ---------- */
   (function chooser() {
     const q = new URLSearchParams(location.search);
-    if (q.get('role') === 'display' || q.get('c')) return;   // every launch / restart shows the lobby
     const el = $('chooser'); let left = 30, t;
     // DinkyKong animation: transparent WebM (Chrome, Android, TVs); animated WebP on Safari/iOS (no WebM alpha there)
     const startAnim = () => {
-      const v = $('dkVideo'); const ua = navigator.userAgent;
+      const v = $('dkVideo'); if (!v || v.tagName !== 'VIDEO') return; const ua = navigator.userAgent;
       const safari = /iP(hone|ad|od)/.test(ua) || (/Safari/.test(ua) && !/Chrome|Chromium|CriOS|Android|Edg/.test(ua));
       const webm = !!(v.canPlayType && v.canPlayType('video/webm; codecs="vp9"'));
-      if (safari || !webm) { const img = new Image(); img.className = 'dk-video'; img.alt = ''; img.src = 'icons/dk-anim.webp'; v.replaceWith(img); return; }
+      if (safari || !webm) { const img = new Image(); img.className = 'dk-video'; img.id = 'dkVideo'; img.alt = ''; img.src = 'icons/dk-anim.webp'; v.replaceWith(img); return; }
       v.src = 'icons/dk-anim.webm'; v.play().catch(() => {});
     };
     const stopAnim = () => { const v = $('dkVideo'); if (v && v.pause) { v.pause(); v.removeAttribute('src'); v.load(); } };
     const pickDisplay = () => { clearInterval(t); stopAnim(); try { sessionStorage.setItem('aopb.tabRole', 'display'); } catch (e) {} try { localStorage.setItem('aopb.role', 'display'); } catch (e) {} el.classList.add('hidden'); keepAwake(); };
     $('asDisplay').onclick = pickDisplay;
-    const pause = () => { clearInterval(t); $('chooserCount').textContent = 'Choose Scoreboard or Remote'; };
+    const pause = () => { clearInterval(t); $('chooserCount').textContent = 'Choose Scoreboard, Remote or LIVE'; };
     PBCommon.installButton($('installApp'), { onHelp: (h) => { pause(); const p = $('installHelp'); p.textContent = h; p.classList.remove('hidden'); } });
     $('installApp').addEventListener('click', pause);
     $('asLive').onclick = () => { clearInterval(t); stopAnim(); location.href = 'live.html'; };
@@ -383,11 +382,19 @@
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') opts[Math.max(0, i - 1)].focus();
       e.stopPropagation();
     });
-    const start = () => {
-      el.classList.remove('hidden'); $('asDisplay').focus(); startAnim();
+    // timed: first launch counts down to Scoreboard; from the "Main menu" button it waits for a choice
+    const open = (timed) => {
+      clearInterval(t); el.classList.remove('hidden'); $('asDisplay').focus(); startAnim();
+      if (!timed) { pause(); return; }
+      left = 30; $('chooserCount').textContent = 'Starting as Scoreboard in ' + left + ' s';
       t = setInterval(() => { left--; $('chooserCount').textContent = 'Starting as Scoreboard in ' + left + ' s'; if (left <= 0) pickDisplay(); }, 1000);
     };
-    setTimeout(start, document.getElementById('splash') ? 5200 : 0);
+    $('pairMenu').onclick = () => {
+      if (link && link.remotes > 0 && !window.confirm('Go back to the main menu? The connected remote stays linked if you choose Scoreboard again.')) return;
+      open(false);
+    };
+    if (q.get('role') === 'display' || q.get('c')) return;   // every launch / restart shows the lobby
+    setTimeout(() => open(true), document.getElementById('splash') ? 5200 : 0);
   })();
 
   /* ---------- Boot ---------- */
