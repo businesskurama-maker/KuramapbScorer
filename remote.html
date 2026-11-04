@@ -121,16 +121,19 @@
       <h3 class="sec-title">Teams</h3>
       <div class="team-edit" data-team="0">
         <div class="team-edit-head"><span class="team-dot" id="dotA"></span><input class="text-in team-in" id="nA" maxlength="18" placeholder="Team name" aria-label="Team A name"></div>
-        <div class="player-row"><input class="text-in" id="pA0" maxlength="16" placeholder="Player 1" aria-label="Team A player 1"><input class="text-in pl2" id="pA1" maxlength="16" placeholder="Player 2" aria-label="Team A player 2"></div>
+        <div class="player-row"><input class="text-in" id="pA0" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 1" aria-label="Team A player 1"><input class="text-in pl2" id="pA1" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 2" aria-label="Team A player 2"></div>
+        <div class="saved-row"><div class="saved-chips" id="svA" aria-label="Saved teams"></div><button class="mini-btn save-team" id="saveA" data-team="0">☆ Save team</button></div>
         <div class="swatches" id="swA" role="group" aria-label="Team A color"></div>
         <button class="mini-btn swap-btn dbl-only" id="ptA">⇄ Swap court positions</button>
       </div>
       <div class="team-edit" data-team="1">
         <div class="team-edit-head"><span class="team-dot" id="dotB"></span><input class="text-in team-in" id="nB" maxlength="18" placeholder="Team name" aria-label="Team B name"></div>
-        <div class="player-row"><input class="text-in" id="pB0" maxlength="16" placeholder="Player 1" aria-label="Team B player 1"><input class="text-in pl2" id="pB1" maxlength="16" placeholder="Player 2" aria-label="Team B player 2"></div>
+        <div class="player-row"><input class="text-in" id="pB0" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 1" aria-label="Team B player 1"><input class="text-in pl2" id="pB1" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 2" aria-label="Team B player 2"></div>
+        <div class="saved-row"><div class="saved-chips" id="svB" aria-label="Saved teams"></div><button class="mini-btn save-team" id="saveB" data-team="1">☆ Save team</button></div>
         <div class="swatches" id="swB" role="group" aria-label="Team B color"></div>
         <button class="mini-btn swap-btn dbl-only" id="ptB">⇄ Swap court positions</button>
       </div>
+      <datalist id="savedPl"></datalist>
       <button class="big-btn wide cyan" id="applyNames">Update names &amp; colors</button>
       <p class="hint-sm">Names and colors update without resetting the score. Player 1 starts in the right-hand court.</p>
     </section>

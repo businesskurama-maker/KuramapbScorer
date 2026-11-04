@@ -452,11 +452,54 @@
   ['nA', 'nB'].forEach((id) => $(id).addEventListener('input', paintSheet));
   function names() { return [$('nA').value.trim().toUpperCase() || 'TEAM A', $('nB').value.trim().toUpperCase() || 'TEAM B']; }
   function players() { return [[$('pA0').value.trim(), $('pA1').value.trim()], [$('pB0').value.trim(), $('pB1').value.trim()]]; }
-  $('applyNames').onclick = () => { if (send({ a: 'rename', names: names(), colors: draft.colors, players: players() })) { flash('Updated'); closeSheet(); } };
+  /* ---------- Saved teams & players (kept on this phone) ---------- */
+  const SAVED_T = 'aopb.savedTeams', SAVED_P = 'aopb.savedPlayers';
+  const savedTeams = () => store.get(SAVED_T, []) || [];
+  const savedPlayers = () => store.get(SAVED_P, []) || [];
+  function rememberPlayers(list) {
+    const cur = savedPlayers(); const seen = new Set(cur.map((x) => x.toLowerCase()));
+    list.flat().map((x) => String(x || '').trim()).filter(Boolean).forEach((n) => { if (!seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); cur.unshift(n); } });
+    store.set(SAVED_P, cur.slice(0, 80)); renderSaved();
+  }
+  function renderSaved() {
+    const teams = savedTeams();
+    ['svA', 'svB'].forEach((id, t) => {
+      const el = $(id); if (!el) return;
+      el.innerHTML = teams.length ? teams.map((x, i) => '<span class="sv-chip"><button class="sv-pick" data-i="' + i + '" data-t="' + t + '" title="Use this team"><i style="background:' + PBCommon.esc(x.color || '#888') + '"></i>' + PBCommon.esc(x.name) + (x.players && x.players.some(Boolean) ? '<small>' + PBCommon.esc(x.players.filter(Boolean).join(' · ')) + '</small>' : '') + '</button><button class="sv-del" data-i="' + i + '" aria-label="Remove ' + PBCommon.esc(x.name) + '">×</button></span>').join('')
+        : '<span class="sv-empty">No saved teams yet</span>';
+    });
+    const pl = new Set(); teams.forEach((x) => (x.players || []).forEach((n) => n && pl.add(n))); savedPlayers().forEach((n) => pl.add(n));
+    $('savedPl').innerHTML = [...pl].map((n) => '<option value="' + PBCommon.esc(n) + '">').join('');
+  }
+  function pickSaved(i, t) {
+    const x = savedTeams()[i]; if (!x) return;
+    const L = t ? 'B' : 'A';
+    $('n' + L).value = x.name; $('p' + L + '0').value = (x.players && x.players[0]) || ''; $('p' + L + '1').value = (x.players && x.players[1]) || '';
+    if (x.color && String(x.color).toLowerCase() !== String(draft.colors[1 - t]).toLowerCase()) draft.colors[t] = x.color;
+    paintSheet(); flash(x.name + ' added');
+  }
+  function saveTeam(t) {
+    const L = t ? 'B' : 'A';
+    const name = $('n' + L).value.trim().toUpperCase(); const pls = [$('p' + L + '0').value.trim(), $('p' + L + '1').value.trim()];
+    if (!name && !pls.some(Boolean)) { flash('Type a team name first'); return; }
+    const entry = { name: name || pls.filter(Boolean).join(' & ').toUpperCase(), players: pls, color: draft.colors[t] };
+    const list = savedTeams().filter((x) => x.name.toLowerCase() !== entry.name.toLowerCase());
+    list.unshift(entry); store.set(SAVED_T, list.slice(0, 40));
+    rememberPlayers([pls]); flash('Saved ' + entry.name);
+  }
+  ['svA', 'svB'].forEach((id) => $(id).addEventListener('click', (e) => {
+    const pick = e.target.closest('.sv-pick'), del = e.target.closest('.sv-del');
+    if (pick) pickSaved(+pick.dataset.i, +pick.dataset.t);
+    if (del) { const list = savedTeams(); const x = list[+del.dataset.i]; if (x && confirm('Remove saved team ' + x.name + '?')) { list.splice(+del.dataset.i, 1); store.set(SAVED_T, list); renderSaved(); } }
+  }));
+  $('saveA').onclick = () => saveTeam(0); $('saveB').onclick = () => saveTeam(1);
+  renderSaved();
+
+  $('applyNames').onclick = () => { rememberPlayers(players()); if (send({ a: 'rename', names: names(), colors: draft.colors, players: players() })) { flash('Updated'); closeSheet(); } };
   $('ptA').onclick = () => { if (send({ a: 'partners', team: 0 })) flash('Positions swapped'); };
   $('ptB').onclick = () => { if (send({ a: 'partners', team: 1 })) flash('Positions swapped'); };
   $('newMatch').onclick = () => {
-    draft.names = names(); draft.players = players();
+    draft.names = names(); draft.players = players(); rememberPlayers(draft.players);
     if (st && !st.matchOver && (st.score[0] + st.score[1] + st.games[0] + st.games[1]) > 0 && !confirm('Reset the current match?')) return;
     if (send({ a: 'new', settings: draft })) { flash('New match'); closeSheet(); }
   };

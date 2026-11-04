@@ -791,3 +791,22 @@ body.mode-live .r-head .brand-sm span::after { content: 'LIVE'; margin-left: 8px
 .pair-text:has(.pair-user:not(.hidden)) #pairBody { display: none; }
 .pair-text:has(.pair-user:not(.hidden)) .pair-status:empty { display: none; }
 .pair-text:has(.pair-user:not(.hidden)) .pair-status.ok { display: none; }
+
+/* Saved teams (Match setup) */
+.saved-row { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.saved-chips { display: flex; gap: 6px; flex: 1 1 100%; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.saved-chips::-webkit-scrollbar { display: none; }
+.sv-chip { display: inline-flex; align-items: stretch; flex: none; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.04); overflow: hidden; }
+.sv-pick { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--ink); padding: 7px 4px 7px 11px; font: 700 12px/1 var(--font-ui, system-ui); letter-spacing: .06em; cursor: pointer; white-space: nowrap; }
+.sv-pick i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.sv-pick small { font-weight: 600; color: var(--ink-3); letter-spacing: .02em; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.sv-del { border: 0; background: none; color: var(--ink-3); padding: 0 10px 0 6px; font-size: 16px; cursor: pointer; }
+.sv-del:hover { color: var(--danger); }
+.sv-pick:active { background: rgba(57,255,20,.12); }
+.sv-empty { font-size: 12px; color: var(--ink-3); padding: 6px 2px; }
+.save-team { color: var(--ball); border-color: rgba(57,255,20,.4); }
+.saved-row { flex-wrap: nowrap; align-items: center; }
+.saved-row .save-team { order: -1; flex: none; padding: 8px 10px; }
+.saved-chips { flex: 1 1 0; min-width: 0; }
+.saved-row { flex-wrap: wrap; }
+.saved-chips { flex: 1 1 100%; flex-wrap: wrap; overflow-x: visible; overflow-y: auto; max-height: 78px; }
