@@ -197,6 +197,7 @@
     setTimeout(() => { rotateCode(); setPairMsg('Ready for a new user · scan to sign in'); }, 400);   // let remotes get the reset first
   }
   $('puNew').onclick = newUser;
+  $('userChip').onclick = newUser;
 
   function renderLicense() {
     const el = $('passChip'); if (!el) return;
@@ -205,6 +206,7 @@
     if (licensed()) { el.classList.add('ok'); $('passTxt').textContent = 'Pass until ' + hhmm(license.until); }
     else { el.classList.remove('ok'); $('passTxt').textContent = 'Sign-in needed'; }
     renderPairUser();
+    $('userChip').classList.toggle('hidden', !licensed());
   }
 
   // Every 5 minutes ask signed-in remotes to re-check their pass (picks up an approval the owner undid)
@@ -419,6 +421,8 @@
       if (link && link.remotes > 0 && !window.confirm('Go back to the main menu? The connected remote stays linked if you choose Scoreboard again.')) return;
       open(false);
     };
+    $('menuChip').onclick = () => $('pairMenu').click();
+    document.addEventListener('keydown', (e) => { if ((e.key === 'm' || e.key === 'M') && el.classList.contains('hidden') && !(e.target && /INPUT|TEXTAREA/.test(e.target.tagName))) $('pairMenu').click(); });
     if (q.get('role') === 'display' || q.get('c')) return;   // every launch / restart shows the lobby
     if (q.get('menu')) { history.replaceState(null, '', location.pathname); open(false); return; }   // back from the remote: wait for a choice
     setTimeout(() => open(true), document.getElementById('splash') ? 5200 : 0);
