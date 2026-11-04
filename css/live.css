@@ -189,3 +189,26 @@
 @media (orientation: portrait) { .lv-act .pair-text { max-width: 88vw; } .lv-act .pair-text h1 { font-size: min(4.4dvh, 8vw); } .lv-act .code { font-size: min(5.4dvh, 9.6vw); } .lv-act .pair-text p { font-size: min(1.7dvh, 3.4vw); } }
 @media (orientation: landscape) and (max-height: 520px) { .lv-act .pair-text p { font-size: min(3dvh, 1.6vw); line-height: 1.3; } .lv-act .pair-text h1 { font-size: min(8dvh, 4vw); } .lv-act .code { font-size: min(9dvh, 5vw); } .lv-act .pair-card { padding-top: 2dvh; padding-bottom: 2dvh; } }
 @media (orientation: landscape) and (max-height: 520px) { .lv-act .pair-text { gap: 1.2dvh; } .lv-act .trial-box { padding: 1.4dvh 12px; gap: 1dvh; } .lv-act .trial-row .text-in, .lv-act .trial-row .btn, .lv-act .pair-actions .btn { min-height: 0; padding-top: 1.6dvh; padding-bottom: 1.6dvh; } .lv-act .eyebrow { font-size: 9px; } }
+
+/* 1 court: one big tile */
+.lv-grid[data-n="1"] { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+/* Bigger scores: the 3-number call moved to a pop-up, so the two teams get the whole tile */
+.lvc-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 3cqw; padding: 0 3cqw 2cqh; }
+.lvc-mid { display: none; }
+.lv-court.pfs .lvc-body { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+.lv-court.pfs .lvc-mid { display: grid; }
+.lvc-team { gap: .8cqh; }
+.lvc-name { font-size: clamp(12px, 9cqh, 7cqw); }
+.lvc-score { margin: 0 -1cqw; }
+.lvc-score .seg7 { inset: 0; }
+.lvc-head { padding: 2cqh 3cqw .6cqh; }
+/* Score call pop-up over a blurred court */
+.lvc-flash { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 2cqh; padding: 3cqh 3cqw;
+  background: rgba(3, 6, 16, .6); -webkit-backdrop-filter: blur(12px) saturate(.7); backdrop-filter: blur(12px) saturate(.7);
+  color: #FFE600; opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+.lvc-flash.show { opacity: 1; }
+.lvc-flash-call .seg7 { display: block; height: min(46cqh, 26cqw); width: auto; max-width: 94cqw; }
+.lvc-flash-call .seg7 .on { fill: currentColor; filter: drop-shadow(0 0 1.2cqh #FFE600) drop-shadow(0 0 4cqh rgba(255,230,0,.5)); }
+.lvc-flash-call .seg7 .off { fill: #FFE600; opacity: .07; }
+.lvc-flash-lbl { font-family: var(--font-score); font-size: clamp(14px, 11cqh, 8cqw); letter-spacing: .1em; line-height: 1; text-shadow: 0 0 2cqh currentColor; }
+.lvc-flash-lbl.hidden { display: none; }

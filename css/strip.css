@@ -27,3 +27,7 @@
 .lt-head { align-items: center; line-height: 1.35; padding: .3cqw .9cqw .25cqw; }
 .lt-head b, .lt-head span { display: block; line-height: 1.35; padding-top: .12em; }
 .lt-head span { color: rgba(255,255,255,.75); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+/* Bigger scores in the lower third */
+.lt-score { font-size: min(4.8cqw, calc(26cqw / var(--n, 1))); min-width: 3cqw; }
+.lt-name { font-size: min(2cqw, calc(10.5cqw / var(--n, 1))); }

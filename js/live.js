@@ -10,7 +10,7 @@
   const KEY = 'aopb.live';
   const saved = store.get(KEY, null) || {};
   const cfg = {
-    n: Math.min(6, Math.max(2, saved.n || 4)),
+    n: Math.min(6, Math.max(1, saved.n || 4)),
     obsKey: saved.obsKey || rand(12),
     actCode: PBLink.makeCode(),   // new activation code every time the LIVE page opens
     courts: Array.isArray(saved.courts) ? saved.courts : []
@@ -74,6 +74,7 @@
       '<div class="lvc-team" data-t="1"><div class="lvc-name"></div><div class="lvc-score"></div><div class="lvc-foot"><span class="lvc-srv"></span><span class="lvc-pips"></span></div></div>' +
       '</div>' +
       '<div class="lvc-scan"><div class="qr-box lvc-qr"></div><div><div class="eyebrow">Referee · scan to score</div><div class="code lvc-code"></div></div></div>' +
+      '<div class="lvc-flash"><span class="lvc-flash-lbl"></span><div class="lvc-flash-call"></div></div>' +
       '<div class="lvc-final hidden"><span class="eyebrow">Match winner</span><b class="lvc-winner"></b><small class="lvc-games"></small></div>';
     el.querySelector('.lvc-ref').onclick = () => showQrs(c.i);
     c.el = el;
@@ -100,7 +101,22 @@
       tEl.querySelector('.lvc-srv').innerHTML = st.serving === t && !st.matchOver && !st.playForServe ? ICON.ball + '<span>' + esc(pub.hasPlayers ? pub.serverName : (s.mode === 'doubles' && s.scoring === 'sideout' ? (st.serverNum === 1 ? '1st server' : '2nd server') : 'Serving')) + '</span>' : '';
       tEl.querySelector('.lvc-pips').innerHTML = s.bestOf > 1 ? Array.from({ length: Math.ceil(s.bestOf / 2) }, (_, i) => '<i class="' + (i < st.games[t] ? 'on' : '') + '"></i>').join('') : '';
     });
-    el.querySelector('.lvc-call').innerHTML = st.matchOver ? '' : st.playForServe ? '<span class="pfs-call">PLAY FOR SERVE</span>' : seg(E.callout(st));
+    el.querySelector('.lvc-call').innerHTML = st.playForServe && !st.matchOver ? '<span class="pfs-call">PLAY FOR SERVE</span>' : '';
+    el.classList.toggle('pfs', !!st.playForServe && !st.matchOver);
+    // 3-number call pops up big over a blurred court for 3 s after every score / serve change (like the main scoreboard)
+    const ev = st.lastEvent;
+    if (c.evT === undefined) c.evT = ev ? ev.t : 0;
+    else if (ev && ev.t !== c.evT) {
+      c.evT = ev.t;
+      const show = { point: 1, sideout: 1, second: 1, undo: 1, server: 1, pfs: 1, newgame: 1 }[ev.type] && !st.gameOver && !st.matchOver && !st.playForServe;
+      if (show) {
+        const f = el.querySelector('.lvc-flash'), lbl = { sideout: 'SIDE OUT', second: '2ND SERVER', pfs: (s.names[ev.team] || '') + ' SERVES', newgame: 'GAME ' + st.gameNo }[ev.type] || '';
+        const lb = f.querySelector('.lvc-flash-lbl'); lb.textContent = lbl; lb.style.color = ev.team != null ? s.colors[ev.team] : ''; lb.classList.toggle('hidden', !lbl);
+        f.querySelector('.lvc-flash-call').innerHTML = seg(E.callout(st));
+        f.classList.remove('show'); void f.offsetWidth; f.classList.add('show');
+        clearTimeout(c.flashT); c.flashT = setTimeout(() => f.classList.remove('show'), 3000);
+      }
+    }
     const ref = c.remotes > 0;
     el.classList.toggle('has-ref', ref);
     el.querySelector('.lvc-ref').classList.toggle('ok', ref);
