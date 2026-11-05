@@ -935,3 +935,34 @@ body.mode-live .voice-field, body.mode-act .voice-field { display: none; }   /* 
 .hist-acts .mini-btn { align-self: center; color: #ff8a9b; border-color: rgba(255,77,106,.4); }
 #histDetail.hidden, #histList.hidden { display: none; }
 .r-status.ok.slow .dot { background: #ffb547; box-shadow: 0 0 8px #ffb547; }
+
+/* Club branding (remote) */
+body.mode-live .club-sec, body.mode-act .club-sec { display: none; }
+.club-badge { font-size: 10px; letter-spacing: .14em; color: #1a1600; background: #FFE600; border-radius: 6px; padding: 3px 6px 2px; margin-left: 6px; vertical-align: middle; }
+.club-sec.locked .field, .club-sec.locked .club-row, .club-sec.locked .text-in, .club-sec.locked #clubApply { opacity: .4; pointer-events: none; }
+.club-row { display: flex; align-items: center; gap: 12px; }
+.club-logo { width: 64px; height: 64px; flex: none; border-radius: 14px; border: 1px dashed var(--line); display: grid; place-items: center; overflow: hidden; background: rgba(255,255,255,.03); }
+.club-logo.wide { width: 120px; height: 48px; }
+.club-logo img { max-width: 100%; max-height: 100%; object-fit: contain; display: none; }
+.club-logo.has img { display: block; } .club-logo.has span { display: none; }
+.club-logo span { font-size: 10px; color: var(--ink-3); text-align: center; letter-spacing: .06em; }
+.club-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.club-up { cursor: pointer; }
+#clubMsg:empty { display: none; }
+
+/* Club branding (TV scoreboard) */
+.club-id { display: flex; align-items: center; gap: 1vh; min-width: 0; }
+.club-id.hidden { display: none; }
+.club-id img { height: 5.6vh; max-width: 14vw; width: auto; object-fit: contain; }
+.club-id img:not([src]), .club-id img[src=""] { display: none; }
+.club-id b { font-family: var(--font-score); font-weight: 400; font-size: 3.4vh; letter-spacing: .08em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 22vw; }
+.display.club .d-top { box-shadow: inset 0 -.5vh 0 var(--club, transparent); }
+.sponsor { display: flex; align-items: center; justify-content: center; gap: 1.4vh; padding: .8vh 2.2vh; border-radius: 1.4vh; background: linear-gradient(90deg, color-mix(in srgb, var(--club, #5b2a9c) 70%, #000), color-mix(in srgb, var(--club, #5b2a9c) 30%, #000)); max-width: 44vw; min-width: 0; }
+.sponsor.hidden { display: none; }
+.sponsor small { font-size: 1.4vh; letter-spacing: .24em; color: rgba(255,255,255,.7); text-transform: uppercase; white-space: nowrap; }
+.sponsor img { height: 4.4vh; max-width: 16vw; width: auto; object-fit: contain; }
+.sponsor img:not([src]), .sponsor img[src=""] { display: none; }
+.sponsor b { font-size: 2.2vh; letter-spacing: .14em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.display.club .d-bottom .callout { display: none; }
+.setup #clubSw { grid-template-columns: repeat(7, 1fr); }
+.display.club .keys { display: none; }

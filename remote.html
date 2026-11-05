@@ -167,6 +167,25 @@
       <p class="hint-sm">Starting a new match resets the score to 0–0.</p>
     </section>
 
+    <section class="setup-sec club-sec" id="clubSec">
+      <h3 class="sec-title">Club branding <span class="club-badge">LIVE pass</span></h3>
+      <p class="hint-sm club-lock" id="clubLock">Your club logo, colour and sponsor on the TV scoreboard. Part of the LIVE pass — and included in the first 7 days of a new account.</p>
+      <div class="field"><span class="eyebrow">Show on the scoreboard</span><div class="seg" id="clubOn"><button data-v="1">On</button><button data-v="0">Off</button></div></div>
+      <div class="club-row">
+        <div class="club-logo" id="clubLogoBox"><img id="clubLogoPrev" alt="Club logo"><span>No logo</span></div>
+        <div class="club-btns"><label class="mini-btn club-up">Upload club logo<input type="file" id="clubLogoFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label><button class="mini-btn" id="clubLogoDel">Remove</button></div>
+      </div>
+      <input class="text-in" id="clubName" maxlength="24" placeholder="Club name (e.g. MANILA PICKLERS)">
+      <div class="field"><span class="eyebrow">Club colour</span><div class="swatches" id="clubSw" role="group" aria-label="Club colour"></div></div>
+      <input class="text-in" id="clubSponsor" maxlength="40" placeholder="Sponsor banner (e.g. POWERED BY ACME SPORTS)">
+      <div class="club-row">
+        <div class="club-logo wide" id="clubSpBox"><img id="clubSpPrev" alt="Sponsor logo"><span>No sponsor logo</span></div>
+        <div class="club-btns"><label class="mini-btn club-up">Upload sponsor logo<input type="file" id="clubSpFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label><button class="mini-btn" id="clubSpDel">Remove</button></div>
+      </div>
+      <button class="big-btn wide cyan" id="clubApply">Update scoreboard branding</button>
+      <p class="hint-sm" id="clubMsg"></p>
+    </section>
+
     <section class="setup-sec">
       <h3 class="sec-title">This device</h3>
       <div class="sheet-actions">

@@ -43,3 +43,7 @@
   background: linear-gradient(90deg, rgba(6,9,20,0), rgba(6,9,20,.92) 18%); animation: ltCall .35s ease-out; }
 .lt-court.flash .lt-score, .lt-court.flash .lt-ball { visibility: hidden; }
 @keyframes ltCall { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+/* Organizer branding: accent colour + sponsor line */
+.lt-brand[style*="--acc"] { background: linear-gradient(160deg, color-mix(in srgb, var(--acc) 80%, #000), color-mix(in srgb, var(--acc) 22%, #05030c)); }
+.lt-brand[style*="--acc"] b { color: #fff; }
+.lt-sp { max-width: 13cqw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78cqw; font-weight: 700; letter-spacing: .14em; color: rgba(255,255,255,.85); text-transform: uppercase; }

@@ -262,17 +262,17 @@
   function summaries() { return courts.map((c) => PBStrip.summary(c.state, c.i, c.remotes)); }
   function pushObs() {
     const list = summaries();
-    const opts = { logo: brand.logo, caption: brand.caption };
+    const opts = { logo: brand.logo, caption: brand.caption, accent: brand.accent, sponsor: brand.sponsor };
     PBStrip.render($('strip'), list, opts); PBStrip.render($('obsPreview'), list, opts);
     clearTimeout(obsTimer);
-    obsTimer = setTimeout(() => { if (obs) obs.send({ t: 'obs', on: liveOK(), courts: liveOK() ? list : [], brand: brand.id, caption: brand.caption, tour: liveOK() && obsTour ? tourBoard() : null, at: Date.now() }); }, 120);
+    obsTimer = setTimeout(() => { if (obs) obs.send({ t: 'obs', on: liveOK(), courts: liveOK() ? list : [], brand: brand.id, caption: brand.caption, accent: brand.accent || '', sponsor: brand.sponsor || '', tour: liveOK() && obsTour ? tourBoard() : null, at: Date.now() }); }, 120);
   }
   function startObs() {
     if (obs) obs.close();
     if (!PBAuth.relay) return;
     PBAuth.relay('dk-obs-' + cfg.obsKey, (m) => {
       if (m && m.t === 'sync') pushObs();
-      if (m && m.t === 'brand?' && obs) obs.send({ t: 'brand', id: brand.id, logo: brand.logo, caption: brand.caption });   // logo is sent only when OBS asks
+      if (m && m.t === 'brand?' && obs) obs.send({ t: 'brand', id: brand.id, logo: brand.logo, caption: brand.caption, accent: brand.accent || '', sponsor: brand.sponsor || '' });   // logo is sent only when OBS asks
     }).then((r) => { obs = r; pushObs(); }).catch(() => {});
   }
   setInterval(pushObs, 5000);   // OBS sources that load late still catch up within seconds
@@ -292,12 +292,18 @@
   $('stripToggle').onchange = applyStrip; applyStrip();
 
   /* ---------- Branding: upload / reset the lower-third logo ---------- */
-  function renderBrand() { $('logoPrev').src = brand.logo || 'icons/dinkykong-logo.png'; $('captionIn').value = brand.caption || ''; }
+  const ACCENTS = ['', '#5B2A9C', '#0A7BFF', '#00A86B', '#E0262F', '#FF8A00', '#111827'];
+  $('accentSw').innerHTML = ACCENTS.map((c) => '<button type="button" data-c="' + c + '" title="' + (c || 'DinkyKong purple') + '" style="--sw:' + (c || 'linear-gradient(160deg,#5b2a9c,#140828)') + '"></button>').join('');
+  $('accentSw').querySelectorAll('button').forEach((b) => b.onclick = () => setBrand({ accent: b.dataset.c || null }));
+  function renderBrand() {
+    $('logoPrev').src = brand.logo || 'icons/dinkykong-logo.png'; $('captionIn').value = brand.caption || ''; $('sponsorIn').value = brand.sponsor || '';
+    $('accentSw').querySelectorAll('button').forEach((b) => b.classList.toggle('on', (b.dataset.c || null) === (brand.accent || null)));
+  }
   function setBrand(b) {
     brand = Object.assign({}, brand, b, { id: rand(8) });
     try { store.set('aopb.liveBrand', brand); } catch (e) {}
     renderBrand(); pushObs();
-    if (obs) obs.send({ t: 'brand', id: brand.id, logo: brand.logo, caption: brand.caption });
+    if (obs) obs.send({ t: 'brand', id: brand.id, logo: brand.logo, caption: brand.caption, accent: brand.accent || '', sponsor: brand.sponsor || '' });
   }
   function resizeLogo(file) {
     return new Promise((resolve, reject) => {
@@ -321,6 +327,8 @@
     try { setBrand({ logo: await resizeLogo(f) }); toast('LOGO UPDATED'); } catch (err) { toast('COULD NOT READ THAT IMAGE'); }
   };
   $('logoReset').onclick = () => { setBrand({ logo: null }); toast('DINKYKONG LOGO'); };
+  let spT; $('sponsorIn').oninput = () => { clearTimeout(spT); spT = setTimeout(() => setBrand({ sponsor: $('sponsorIn').value.trim().toUpperCase() }), 400); };
+  ['captionIn', 'sponsorIn'].forEach((id) => $(id).addEventListener('keydown', (e) => e.stopPropagation()));
   let capT; $('captionIn').oninput = () => { clearTimeout(capT); capT = setTimeout(() => setBrand({ caption: $('captionIn').value.trim().toUpperCase() }), 400); };
   renderBrand();
 

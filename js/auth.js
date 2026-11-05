@@ -206,13 +206,15 @@
     const live = !!(opts && opts.live);   // LIVE screen: start the organizer's LIVE pass instead of the solo pass
     const { data: until, error } = await c.rpc(live ? 'start_live_pass' : 'start_pass', { p_device: (opts && opts.device) || '' });
     const uid = who && who.user ? who.user.id : null;
-    const { data: prof } = uid ? await c.from('profiles').select('email,full_name,credits,pass_until').eq('id', uid).maybeSingle() : { data: null };
+    const { data: prof } = uid ? await c.from('profiles').select('email,full_name,credits,pass_until,live_until,trial_until').eq('id', uid).maybeSingle() : { data: null };
     if (error) {
       const m = String(error.message || '');
       const reason = m.includes('NO_LIVE_PASS') ? 'NO_LIVE_PASS' : m.includes('NO_CREDITS') ? 'NO_CREDITS' : m.includes('OTHER_DEVICE') ? 'OTHER_DEVICE' : (m.includes('JWT') || m.includes('NOT_SIGNED_IN')) ? 'NOT_SIGNED_IN' : 'ERROR';
       return { ok: false, reason, email: prof && prof.email, name: prof && prof.full_name };
     }
-    return { ok: true, until, email: prof && prof.email, name: prof && prof.full_name, credits: prof && prof.credits };
+    // Club branding on the scoreboard is part of the LIVE pass (and the new-account free trial)
+    const brandUntil = Math.max(prof && prof.live_until ? new Date(prof.live_until).getTime() : 0, prof && prof.trial_until ? new Date(prof.trial_until).getTime() : 0);
+    return { ok: true, until, email: prof && prof.email, name: prof && prof.full_name, credits: prof && prof.credits, brand: brandUntil > Date.now(), brandUntil: brandUntil || null };
   }
 
   // ---- Packages & payments ----

@@ -173,10 +173,11 @@
   function onLinkMessage(m) {
     if (leaving) return;
     if (m.t === 'rtt') { rtt = Math.max(1, Date.now() - m.at); if (connected) { $('statusTxt').textContent = 'Live · ' + code + ' · ' + rtt + ' ms'; $('status').classList.toggle('slow', rtt > 400); } return; }
-    if (m.t === 'authok' && m.silent) { authed = true; return; }
+    if (onClubMsg(m)) return;
+    if (m.t === 'authok' && m.silent) { authed = true; if (mode === 'solo') { clubOK = !AUTH || !!m.brand; renderClub(); } return; }
     if (m.t === 'authok' && mode === 'act') { authRetries = 0; authed = true; setGate(null); showActDone(m); buzz([40, 60, 40]); return; }
     if (m.t === 'authok' && mode === 'live') { authed = true; setGate(null); return; }
-    if (m.t === 'authok') { authRetries = 0; authed = true; setGate(null); PBAuth.refresh(); if (m.until) flash('Pass until ' + new Date(m.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); buzz([30, 40, 30]); }
+    if (m.t === 'authok') { authRetries = 0; authed = true; setGate(null); clubAuth(m); PBAuth.refresh(); if (m.until) flash('Pass until ' + new Date(m.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); buzz([30, 40, 30]); }
     else if (m.t === 'denied') {
       authed = false;
       if (m.reason === 'ERROR' && authRetries < 2) { authRetries++; setTimeout(() => sendAuth(true), 2500); return; }
@@ -466,7 +467,7 @@
     });
   }
   function paintSheet() {
-    document.querySelectorAll('.seg').forEach((seg) => {
+    document.querySelectorAll('.seg[data-k]').forEach((seg) => {
       const k = seg.dataset.k;
       seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(draft[k]) === b.dataset.v));
     });
@@ -495,7 +496,7 @@
     $('sheet').classList.remove('hidden');
   }
   function closeSheet() { $('sheet').classList.add('hidden'); }
-  document.querySelectorAll('.seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('.seg[data-k]').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.onclick = () => {
     const k = seg.dataset.k; const v = b.dataset.v;
     draft[k] = /^\d+$/.test(v) ? Number(v) : v; paintSheet();
     if (['winBy', 'timeouts', 'tags'].includes(k) && st && send({ a: 'rules', rules: { [k]: draft[k] } })) flash('Updated');
@@ -736,5 +737,70 @@
     $('joinTitle').textContent = 'LIVE closed'; $('joinHint').textContent = 'The LIVE screen is locked and ready for the next organizer. Scan a QR code to continue.';
     startScan();
   };
+
+  /* ---------- Club branding (LIVE pass): logo, colour and sponsor on the TV scoreboard ---------- */
+  let club = Object.assign({ on: 1, name: '', logo: '', accent: '', sponsor: '', sponsorLogo: '' }, store.get('aopb.clubBrand', {}) || {});
+  let clubOK = false;
+  const CLUB_COLORS = ['#5B2A9C', '#0A7BFF', '#00A86B', '#E0262F', '#FF8A00', '#FFE600', '#111827'];
+  $('clubSw').innerHTML = CLUB_COLORS.map((c) => '<button type="button" class="sw" data-c="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
+  function saveClub() { try { store.set('aopb.clubBrand', club); } catch (e) { flash('Image too large to keep'); } }
+  function renderClub() {
+    $('clubSec').classList.toggle('locked', AUTH && !clubOK);
+    $('clubLock').textContent = AUTH && !clubOK
+      ? 'Your club logo, colour and sponsor on the TV scoreboard. Part of the LIVE pass — also included in the first 7 days of a new account.'
+      : 'Shows on the TV scoreboard while you are signed in. Part of your LIVE pass.';
+    $('clubOn').querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(club.on ? 1 : 0) === b.dataset.v));
+    $('clubLogoBox').classList.toggle('has', !!club.logo); $('clubLogoPrev').src = club.logo || '';
+    $('clubSpBox').classList.toggle('has', !!club.sponsorLogo); $('clubSpPrev').src = club.sponsorLogo || '';
+    if (document.activeElement !== $('clubName')) $('clubName').value = club.name || '';
+    if (document.activeElement !== $('clubSponsor')) $('clubSponsor').value = club.sponsor || '';
+    $('clubSw').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.c === club.accent));
+  }
+  function sendClub(quiet) {
+    if (!link || !connected || mode !== 'solo') { if (!quiet) flash('Connect to a scoreboard first'); return; }
+    if (AUTH && !clubOK) { if (!quiet) flash('Club branding needs a LIVE pass'); return; }
+    sendClub.quiet = quiet;
+    link.sendMsg({ t: 'club', brand: club });
+  }
+  function shrink(file, maxW, maxH) {
+    return new Promise((resolve, reject) => {
+      const img = new Image(), url = URL.createObjectURL(file);
+      img.onload = () => {
+        const w0 = img.naturalWidth || maxW, h0 = img.naturalHeight || maxH, k = Math.min(1, maxW / w0, maxH / h0);
+        const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(w0 * k)); cv.height = Math.max(1, Math.round(h0 * k));
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
+        let d = cv.toDataURL('image/webp', .88); if (!d.startsWith('data:image/webp')) d = cv.toDataURL('image/png');
+        resolve(d);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad')); };
+      img.src = url;
+    });
+  }
+  function pickImg(input, key, w, h) {
+    input.onchange = async (e) => {
+      const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+      if (f.size > 8 * 1024 * 1024) { flash('Image too large (max 8 MB)'); return; }
+      try { club[key] = await shrink(f, w, h); saveClub(); renderClub(); } catch (err) { flash('Could not read that image'); }
+    };
+  }
+  pickImg($('clubLogoFile'), 'logo', 320, 320);
+  pickImg($('clubSpFile'), 'sponsorLogo', 480, 160);
+  $('clubLogoDel').onclick = () => { club.logo = ''; saveClub(); renderClub(); };
+  $('clubSpDel').onclick = () => { club.sponsorLogo = ''; saveClub(); renderClub(); };
+  $('clubName').oninput = () => { club.name = $('clubName').value.trim().toUpperCase(); saveClub(); };
+  $('clubSponsor').oninput = () => { club.sponsor = $('clubSponsor').value.trim().toUpperCase(); saveClub(); };
+  $('clubSw').querySelectorAll('button').forEach((b) => b.onclick = () => { club.accent = club.accent === b.dataset.c ? '' : b.dataset.c; saveClub(); renderClub(); });
+  $('clubOn').querySelectorAll('button').forEach((b) => b.onclick = () => { club.on = b.dataset.v === '1' ? 1 : 0; saveClub(); renderClub(); sendClub(); });
+  $('clubApply').onclick = () => sendClub();
+  function onClubMsg(m) {
+    if (m.t === 'clubok') { $('clubMsg').textContent = m.on ? 'Branding is on the scoreboard.' : 'Branding is off.'; if (!sendClub.quiet) { flash(m.on ? 'Branding updated' : 'Branding off'); buzz(20); } return true; }
+    if (m.t === 'clubdenied') { clubOK = false; renderClub(); if (!sendClub.quiet) flash('Club branding needs a LIVE pass'); return true; }
+    return false;
+  }
+  function clubAuth(m) {   // the scoreboard says whether this account's LIVE pass / trial covers branding
+    clubOK = !AUTH || !!m.brand; renderClub();
+    if (clubOK && club.on && (club.logo || club.name || club.sponsor || club.sponsorLogo || club.accent)) sendClub(true);
+  }
+  renderClub();
   setMode(mode);
 })();

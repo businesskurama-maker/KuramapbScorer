@@ -57,7 +57,7 @@
     el.style.setProperty('--n', Math.max(1, courts.length));
     el.style.setProperty('--maxw', ({ 1: '52%', 2: '74%', 3: '92%' })[courts.length] || '100%');
     el.innerHTML = '<div class="lt">' +
-      '<div class="lt-brand"><img src="' + esc(opts.logo || ((opts.base || '') + 'icons/dinkykong-logo.png')) + '" alt=""><span><b>' + esc(opts.caption || 'DINKYKONG') + '</b><i>LIVE</i></span></div>' +
+      '<div class="lt-brand"' + (opts.accent ? ' style="--acc:' + esc(opts.accent) + '"' : '') + '><img src="' + esc(opts.logo || ((opts.base || '') + 'icons/dinkykong-logo.png')) + '" alt=""><span><b>' + esc(opts.caption || 'DINKYKONG') + '</b><i>LIVE</i></span>' + (opts.sponsor ? '<small class="lt-sp">' + esc(opts.sponsor) + '</small>' : '') + '</div>' +
       '<div class="lt-courts">' + (courts.length ? courts.map((c) => card(c, flashing(el, c))).join('') : '<div class="lt-wait">Waiting for courts…</div>') + '</div></div>';
   }
 

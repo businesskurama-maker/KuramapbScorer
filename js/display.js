@@ -210,19 +210,25 @@
   async function onRemoteMessage(msg, reply, id) {
     if (msg.t === 'release') { restartBoard('exit'); return; }   // remote signed out / exited the scoreboard
     if (msg.t === 'rtt') { reply(msg); return; }   // connection-quality probe from the phone
+    if (msg.t === 'club') {   // club logo / colour / sponsor from the signed-in phone (LIVE pass or free trial)
+      if (!clubAllowed() || (AUTH && !verified.has(id))) { reply({ t: 'clubdenied' }); return; }
+      clubBrand = msg.brand && msg.brand.on ? cleanClub(msg.brand) : null;
+      if (clubBrand) store.set('aopb.clubBrand', clubBrand); else store.del('aopb.clubBrand');
+      applyClub(); reply({ t: 'clubok', on: !!clubBrand }); return;
+    }
     if (msg.t !== 'auth') return;
-    if (!AUTH) { verified.add(id); reply({ t: 'authok', free: true }); return; }
+    if (!AUTH) { verified.add(id); reply({ t: 'authok', free: true, brand: true }); return; }
     setPairMsg('Checking account…');
     let res;
     try { res = await PBAuth.verifyToken(msg.token, { device: msg.device }); }
     catch (e) { res = { ok: false, reason: 'ERROR' }; }
     if (msg.silent) {   // periodic re-check: keep playing quietly, or end the pass if the owner undid the approval
       if (res.ok) {
-        if (res.until) { license = { until: res.until, name: res.name || '', email: res.email || '' }; store.set('aopb.license', license); renderLicense(); }
-        reply({ t: 'authok', silent: true, until: res.until });
+        if (res.until) { license = { until: res.until, name: res.name || '', email: res.email || '', brand: !!res.brand }; store.set('aopb.license', license); renderLicense(); }
+        reply({ t: 'authok', silent: true, until: res.until, brand: !!res.brand });
       } else if (res.reason === 'NO_CREDITS') {
         verified.delete(id);
-        if (!verified.size) { license = null; store.del('aopb.license'); renderLicense(); }
+        if (!verified.size) { license = null; clearClub(); store.del('aopb.license'); renderLicense(); }
         reply({ t: 'denied', reason: res.reason, email: res.email });
         showDenied('Pass ended', 'The scoring time on ' + (res.email || 'this account') + ' was changed by the owner. Support DinkyKong on your phone to keep playing.');
       }
@@ -230,8 +236,8 @@
     }
     if (res.ok) {
       verified.add(id);
-      if (res.until) { license = { until: res.until, name: res.name || '', email: res.email || '' }; store.set('aopb.license', license); }
-      reply({ t: 'authok', until: license && license.until, name: res.name, credits: res.credits });
+      if (res.until) { license = { until: res.until, name: res.name || '', email: res.email || '', brand: !!res.brand }; store.set('aopb.license', license); }
+      reply({ t: 'authok', until: license && license.until, name: res.name, credits: res.credits, brand: !!res.brand });
       $('deniedOverlay').classList.add('hidden');
       setPairMsg('');
       showPair(false);
@@ -263,7 +269,7 @@
     const nm = (license && (license.name || license.email)) || 'the current player';
     if (!window.confirm('Connect a new user? ' + nm + ' will be signed out of this scoreboard and the score resets. Their pass time stays on their account.')) return;
     try { if (link) link.broadcastMsg({ t: 'reset' }); } catch (e) {}
-    store.del('aopb.license'); license = null; verified.clear();
+    store.del('aopb.license'); license = null; clearClub(); verified.clear();
     state = E.newMatch(); save(); render();
     renderLicense();
     setTimeout(() => { rotateCode(); setPairMsg('Ready for a new user · scan to sign in'); }, 400);   // let remotes get the reset first
@@ -271,7 +277,27 @@
   $('puNew').onclick = newUser;
   $('userChip').onclick = newUser;
 
+  /* Club branding: logo + name top left, club colour, sponsor banner at the bottom. Part of the LIVE pass. */
+  let clubBrand = store.get('aopb.clubBrand', null);
+  function clubAllowed() { return !AUTH || !!(licensed() && license && license.brand); }
+  const okImg = (u) => typeof u === 'string' && /^data:image\/(png|jpeg|webp|svg\+xml);base64,/.test(u) && u.length < 400000 ? u : '';
+  function cleanClub(b) {
+    return { on: true, name: String(b.name || '').slice(0, 24), logo: okImg(b.logo), accent: /^#[0-9a-f]{6}$/i.test(b.accent || '') ? b.accent : '',
+      sponsor: String(b.sponsor || '').slice(0, 40), sponsorLogo: okImg(b.sponsorLogo) };
+  }
+  function clearClub() { clubBrand = null; try { store.del('aopb.clubBrand'); } catch (e) {} if (typeof applyClub === 'function') applyClub(); }
+  function applyClub() {
+    const b = clubAllowed() ? clubBrand : null, d = $('display'); if (!d || !$('clubId')) return;
+    d.classList.toggle('club', !!b);
+    if (b && b.accent) d.style.setProperty('--club', b.accent); else d.style.removeProperty('--club');
+    $('clubId').classList.toggle('hidden', !(b && (b.logo || b.name)));
+    $('clubLogo').src = (b && b.logo) || ''; $('clubNameTxt').textContent = (b && b.name) || '';
+    const sp = !!(b && (b.sponsor || b.sponsorLogo));
+    $('sponsor').classList.toggle('hidden', !sp);
+    $('sponsorImg').src = (b && b.sponsorLogo) || ''; $('sponsorTxt').textContent = (b && b.sponsor) || '';
+  }
   function renderLicense() {
+    applyClub();
     const el = $('passChip'); if (!el) return;
     if (!AUTH) { el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
@@ -287,7 +313,7 @@
   // Pass expiry: lock the board and ask remotes to sign in again (another credit is used).
   setInterval(() => {
     if (AUTH && license && !licensed()) {
-      license = null; store.del('aopb.license'); verified.clear();
+      license = null; clearClub(); store.del('aopb.license'); verified.clear();
       if (link) link.broadcastMsg({ t: 'reauth' });
       showPair(true); setPairMsg('Pass ended · scan to continue');
     }
@@ -384,7 +410,7 @@
   function restartBoard(reason) {
     if (restarting) return; restarting = true;
     try { if (link) link.broadcastMsg({ t: 'reset' }); } catch (e) {}
-    store.del('aopb.license'); license = null; verified.clear();
+    store.del('aopb.license'); license = null; clearClub(); verified.clear();
     store.set('aopb.state', E.newMatch());
     store.set('aopb.code', PBLink.makeCode());
     $('byeTitle').textContent = reason === 'idle' ? 'Scoreboard is free' : 'Thanks for playing!';

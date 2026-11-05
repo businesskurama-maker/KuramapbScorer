@@ -71,12 +71,12 @@
     if (m.brand && m.brand !== brand.id && relay) relay.send({ t: 'brand?' });   // logo changed → fetch it once
     board(m.on ? m.tour : null);
     if (!m.on) { strip.classList.add('off'); say('LIVE pass not active on the LIVE screen'); return; }
-    say(''); PBStrip.render(strip, m.courts || [], { logo: brand.logo, caption: m.caption != null ? m.caption : brand.caption }); strip.classList.remove('off');
+    say(''); PBStrip.render(strip, m.courts || [], { logo: brand.logo, caption: m.caption != null ? m.caption : brand.caption, accent: m.accent != null ? m.accent : brand.accent, sponsor: m.sponsor != null ? m.sponsor : brand.sponsor }); strip.classList.remove('off');
   }
   window.__obsShow = show;   // test hook
   PBAuth.relay('dk-obs-' + key, (m) => {
     if (m && m.t === 'obs') show(m);
-    if (m && m.t === 'brand') { brand.id = m.id; brand.logo = m.logo || null; brand.caption = m.caption || ''; if (lastMsg) show(lastMsg); }
+    if (m && m.t === 'brand') { brand.id = m.id; brand.logo = m.logo || null; brand.caption = m.caption || ''; brand.accent = m.accent || ''; brand.sponsor = m.sponsor || ''; if (lastMsg) show(lastMsg); }
   }).then((r) => {
     relay = r; if (!r) { say('Sign-in service not configured'); return; }
     r.send({ t: 'sync' });
