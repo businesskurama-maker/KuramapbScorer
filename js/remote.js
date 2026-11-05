@@ -371,7 +371,17 @@
     $('rallyBtns').classList.toggle('pfs', !!st.pfs);
     // Play for serve stays available until the first point of the match (also after an undo back to 0-0)
     const fresh = !st.pfs && st.gameNo === 1 && st.score[0] + st.score[1] === 0 && !st.matchOver && !st.gameOver;
-    $('pfsBtn').classList.toggle('hidden', !fresh || !!gateState);
+    $('startRow').classList.toggle('hidden', !fresh || !!gateState);
+    // Timeouts
+    const to = st.timeout && st.timeout.until > Date.now() ? st.timeout : null;
+    const left2 = st.swapped ? 1 : 0;
+    [['toA', left2], ['toB', 1 - left2]].forEach(([id, t]) => { const b = $(id); b.dataset.team = t; b.firstChild.textContent = s.names[t] + ' '; b.querySelector('small').textContent = (st.timeouts ? st.timeouts[t] : 0) + ' left'; b.disabled = !st.timeouts || st.timeouts[t] < 1 || !!to; b.style.borderColor = s.colors[t]; });
+    $('toRun').classList.toggle('hidden', !to); $('toPick').classList.toggle('hidden', !!to);
+    if (to) $('toRunTxt').textContent = 'Timeout · ' + s.names[to.team];
+    if (to && $('toPanel').classList.contains('hidden')) $('toPanel').classList.remove('hidden');
+    renderTimeoutClock();
+    $('toBtn').disabled = !connected || !authed || st.gameOver || st.matchOver || !s.timeouts;
+    lastTagSetting = s.tags === 1;
 
     [[$('rL'), left], [$('rR'), right]].forEach(([b, t]) => {
       b.style.setProperty('--c', s.colors[t]);
@@ -401,12 +411,28 @@
   /* ---------- Controls ---------- */
   ['rL', 'rR'].forEach((id) => {
     const b = $(id);
-    b.addEventListener('click', () => { if (!b.disabled) send({ a: 'rally', team: Number(b.dataset.team) }); });
+    b.addEventListener('click', () => { if (!b.disabled && send({ a: 'rally', team: Number(b.dataset.team) })) showTags(); });
   });
   $('undoBtn').onclick = () => send({ a: 'undo' });
   $('swapBtn').onclick = () => send({ a: 'swap' });
   $('serveBtn').onclick = () => { if (st) send({ a: 'server', team: 1 - st.serving }); };
   $('pfsBtn').onclick = () => { if (send({ a: 'pfs' })) flash('Play for serve'); };
+  $('tossBtn').onclick = () => { if (send({ a: 'toss' })) { flash('Coin toss…'); buzz([20, 40, 20]); } };
+  // Timeouts
+  $('toBtn').onclick = () => { $('toPanel').classList.toggle('hidden'); };
+  ['toA', 'toB'].forEach((id) => $(id).onclick = () => { if (send({ a: 'timeout', team: Number($(id).dataset.team) })) flash('Timeout'); });
+  $('toEnd').onclick = () => { if (send({ a: 'timein' })) { flash('Time in'); $('toPanel').classList.add('hidden'); } };
+  function renderTimeoutClock() {
+    const to = st && st.timeout && st.timeout.until > Date.now() ? st.timeout : null;
+    if (!to) return;
+    const sec = Math.max(0, Math.ceil((to.until - Date.now()) / 1000));
+    $('toLeft').textContent = Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+  }
+  setInterval(renderTimeoutClock, 500);
+  // Rally reasons (optional): a quick row of chips after each rally
+  var lastTagSetting = false, tagT = 0;
+  function showTags() { if (!lastTagSetting) return; $('tagRow').classList.remove('hidden'); clearTimeout(tagT); tagT = setTimeout(() => $('tagRow').classList.add('hidden'), 3500); }
+  $('tagRow').querySelectorAll('button').forEach((b) => b.onclick = () => { if (send({ a: 'tag', tag: b.dataset.tag })) { flash(b.textContent); $('tagRow').classList.add('hidden'); } });
   $('nextBtn').onclick = () => { if (!st) return; if (st.matchOver) openSheet(); else send({ a: 'next' }); };
   // After the winner is announced: rematch with the same teams, or leave
   $('endNew').onclick = () => { if (st && send({ a: 'new', settings: st.settings })) { flash('New match'); buzz && buzz(30); } };
@@ -457,6 +483,7 @@
   document.querySelectorAll('.seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.onclick = () => {
     const k = seg.dataset.k; const v = b.dataset.v;
     draft[k] = /^\d+$/.test(v) ? Number(v) : v; paintSheet();
+    if (['winBy', 'timeouts', 'tags'].includes(k) && st && send({ a: 'rules', rules: { [k]: draft[k] } })) flash('Updated');
     if (k === 'voice' && st && send({ a: 'voice', on: draft.voice === 1 })) flash(draft.voice ? 'Voice calls on' : 'Voice calls off');
     if (k === 'courtChange' && st && send({ a: 'midswap', on: draft.courtChange === 1 })) flash(draft.courtChange ? 'Court change at half: on' : 'No court change at half');
   }));

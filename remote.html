@@ -84,10 +84,18 @@
       <p class="note support">Help: <a href="mailto:dinkykongsupport@gmail.com">dinkykongsupport@gmail.com</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p>
     </div>
 
-    <button class="pfs-btn hidden" id="pfsBtn"><span class="pfs-ico">🏓</span><span><b>Play for serve</b><small>Rally first — the winner serves</small></span></button>
+    <div class="start-row hidden" id="startRow">
+      <button class="pfs-btn" id="pfsBtn"><span class="pfs-ico">🏓</span><span><b>Play for serve</b><small>Rally first — the winner serves</small></span></button>
+      <button class="pfs-btn toss-btn" id="tossBtn"><span class="pfs-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5h5M9.5 13.5h5"/></svg></span><span><b>Coin toss</b><small>Random first server</small></span></button>
+    </div>
     <div class="rally-btns" id="rallyBtns">
       <button class="rally" id="rL"><span class="lbl">Rally won by</span><span class="mid"><span class="nm"></span><span class="who"></span></span><span class="what"></span></button>
       <button class="rally" id="rR"><span class="lbl">Rally won by</span><span class="mid"><span class="nm"></span><span class="who"></span></span><span class="what"></span></button>
+    </div>
+    <div class="tag-row hidden" id="tagRow" role="group" aria-label="Why did the rally end?"><span>Why?</span><button data-tag="winner">Winner</button><button data-tag="net">Net</button><button data-tag="out">Out</button><button data-tag="kitchen">Kitchen</button><button data-tag="error">Error</button></div>
+    <div class="to-panel hidden" id="toPanel">
+      <div class="to-run hidden" id="toRun"><b id="toRunTxt">Timeout</b><span id="toLeft">1:00</span><button class="mini-btn" id="toEnd">Time in</button></div>
+      <div class="to-pick" id="toPick"><button class="big-btn ghost" id="toA">Team A<small></small></button><button class="big-btn ghost" id="toB">Team B<small></small></button></div>
     </div>
     <button class="next-game hidden" id="nextBtn">Start game 2</button>
     <div class="end-btns hidden" id="endBtns">
@@ -99,6 +107,7 @@
       <button class="tool" id="undoBtn"><span id="iUndo"></span>Undo</button>
       <button class="tool" id="swapBtn"><span id="iSwap"></span>Switch</button>
       <button class="tool" id="serveBtn"><span id="iServe"></span>Server</button>
+      <button class="tool" id="toBtn"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></span>Timeout</button>
       <button class="tool" id="setBtn"><span id="iGear"></span>Match</button>
     </div>
   </section>
@@ -149,6 +158,9 @@
       <div class="field"><span class="eyebrow">Points to win · win by 2</span><div class="seg" data-k="target"><button data-v="11">11</button><button data-v="15">15</button><button data-v="21">21</button></div></div>
       <div class="field"><span class="eyebrow">Games</span><div class="seg" data-k="bestOf"><button data-v="1">1 game</button><button data-v="3">Best of 3</button><button data-v="5">Best of 5</button></div></div>
       <div class="field"><span class="eyebrow">First serve</span><div class="seg" data-k="firstServer"><button data-v="0" id="fs0">A</button><button data-v="1" id="fs1">B</button><button data-v="pfs">Play for serve</button></div></div>
+      <div class="field"><span class="eyebrow">Win by</span><div class="seg" data-k="winBy"><button data-v="2">2 points</button><button data-v="1">1 point</button></div></div>
+      <div class="field"><span class="eyebrow">Timeouts per game</span><div class="seg" data-k="timeouts"><button data-v="0">None</button><button data-v="1">1</button><button data-v="2">2</button></div></div>
+      <div class="field"><span class="eyebrow">Rally reasons <small class="eb-note">(for stats)</small></span><div class="seg" data-k="tags"><button data-v="0">Off</button><button data-v="1">On</button></div></div>
       <div class="field voice-field"><span class="eyebrow">Voice score calls <small class="eb-note">(loud voice on the scoreboard)</small></span><div class="seg" data-k="voice"><button data-v="1">On</button><button data-v="0">Off</button></div></div>
       <div class="field"><span class="eyebrow">Change court at half <small class="eb-note">(deciding game)</small></span><div class="seg" data-k="courtChange"><button data-v="0">No change</button><button data-v="1">Change court</button></div></div>
       <button class="big-btn wide" id="newMatch">Start new match</button>

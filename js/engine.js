@@ -15,7 +15,9 @@
     firstServer: 0,         // 0 | 1 | 'pfs' (play for serve: a rally decides who serves first)
     autoSwap: true,         // switch ends between games
     voice: 1,               // 1: loud voice calls the score and the winner on the scoreboard · 0: silent
-    courtChange: 0          // 0 (default): no court change at half · 1: change court at the half of the deciding game
+    courtChange: 0,         // 0 (default): no court change at half · 1: change court at the half of the deciding game
+    timeouts: 2,            // timeouts per team per game (0 | 1 | 2)
+    tags: 0                 // 1: the remote asks why each rally ended (winner / net / out / kitchen / error) for stats
   };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -52,6 +54,10 @@
       matchOver: false,
       winner: null,
       rallies: 0,
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),   // match id (history de-dupe)
+      rallyLog: [],           // [winner, servingTeam, gameNo, secondsSinceStart, tag?] per rally, for stats
+      timeouts: [s.timeouts == null ? 2 : s.timeouts, s.timeouts == null ? 2 : s.timeouts],
+      timeout: null,          // { team, until } while a timeout runs
       lastEvent: null,        // {type:'point'|'sideout'|'second'|'game'|'match'|'swap', team, t}
       startedAt: Date.now(),
       updatedAt: Date.now(),
@@ -134,6 +140,9 @@
     if (st.playForServe) return serveRally(st, team);
     pushHistory(st);
     st.rallies += 1;
+    st.timeout = null;
+    if (!st.rallyLog) st.rallyLog = [];
+    st.rallyLog.push([team, st.serving, st.gameNo, Math.round((Date.now() - (st.startedAt || Date.now())) / 1000)]);
     const s = st.settings;
     const dbl = s.mode === 'doubles';
     const switchSides = (t) => { if (dbl) st.pos[t] = [st.pos[t][1], st.pos[t][0]]; };
@@ -176,6 +185,7 @@
     st.serverNum = st.settings.mode === 'doubles' && st.settings.scoring === 'sideout' ? 2 : 1;
     st.pos = [[0, 1], [0, 1]];
     st.serverPlayer = 0;
+    st.timeouts = [st.settings.timeouts, st.settings.timeouts]; st.timeout = null;
     if (st.settings.autoSwap) st.swapped = !st.swapped;
     st.lastEvent = { type: 'newgame', team: null, t: Date.now() };
     st.updatedAt = Date.now();
@@ -239,6 +249,60 @@
     return st;
   }
 
+  // Timeouts: each team has settings.timeouts per game; a timeout runs 60 s (the scoreboard counts it down)
+  function callTimeout(st, team) {
+    if (st.gameOver || st.matchOver || !st.timeouts || st.timeouts[team] < 1 || (st.timeout && st.timeout.until > Date.now())) return st;
+    pushHistory(st);
+    st.timeouts[team] -= 1;
+    st.timeout = { team, until: Date.now() + 60000 };
+    st.lastEvent = { type: 'timeout', team, t: Date.now() };
+    st.updatedAt = Date.now();
+    return st;
+  }
+  function endTimeout(st) {
+    if (!st.timeout) return st;
+    st.timeout = null;
+    st.lastEvent = { type: 'timein', team: null, t: Date.now() };
+    st.updatedAt = Date.now();
+    return st;
+  }
+  // Coin toss: a random team serves first (only before the first point)
+  function toss(st) {
+    if (st.gameNo > 1 || st.score[0] + st.score[1] > 0 || st.gameOver || st.matchOver) return st;
+    const team = (crypto && crypto.getRandomValues ? crypto.getRandomValues(new Uint8Array(1))[0] : Math.random() * 256) % 2;
+    setServer(st, team);
+    st.playForServe = false; st.serveDecided = true;
+    st.lastEvent = { type: 'toss', team, t: Date.now() };
+    return st;
+  }
+  // Why the last rally ended (optional, for stats)
+  function tagRally(st, tag) {
+    const r = st.rallyLog && st.rallyLog[st.rallyLog.length - 1];
+    if (r && ['winner', 'net', 'out', 'kitchen', 'error'].includes(tag)) { r[4] = tag; st.updatedAt = Date.now(); }
+    return st;
+  }
+
+  // Match stats from the rally log
+  function stats(st) {
+    const log = st.rallyLog || [], rally = st.settings.scoring === 'rally';
+    const t = () => ({ points: 0, servePts: 0, rallies: 0, recvRallies: 0, recvWon: 0, run: 0, tags: {} });
+    const T = [t(), t()]; let cur = -1, len = 0;
+    for (const r of log) {
+      const [w, srv] = r, scored = rally || w === srv;
+      T[w].rallies++;
+      const rcv = 1 - srv; T[rcv].recvRallies++; if (w === rcv) T[rcv].recvWon++;
+      if (r[4]) T[w].tags[r[4]] = (T[w].tags[r[4]] || 0) + 1;
+      if (scored) {
+        T[w].points++; if (w === srv) T[w].servePts++;
+        if (w === cur) len++; else { cur = w; len = 1; }
+        T[w].run = Math.max(T[w].run, len);
+      }
+    }
+    T.forEach((x) => { x.sideoutPct = x.recvRallies ? Math.round(100 * x.recvWon / x.recvRallies) : 0; });
+    const last = log[log.length - 1];
+    return { teams: T, rallies: log.length, minutes: last ? Math.max(1, Math.round(last[3] / 60)) : 0 };
+  }
+
   // Upgrade states saved by older versions.
   function ensure(st) {
     if (!st.pos) st.pos = [[0, 1], [0, 1]];
@@ -248,6 +312,12 @@
     if (st.playForServe == null) st.playForServe = false;
     if (st.settings.courtChange == null) st.settings.courtChange = 0;
     if (st.settings.voice == null) st.settings.voice = 1;
+    if (st.settings.timeouts == null) st.settings.timeouts = 2;
+    if (st.settings.tags == null) st.settings.tags = 0;
+    if (st.settings.winBy == null) st.settings.winBy = 2;
+    if (!st.id) st.id = (st.startedAt || Date.now()).toString(36) + 'x';
+    if (!st.rallyLog) st.rallyLog = [];
+    if (!st.timeouts) st.timeouts = [st.settings.timeouts, st.settings.timeouts];
     delete st.settings.midSwap;
     // Old default palette → new electric defaults
     const old = { '#d7f03c': '#39FF14', '#4fc3f7': '#00E5FF' };
@@ -273,6 +343,17 @@
       case 'partners': return partners(st, action.team === 1 ? 1 : 0);
       case 'pfs': return startPfs(st);
       case 'voice': st.settings.voice = action.on ? 1 : 0; return st;
+      case 'timeout': return callTimeout(st, action.team === 1 ? 1 : 0);
+      case 'timein': return endTimeout(st);
+      case 'toss': return toss(st);
+      case 'tag': return tagRally(st, action.tag);
+      case 'rules': {   // win-by / timeouts / rally reasons can change mid-match without a reset
+        const r = action.rules || {};
+        if (r.winBy === 1 || r.winBy === 2) st.settings.winBy = r.winBy;
+        if ([0, 1, 2].includes(r.timeouts)) { const d = r.timeouts - st.settings.timeouts; st.settings.timeouts = r.timeouts; st.timeouts = st.timeouts.map((x) => Math.max(0, Math.min(r.timeouts, x + d))); }
+        if (r.tags === 0 || r.tags === 1) st.settings.tags = r.tags;
+        return st;
+      }
       case 'midswap': st.settings.courtChange = action.on ? 1 : 0; return st;   // change court at half: on/off, no reset
       case 'new': return newMatch(Object.assign({}, st.settings, action.settings || {}, { players: cleanPlayers((action.settings || st.settings).players) }));
       default: return st;
@@ -310,7 +391,7 @@
     return p;
   }
 
-  const api = { DEFAULT_SETTINGS, ensure, playerName, newMatch, apply, callout, serveSide, publicState, isDecidingGame };
+  const api = { DEFAULT_SETTINGS, ensure, playerName, newMatch, apply, callout, serveSide, publicState, isDecidingGame, stats };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PBEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);

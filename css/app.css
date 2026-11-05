@@ -881,3 +881,36 @@ body.mode-live .voice-field, body.mode-act .voice-field { display: none; }   /* 
 @media (orientation: portrait) { .d-top { grid-template-columns: auto minmax(0, 1fr); } .d-meta { grid-column: 1 / -1; } }
 @media (max-width: 1500px) { .d-meta { letter-spacing: .12em; } }
 @media (max-width: 1200px) { .d-sound { font-size: 0 !important; padding: .4em .8em !important; } .d-sound::before { font-size: clamp(10px, min(1.7vh, 1.05vw), 16px); letter-spacing: .08em; } }
+
+/* Start options, timeouts, rally reasons */
+.start-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.start-row.hidden { display: none; }
+.start-row .pfs-btn { padding: 10px 12px; gap: 8px; }
+.toss-btn { border-color: rgba(0,229,255,.5) !important; background: rgba(0,229,255,.07) !important; }
+.toss-btn b { color: #00E5FF !important; }
+.toss-btn .pfs-ico svg { width: 26px; height: 26px; color: #00E5FF; }
+.r-row { grid-template-columns: repeat(5, 1fr); }
+.tool svg { width: 22px; height: 22px; }
+.to-panel { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 16px; border: 1px solid rgba(255,214,0,.45); background: rgba(255,214,0,.06); }
+.to-panel.hidden, .to-run.hidden, .to-pick.hidden, .tag-row.hidden { display: none; }
+.to-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.to-pick .big-btn { padding: 12px 6px; font-size: 13px; letter-spacing: .06em; display: flex; flex-direction: column; align-items: center; gap: 2px; border-width: 2px; }
+.to-pick .big-btn small { font-size: 11px; color: var(--ink-2); letter-spacing: .1em; }
+.to-pick .big-btn:disabled { opacity: .4; }
+.to-run { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; }
+.to-run b { color: #ffd84d; letter-spacing: .1em; text-transform: uppercase; font-size: 14px; }
+.to-run span { font-family: var(--font-score); font-size: 34px; color: #ffd84d; }
+.tag-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tag-row span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.tag-row button { flex: 1; min-width: 56px; padding: 9px 4px; border-radius: 999px; border: 1px solid var(--line); background: var(--navy-800); color: var(--ink); font: 700 12px/1 var(--font-ui, system-ui); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+@media (max-width: 380px) { .tool { font-size: 8.5px; } }
+
+/* Timeout countdown on the scoreboard */
+.to-overlay { position: absolute; inset: 0; z-index: 7; display: grid; place-content: center; justify-items: center; gap: 1.6vh; text-align: center;
+  background: rgba(3,6,16,.72); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-radius: 2vh; }
+.to-overlay.hidden { display: none; }
+.to-lbl { font-family: var(--font-score); font-size: min(9vh, 9vw); letter-spacing: .14em; color: #FFE600; text-shadow: 0 0 3vh rgba(255,230,0,.5); line-height: 1; }
+.to-overlay b { font-family: var(--font-score); font-weight: 400; font-size: min(7vh, 7vw); letter-spacing: .06em; line-height: 1; }
+.to-clock { font-family: var(--font-score); font-size: min(30vh, 26vw); line-height: .9; color: #fff; text-shadow: 0 0 4vh rgba(255,255,255,.35); font-variant-numeric: tabular-nums; }
+.to-clock.low { color: #ff4d6a; text-shadow: 0 0 4vh rgba(255,77,106,.5); }
+.to-overlay small { font-size: min(2.2vh, 2.4vw); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }

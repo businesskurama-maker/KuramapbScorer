@@ -3,7 +3,7 @@
  * Custom team names are spoken with the device's own speech voice (a female one when available). */
 (function () {
   const BASE = 'sounds/voice/';
-  const KEYS = Array.from({ length: 31 }, (_, n) => 'n' + n).concat(['g2', 'g3', 'g4', 'g5', 'sideout', 'second', 'game', 'match', 'winsgame', 'winsmatch', 'teama', 'teamb', 'servesfirst', 'pfs', 'wg_a', 'wg_b', 'wm_a', 'wm_b', 'sf_a', 'sf_b']);
+  const KEYS = Array.from({ length: 31 }, (_, n) => 'n' + n).concat(['g2', 'g3', 'g4', 'g5', 'sideout', 'second', 'game', 'match', 'winsgame', 'winsmatch', 'teama', 'teamb', 'servesfirst', 'pfs', 'wg_a', 'wg_b', 'wm_a', 'wm_b', 'sf_a', 'sf_b', 'timeout', 'timein', 'toss', 'to_a', 'to_b']);
   // Whole score calls ("four, two, one") are single natural recordings, fetched the first time they are needed
   const pending = {};
   function fetchClip(k) {

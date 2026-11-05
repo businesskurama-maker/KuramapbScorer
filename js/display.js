@@ -95,7 +95,7 @@
     const ev = state.lastEvent;
     if (ev && ev.t !== lastEventT) {
       lastEventT = ev.t;
-      const map = { pfs: (s.names[ev.team] || '') + ' SERVES FIRST', partners: 'POSITIONS FIXED', sideout: 'SIDE OUT', second: '2ND SERVER', swap: ev.auto ? 'SWITCH ENDS' : 'SIDES SWAPPED', undo: 'UNDO', newgame: 'GAME ' + state.gameNo };
+      const map = { toss: (s.names[ev.team] || '') + ' WINS THE TOSS', timein: 'TIME IN', pfs: (s.names[ev.team] || '') + ' SERVES FIRST', partners: 'POSITIONS FIXED', sideout: 'SIDE OUT', second: '2ND SERVER', swap: ev.auto ? 'SWITCH ENDS' : 'SIDES SWAPPED', undo: 'UNDO', newgame: 'GAME ' + state.gameNo };
       const scoreEv = { point: 1, sideout: 1, second: 1, undo: 1, server: 1 }[ev.type] && !state.gameOver && !state.matchOver && !state.playForServe;
       if (scoreEv) callFlash(map[ev.type] || '', ev.team != null ? s.colors[ev.team] : null);   // big score call so small screens can read it
       else if (map[ev.type]) toast(map[ev.type], ev.team != null ? s.colors[ev.team] : null);
@@ -120,6 +120,9 @@
       case 'sideout': items = ['sideout', gap].concat(call); break;
       case 'second': items = ['second', gap].concat(call); break;
       case 'pfsStart': items = ['pfs']; break;
+      case 'toss': items = ['toss', gap].concat(isDef(ev.team) ? [ev.team ? 'sf_b' : 'sf_a'] : [nameItem(ev.team), 'servesfirst'], [gap], call); break;
+      case 'timeout': items = isDef(ev.team) ? [ev.team ? 'to_b' : 'to_a'] : ['timeout', nameItem(ev.team)]; break;
+      case 'timein': items = ['timein', gap].concat(call); break;
       case 'pfs': items = (isDef(ev.team) ? [ev.team ? 'sf_b' : 'sf_a'] : [nameItem(ev.team), 'servesfirst']).concat([gap], call); break;
       case 'newgame': items = [state.gameNo >= 2 && state.gameNo <= 5 ? 'g' + state.gameNo : 'game', gap].concat(call); break;
       case 'game': case 'match': {
@@ -143,6 +146,21 @@
     if (window.PBVoice) { PBVoice.load(); PBVoice.onState(updateSoundChip); }
     setInterval(updateSoundChip, 2000); setTimeout(updateSoundChip, 300);
   }
+
+  // Timeout: a big 60-second countdown on the board; time-in happens by itself when it runs out
+  function renderTimeout() {
+    const o = $('toOverlay'); if (!o) return;
+    const to = state.timeout && !state.gameOver && !state.matchOver ? state.timeout : null;
+    o.classList.toggle('hidden', !to);
+    if (!to) return;
+    const s = state.settings, sec = Math.max(0, Math.ceil((to.until - Date.now()) / 1000));
+    $('toName').textContent = s.names[to.team]; $('toName').style.color = s.colors[to.team];
+    $('toClock').textContent = Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+    $('toClock').classList.toggle('low', sec <= 10);
+    $('toCounts').textContent = 'Timeouts left · ' + s.names[0] + ' ' + state.timeouts[0] + ' · ' + s.names[1] + ' ' + state.timeouts[1];
+    if (sec <= 0 && !renderTimeout.ending) { renderTimeout.ending = true; setTimeout(() => { renderTimeout.ending = false; if (state.timeout && state.timeout.until <= Date.now()) act({ a: 'timein' }); }, 300); }
+  }
+  setInterval(renderTimeout, 250);
 
   // Big score call (e.g. 4-2-1) shown for a few seconds after every rally, readable on laptops and tablets
   let flashT;
