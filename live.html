@@ -116,7 +116,7 @@
         <div class="seg tsu-seg" id="tourFormat"><button data-v="rr">Round robin</button><button data-v="se">Single elim</button><button data-v="de">Double elim</button><button data-v="pools">Pools + playoffs</button></div>
         <p class="tsu-fmt" id="tourFmtInfo"></p>
         <div class="tsu-row"><div><span class="eyebrow">Courts</span><div class="seg" id="tourCourts"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button><button data-v="6">6</button></div></div><div><span class="eyebrow" title="Teams change ends at the half of the deciding game">Court change at half</span><div class="seg" id="tourCC"><button data-v="0">No change</button><button data-v="1">Change court</button></div></div></div>
-        <div class="tsu-row"><div><span class="eyebrow" title="Voice + big banner when a match is sent to a court">Court calls</span><div class="seg" id="tourAnn"><button data-v="1">Announce</button><button data-v="0">Silent</button></div></div><div class="tsu-ann-hint">Calls the teams and players to their court: “Court 2 · Net Ninjas, Juan and Maria, versus…”</div></div>
+        <div class="tsu-row"><div><span class="eyebrow" title="Voice + big banner when a match is sent to a court">Court calls</span><div class="seg" id="tourAnn"><button data-v="1">Announce</button><button data-v="0">Silent</button></div></div><div class="tsu-ann-hint">Calls each team to its court: “Net Ninjas, Juan and Maria, court 2.”</div></div>
         <p class="tsu-fmt tsu-voice" id="tourVoiceInfo">1 court: the loud voice calls every score and the winner on this screen.</p>
         <div class="tsu-row" id="poolRow"><div><span class="eyebrow">Pools</span><div class="seg" id="tourPools"><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button></div></div><div><span class="eyebrow">Advance per pool</span><div class="seg" id="tourAdv"><button data-v="1">1</button><button data-v="2">2</button></div></div></div>
         <div class="tsu-row"><div><span class="eyebrow">Game to</span><div class="seg" id="tourTarget"><button data-v="11">11</button><button data-v="15">15</button><button data-v="21">21</button></div></div><div><span class="eyebrow">Best of</span><div class="seg" id="tourBestOf"><button data-v="1">1</button><button data-v="3">3</button></div></div></div>
@@ -139,12 +139,12 @@
 
 <div class="callban" id="callBan" aria-live="assertive">
   <div class="cb-card">
-    <div class="cb-head"><span class="cb-court" id="cbCourt">COURT 1</span><span class="cb-label" id="cbLabel"></span></div>
     <div class="cb-teams">
-      <div class="cb-t" id="cbT0"><b></b><small></small></div>
+      <div class="cb-t" id="cbT0"><b></b><small></small><em></em></div>
       <span class="cb-vs">VS</span>
-      <div class="cb-t" id="cbT1"><b></b><small></small></div>
+      <div class="cb-t" id="cbT1"><b></b><small></small><em></em></div>
     </div>
+    <div class="cb-head"><span class="cb-court" id="cbCourt">COURT 1</span><span class="cb-label" id="cbLabel"></span></div>
     <div class="cb-go" id="cbGo">PLEASE PROCEED TO COURT 1</div>
   </div>
 </div>

@@ -378,3 +378,7 @@
 .cb-go { font-size: min(3.2vh, 2.4vw); font-weight: 700; letter-spacing: .24em; color: #fff; padding: 1.2vh 2.4vw; border-radius: 999px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); }
 @media (orientation: portrait) { .cb-teams { grid-template-columns: 1fr; } .cb-vs { text-align: center; } .cb-t b { font-size: 8vw; } .cb-t small { font-size: 3.4vw; } .cb-go { font-size: 3vw; } .cb-court { font-size: 14vw; } }
 .tsu-ann-hint { font-size: clamp(11px, 1.4dvh, 13px); color: var(--ink-3); line-height: 1.4; align-self: end; padding-bottom: 4px; }
+.cb-t em { font-style: normal; font-family: var(--font-score); font-size: min(4.6vh, 3vw); letter-spacing: .1em; color: #141100; background: #FFE600; border-radius: 999px; padding: .3em .9em .15em; margin-top: .4vh; }
+.cb-card { gap: 2.6vh; }
+.cb-court { display: none; }
+.cb-label { font-size: min(3vh, 2.2vw); }

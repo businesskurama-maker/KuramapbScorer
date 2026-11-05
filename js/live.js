@@ -434,7 +434,7 @@
   const announceOn = () => store.get('aopb.liveAnnounce', 1) !== 0;
   function voiceOn() { return !!(window.PBVoice && tour && cfg.n === 1 && liveOK() && liveVoice()); }
 
-  /* Court calls: "Court 2. Net Ninjas, Juan and Maria, versus Dink Dynasty, Ana and Ben. Please proceed to court 2."
+  /* Court calls: "Net Ninjas, Juan and Maria, court 2. Dink Dynasty, Ana and Ben, court 2."
      A big banner on the LIVE screen plus the voice, one call at a time. */
   const callQ = []; let calling = false;
   const isDefName = (n) => !n || /^TEAM [AB]$/i.test(n) || n === 'TBD';
@@ -453,10 +453,12 @@
     $('cbCourt').textContent = 'COURT ' + k.court; $('cbLabel').textContent = k.label;
     [0, 1].forEach((i) => { const el = $('cbT' + i); el.style.setProperty('--c', k.colors[i]); el.querySelector('b').textContent = k.names[i]; el.querySelector('small').textContent = k.pl[i].join(' · '); });
     $('cbGo').textContent = 'PLEASE PROCEED TO COURT ' + k.court;
+    [0, 1].forEach((i) => { $('cbT' + i).querySelector('em').textContent = 'COURT ' + k.court; });
     b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
     const t0 = Date.now();
     if (window.PBVoice && liveVoice()) {
-      const txt = 'Court ' + k.court + '. ' + sayTeam(k.names[0], k.pl[0]) + ', versus, ' + sayTeam(k.names[1], k.pl[1]) + '. Please proceed to court ' + k.court + '.';
+      // <team name>, <members>, court <n>, for each team
+      const txt = sayTeam(k.names[0], k.pl[0]) + ', court ' + k.court + '. ' + sayTeam(k.names[1], k.pl[1]) + ', court ' + k.court + '.';
       try { await PBVoice.say([{ chime: true }, { tts: txt, rate: .88 }]); } catch (e) {}
     }
     await new Promise((r) => setTimeout(r, Math.max(1800, 7000 - (Date.now() - t0))));
