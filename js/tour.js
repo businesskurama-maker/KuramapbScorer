@@ -14,8 +14,8 @@
 
   function create(opts) {
     seq = 0;
-    const names = (opts.teams || []).map((n) => String(n).trim()).filter(Boolean);
-    const teams = names.map((name, i) => ({ id: 't' + (i + 1), name }));
+    const parsed = (opts.teams || []).map((n) => typeof n === 'string' ? parseTeam(n) : { name: String(n.name || '').trim(), players: (n.players || []).filter(Boolean) }).filter((x) => x.name);
+    const teams = parsed.map((x, i) => ({ id: 't' + (i + 1), name: x.name, players: x.players.slice(0, 2) }));
     const t = { v: 1, name: opts.name || 'Tournament', format: opts.format || 'rr', pools: opts.pools || 2, advance: opts.advance || 2,
       rules: Object.assign({ target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles' }, opts.rules || {}), teams, matches: [], createdAt: Date.now() };
     const ids = teams.map((x) => x.id);
@@ -127,6 +127,14 @@
     return out;
   }
 
+  // "NET NINJAS: Juan, Maria"  ·  "NET NINJAS - Juan / Maria"  ·  "NET NINJAS"
+  function parseTeam(line) {
+    const str = String(line || '').trim(); const m = str.match(/^(.*?)\s*(?::|\s[-–]\s)\s*(.*)$/);
+    const name = (m ? m[1] : str).trim().slice(0, 18);
+    const players = m ? m[2].split(/\s*(?:,|\/|&|\band\b)\s*/i).map((x) => x.trim().slice(0, 16)).filter(Boolean).slice(0, 2) : [];
+    return { name, players };
+  }
+  const teamPlayers = (t, id) => ((t.teams.find((x) => x.id === id) || {}).players || []);
   const teamName = (t, id) => id === BYE ? 'BYE' : ((t.teams.find((x) => x.id === id) || {}).name || 'TBD');
   const winnerOf = (m) => m.result ? (m.result.winner === 'a' ? m.a : m.b) : null;
   const loserOf = (m) => m.result ? (m.result.winner === 'a' ? m.b : m.a) : null;
@@ -200,7 +208,7 @@
   const done = (t) => t.matches.length > 0 && t.matches.every((m) => m.status === 'done');
   const progress = (t) => ({ done: t.matches.filter((m) => m.status === 'done' && !(m.result && m.result.bye)).length, total: t.matches.filter((m) => !(m.result && m.result.bye)).length });
 
-  const api = { create, resolve, record, standings, nextFor, champion, done, progress, teamName, winnerOf, BYE };
+  const api = { parseTeam, teamPlayers, create, resolve, record, standings, nextFor, champion, done, progress, teamName, winnerOf, BYE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PBTour = api;
 })(typeof window !== 'undefined' ? window : globalThis);

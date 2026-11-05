@@ -18,6 +18,7 @@
 
   let link = null;
   let lastEventT = state.lastEvent ? state.lastEvent.t : 0;
+  let lastMatchId = state.id;
   let prevScore = state.score.slice();
   let everPaired = false;
 
@@ -91,6 +92,8 @@
       end.classList.remove('hidden');
     } else end.classList.add('hidden');
 
+    // New match with named teams: announce who is playing ("Net Ninjas, Juan and Maria, versus …")
+    if (state.id !== lastMatchId) { lastMatchId = state.id; announceTeams(); }
     // Event toast
     const ev = state.lastEvent;
     if (ev && ev.t !== lastEventT) {
@@ -109,6 +112,15 @@
     const n = String(state.settings.names[t] || '').trim();
     if (!n || /^TEAM [AB]$/i.test(n)) return t ? 'teamb' : 'teama';
     return { tts: n.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()), fallback: t ? 'teamb' : 'teama' };
+  }
+  function announceTeams() {
+    if (!window.PBVoice || state.settings.voice === 0 || state.matchOver) return;
+    const s = state.settings, tc = (n) => String(n || '').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+    const def = (n) => !String(n || '').trim() || /^TEAM [AB]$/i.test(String(n).trim());
+    const pl = (t) => ((s.players || [])[t] || []).filter(Boolean).slice(0, s.mode === 'singles' ? 1 : 2);
+    if (def(s.names[0]) && def(s.names[1]) && !pl(0).length && !pl(1).length) return;
+    const side = (t) => (def(s.names[t]) ? (t ? 'Team B' : 'Team A') : tc(s.names[t])) + (pl(t).length ? ', ' + pl(t).map(tc).join(' and ') : '');
+    PBVoice.say([{ chime: true }, { tts: side(0) + ', versus, ' + side(1) + '. Let\'s play!', rate: .9 }]);
   }
   function announce(ev) {
     if (!window.PBVoice || state.settings.voice === 0) return;

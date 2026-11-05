@@ -45,6 +45,7 @@
         if (action && action.a === 'rally' && action.side != null) action = { a: 'rally', team: c.state.swapped ? 1 - action.side : action.side };
         if (action && action.a === 'new' && tour) { tourNext(c); return; }   // tournament court: "New match" loads the next scheduled match
         c.state = E.apply(c.state, action);
+        if (action && action.a === 'new') setTimeout(() => courtCall(c, ''), 50);   // announce who plays on this court
         save(); renderCourt(c); pushObs(); tourWatch(c);
         c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, court: c.i + 1 }));
       },
@@ -371,17 +372,16 @@
     save(); renderCourt(c); pushObs();
     if (c.link) c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, court: c.i + 1 }));
   }
-  function matchSettings(names) {
-    const r = tour.rules;
-    return { names, target: r.target, bestOf: r.bestOf, scoring: r.scoring, mode: r.mode, courtChange: r.courtChange ? 1 : 0, players: [['', ''], ['', '']], firstServer: 0 };
+  function matchSettings(names, players) {
+    const r = tour.rules, pl = (players || [[], []]).map((p) => [p[0] || '', p[1] || '']);
+    return { names, target: r.target, bestOf: r.bestOf, scoring: r.scoring, mode: r.mode, courtChange: r.courtChange ? 1 : 0, players: pl, firstServer: 0 };
   }
   function loadMatch(c, m) {
     clearTimeout(c.tourT); c.tourT = null;
     m.status = 'live'; m.court = c.i; c.tm = m.id;
-    c.state = E.newMatch(matchSettings([tname(m.a), tname(m.b)]));
+    c.state = E.newMatch(matchSettings([tname(m.a), tname(m.b)], [T.teamPlayers(tour, m.a), T.teamPlayers(tour, m.b)]));
     saveTour(); courtPush(c);
-    toast('COURT ' + (c.i + 1) + ' · ' + tname(m.a) + ' VS ' + tname(m.b));
-    if (c.i === 0 && voiceOn()) PBVoice.say([{ tts: 'Next match. ' + titleCase(tname(m.a)) + ' versus ' + titleCase(tname(m.b)) + '.' }]);
+    courtCall(c, m.label);
   }
   function finishCourt(c) {   // put the court's finished match into the tournament (or back in the queue if it wasn't finished)
     clearTimeout(c.tourT); c.tourT = null;
@@ -430,7 +430,38 @@
     pools: 'Teams are split into pools that play round robin. The top teams of each pool go on to a knockout playoff.'
   };
   const titleCase = (n) => String(n || '').toLowerCase().replace(/\b\w/g, (x) => x.toUpperCase());
-  function voiceOn() { return !!(window.PBVoice && tour && cfg.n === 1 && liveOK() && tour.voice !== 0); }
+  const liveVoice = () => store.get('aopb.liveVoice', 1) !== 0;   // master switch for the LIVE screen's voice
+  const announceOn = () => store.get('aopb.liveAnnounce', 1) !== 0;
+  function voiceOn() { return !!(window.PBVoice && tour && cfg.n === 1 && liveOK() && liveVoice()); }
+
+  /* Court calls: "Court 2. Net Ninjas, Juan and Maria, versus Dink Dynasty, Ana and Ben. Please proceed to court 2."
+     A big banner on the LIVE screen plus the voice, one call at a time. */
+  const callQ = []; let calling = false;
+  const isDefName = (n) => !n || /^TEAM [AB]$/i.test(n) || n === 'TBD';
+  const sayTeam = (name, pl) => titleCase(name) + (pl.length ? ', ' + pl.map(titleCase).join(' and ') : '');
+  function courtCall(c, label) {
+    const s = c.state.settings, names = s.names.slice(0, 2), pl = (s.players || [[], []]).map((p) => (p || []).filter(Boolean));
+    if (isDefName(names[0]) && isDefName(names[1])) return;
+    if (!announceOn() || !liveOK()) { toast('COURT ' + (c.i + 1) + ' · ' + names[0] + ' VS ' + names[1]); return; }
+    callQ.push({ court: c.i + 1, names, pl, colors: s.colors.slice(0, 2), label: label || '' });
+    if (!calling) nextCall();
+  }
+  async function nextCall() {
+    const k = callQ.shift(); if (!k) { calling = false; $('callBan').classList.remove('show'); return; }
+    calling = true;
+    const b = $('callBan');
+    $('cbCourt').textContent = 'COURT ' + k.court; $('cbLabel').textContent = k.label;
+    [0, 1].forEach((i) => { const el = $('cbT' + i); el.style.setProperty('--c', k.colors[i]); el.querySelector('b').textContent = k.names[i]; el.querySelector('small').textContent = k.pl[i].join(' · '); });
+    $('cbGo').textContent = 'PLEASE PROCEED TO COURT ' + k.court;
+    b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+    const t0 = Date.now();
+    if (window.PBVoice && liveVoice()) {
+      const txt = 'Court ' + k.court + '. ' + sayTeam(k.names[0], k.pl[0]) + ', versus, ' + sayTeam(k.names[1], k.pl[1]) + '. Please proceed to court ' + k.court + '.';
+      try { await PBVoice.say([{ chime: true }, { tts: txt, rate: .88 }]); } catch (e) {}
+    }
+    await new Promise((r) => setTimeout(r, Math.max(1800, 7000 - (Date.now() - t0))));
+    nextCall();
+  }
   function liveAnnounce(st, ev) {
     const V = PBVoice, call = V.callItems(E.callout(st)), gap = { gap: .3 }, s = st.settings;
     const isDef = (t) => /^TEAM [AB]$/i.test(String(s.names[t] || '').trim()) || !String(s.names[t] || '').trim() || s.names[t] === 'TBD';
@@ -457,18 +488,17 @@
     if (items && items.length) V.say(items);
   }
   function renderVoice() {
-    const show = !!(window.PBVoice && tour && cfg.n === 1);
+    const show = !!(window.PBVoice && ((tour && cfg.n === 1) || announceOn()));
     $('lvVoice').classList.toggle('hidden', !show);
     if (!show) return;
-    const on = tour.voice !== 0, ready = PBVoice.ready();
+    const on = liveVoice(), ready = PBVoice.ready();
     $('lvVoiceTxt').textContent = !on ? 'Voice off' : ready ? 'Voice on' : 'Tap for voice';
     $('lvVoice').classList.toggle('ok', on && ready);
     $('lvVoice').classList.toggle('need', on && !ready);
   }
   $('lvVoice').onclick = () => {
-    if (!tour) return;
-    if (tour.voice !== 0 && !PBVoice.ready()) { PBVoice.unlock(); setTimeout(() => { PBVoice.say(PBVoice.callItems(E.callout(courts[0].state))); renderVoice(); }, 150); return; }
-    tour.voice = tour.voice === 0 ? 1 : 0; saveTour(); renderVoice(); toast(tour.voice ? 'VOICE ON' : 'VOICE OFF');
+    if (liveVoice() && !PBVoice.ready()) { PBVoice.unlock(); setTimeout(() => { PBVoice.say([{ chime: true }]); renderVoice(); }, 150); return; }
+    store.set('aopb.liveVoice', liveVoice() ? 0 : 1); renderVoice(); toast(liveVoice() ? 'VOICE ON' : 'VOICE OFF');
   };
   if (window.PBVoice) { PBVoice.onState(renderVoice); setInterval(renderVoice, 2000); }
 
@@ -498,9 +528,10 @@
   }
 
   /* Setup */
-  const draft = Object.assign({ format: 'rr', pools: 2, advance: 2, target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles', courtChange: 0, name: '', teams: '' }, store.get('aopb.tourDraft', {}) || {});
+  const draft = Object.assign({ format: 'rr', pools: 2, advance: 2, target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles', courtChange: 0, announce: 1, name: '', teams: '' }, store.get('aopb.tourDraft', {}) || {});
+  draft.announce = store.get('aopb.liveAnnounce', 1) !== 0 ? 1 : 0;
   draft.courts = cfg.n;
-  const SEGS = { tourFormat: 'format', tourPools: 'pools', tourAdv: 'advance', tourTarget: 'target', tourBestOf: 'bestOf', tourScoring: 'scoring', tourMode: 'mode', tourCourts: 'courts', tourCC: 'courtChange' };
+  const SEGS = { tourFormat: 'format', tourPools: 'pools', tourAdv: 'advance', tourTarget: 'target', tourBestOf: 'bestOf', tourScoring: 'scoring', tourMode: 'mode', tourCourts: 'courts', tourCC: 'courtChange', tourAnn: 'announce' };
   Object.keys(SEGS).forEach((id) => $(id).querySelectorAll('button').forEach((b) => b.onclick = () => {
     const k = SEGS[id]; draft[k] = /^\d+$/.test(b.dataset.v) ? Number(b.dataset.v) : b.dataset.v; renderSetup();
   }));
@@ -512,7 +543,9 @@
     o = o || draft;
     if (!['rr', 'se', 'de', 'pools'].includes(o.format)) return 'Pick a format.';
     if (list.length < 2) return 'Add at least 2 teams.';
-    const dup = list.find((x, i) => list.indexOf(x) !== i); if (dup) return dup + ' is listed twice.';
+    const nm = list.map((x) => T.parseTeam(x).name);
+    if (nm.some((x) => !x)) return 'Each line needs a team name (e.g. NET NINJAS: JUAN, MARIA).';
+    const dup = nm.find((x, i) => nm.indexOf(x) !== i); if (dup) return dup + ' is listed twice.';
     if (o.format === 'pools' && list.length < o.pools * 2) return o.pools + ' pools need at least ' + o.pools * 2 + ' teams.';
     if (list.length > 64) return 'Up to 64 teams.';
     return '';
@@ -522,6 +555,7 @@
     $('poolRow').classList.toggle('hidden', draft.format !== 'pools');
     $('tourFmtInfo').textContent = FORMAT_INFO[draft.format] || '';
     $('tourVoiceInfo').classList.toggle('hidden', draft.courts !== 1);
+    store.set('aopb.liveAnnounce', draft.announce ? 1 : 0); if (typeof renderVoice === 'function') renderVoice();
     if (!keepText) { $('tourTeams').value = draft.teams || ''; $('tourName').value = draft.name || ''; }
     store.set('aopb.tourDraft', draft);
     const list = teamList(), bad = setupProblem(list);
@@ -545,17 +579,19 @@
   };
   // Start a tournament from the TV form or from the organizer's phone
   function startTour(o) {
-    const list = (o.teams || []).map((x) => String(x).trim().toUpperCase().slice(0, 18)).filter(Boolean);
+    const list = (o.teams || []).map((x) => String(x).trim().toUpperCase().slice(0, 64)).filter(Boolean);
+    if (o.announce != null) store.set('aopb.liveAnnounce', o.announce ? 1 : 0);
     const bad = setupProblem(list, o); if (bad) return bad;
     const n6 = Math.min(6, Math.max(1, Number(o.courts) || cfg.n));
-    Object.assign(draft, { name: o.name || '', format: o.format, pools: Number(o.pools) || 2, advance: Number(o.advance) || 2, target: Number(o.target) || 11, bestOf: Number(o.bestOf) || 1, scoring: o.scoring === 'rally' ? 'rally' : 'sideout', mode: o.mode === 'singles' ? 'singles' : 'doubles', courtChange: o.courtChange ? 1 : 0, courts: n6, teams: list.join('\n') });
+    Object.assign(draft, { name: o.name || '', format: o.format, pools: Number(o.pools) || 2, advance: Number(o.advance) || 2, target: Number(o.target) || 11, bestOf: Number(o.bestOf) || 1, scoring: o.scoring === 'rally' ? 'rally' : 'sideout', mode: o.mode === 'singles' ? 'singles' : 'doubles', courtChange: o.courtChange ? 1 : 0, announce: o.announce == null ? draft.announce : (o.announce ? 1 : 0), courts: n6, teams: list.join('\n') });
     store.set('aopb.tourDraft', draft);
     if (n6 !== cfg.n) setCourts(n6);
     tour = T.create({ name: (draft.name || 'TOURNAMENT').trim().toUpperCase().slice(0, 28), format: draft.format, teams: list, pools: draft.pools, advance: draft.advance,
       rules: { target: draft.target, bestOf: draft.bestOf, scoring: draft.scoring, mode: draft.mode, courtChange: draft.courtChange } });
     saveTour(); tab = draft.format === 'rr' || draft.format === 'pools' ? 'matches' : 'bracket';
     const n = fillCourts();
-    renderTour(); toast(n ? 'TOURNAMENT ON · ' + n + ' COURT' + (n > 1 ? 'S' : '') + ' LOADED' : 'TOURNAMENT ON · COURTS LOAD WHEN FREE');
+    renderTour(); if (!calling) toast(n ? 'TOURNAMENT ON · ' + n + ' COURT' + (n > 1 ? 'S' : '') + ' LOADED' : 'TOURNAMENT ON · COURTS LOAD WHEN FREE');
+    if (calling) $('tourOverlay').classList.add('hidden');   // show the court calls straight away
     phoneTour();
     return '';
   }

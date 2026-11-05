@@ -55,12 +55,14 @@
     return vs.find((v) => FEMALE.test(v.name) && !/male(?!.*female)/i.test(v.name.replace(/female/i, ''))) || vs.find((v) => FEMALE.test(v.name)) || vs[0] || null;
   }
   if (window.speechSynthesis) { try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => {}; } catch (e) {} }
-  function speakTTS(text) {
+  let it_rate = 0;
+  function speakTTS(text, rate) {
+    it_rate = rate || 0;
     return new Promise((resolve) => {
       if (!window.speechSynthesis) return resolve(false);
       try {
         const u = new SpeechSynthesisUtterance(text); const v = pickVoice();
-        if (v) u.voice = v; u.lang = (v && v.lang) || 'en-US'; u.rate = .9; u.pitch = 1.05; u.volume = 1;
+        if (v) u.voice = v; u.lang = (v && v.lang) || 'en-US'; u.rate = it_rate || .9; u.pitch = 1.05; u.volume = 1;
         let done = false; const fin = (ok) => { if (!done) { done = true; resolve(ok); } };
         u.onend = () => fin(true); u.onerror = () => fin(false);
         speechSynthesis.speak(u); setTimeout(() => fin(true), 400 + text.length * 120);
@@ -82,14 +84,25 @@
         const src = ctx.createBufferSource(); src.buffer = b; src.connect(out); src.start(t); active.push(src);
         t += b.duration + .12;
       } else if (it.gap) t += it.gap;
+      else if (it.chime) {   // two-tone "ding-dong" before an announcement
+        t = Math.max(t, ctx.currentTime + .03);
+        [[1046.5, 0], [784, .32]].forEach(([f, d]) => {
+          const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f;
+          g.gain.setValueAtTime(0, t + d); g.gain.linearRampToValueAtTime(.5, t + d + .02); g.gain.exponentialRampToValueAtTime(.001, t + d + .9);
+          o.connect(g); g.connect(out); o.start(t + d); o.stop(t + d + 1); active.push(o);
+        });
+        t += 1.25;
+      }
       else if (it.tts) {
         await sleep((t - ctx.currentTime) * 1000); if (my !== gen) return;
-        const ok = await speakTTS(it.tts);
+        const ok = await speakTTS(it.tts, it.rate);
         if (my !== gen) return;
         t = ctx.currentTime + .05;
         if (!ok && it.fallback && bufs[it.fallback]) { const src = ctx.createBufferSource(); src.buffer = bufs[it.fallback]; src.connect(out); src.start(t); active.push(src); t += bufs[it.fallback].duration + .05; }
       }
     }
+    await sleep((t - ctx.currentTime) * 1000);   // resolves when everything has been spoken
+    return my === gen;
   }
   const num = (n) => 'n' + Math.max(0, Math.min(30, n | 0));
   // "4-2-1" -> one natural clip; scores past 21 fall back to single numbers

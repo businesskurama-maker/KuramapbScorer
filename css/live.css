@@ -361,3 +361,20 @@
 .trb-tree .trb-m.trb-bye { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px; border-style: dashed; border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.02); box-shadow: none; font-size: 12px; font-weight: 700; letter-spacing: .03em; color: var(--ink-2); }
 .trb-bye span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trb-bye i { font-style: normal; font-size: 10px; letter-spacing: .16em; color: var(--ink-3); }
+/* Court call banner: who plays on which court */
+.callban { position: fixed; inset: 0; z-index: 36; display: grid; place-items: center; padding: 4vh 4vw; background: rgba(3,5,14,.72); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); opacity: 0; pointer-events: none; transition: opacity .35s ease; }
+.callban.show { opacity: 1; }
+.cb-card { width: min(1400px, 92vw); border-radius: 3vh; border: 2px solid rgba(255,230,0,.6); background: linear-gradient(180deg, #0d1230, #070a1a); box-shadow: 0 0 60px rgba(255,230,0,.18), 0 30px 80px rgba(0,0,0,.6); padding: 4vh 4vw; display: flex; flex-direction: column; align-items: center; gap: 3vh; transform: scale(.92); transition: transform .45s cubic-bezier(.2,1.4,.4,1); }
+.callban.show .cb-card { transform: none; }
+.cb-head { display: flex; align-items: baseline; gap: 2vw; }
+.cb-court { font-family: var(--font-score); font-size: min(16vh, 11vw); line-height: .9; color: #FFE600; letter-spacing: .06em; text-shadow: 0 0 30px rgba(255,230,0,.5); }
+.cb-label { font-size: min(2.6vh, 2vw); font-weight: 700; letter-spacing: .2em; color: #9aa3c7; }
+.cb-label:empty { display: none; }
+.cb-teams { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 3vw; }
+.cb-t { --c: #39FF14; display: flex; flex-direction: column; align-items: center; gap: 1.2vh; text-align: center; min-width: 0; padding: 2.4vh 1.6vw; border-radius: 2vh; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 8%, transparent); }
+.cb-t b { font-family: var(--font-score); font-weight: 400; font-size: min(8.4vh, 4.6vw); line-height: 1; letter-spacing: .04em; color: var(--c); max-width: 100%; }
+.cb-t small { font-size: min(3.4vh, 2.4vw); font-weight: 700; letter-spacing: .1em; color: #fff; min-height: 1.2em; }
+.cb-vs { font-family: var(--font-score); font-size: min(7vh, 4.4vw); color: #fff; opacity: .7; }
+.cb-go { font-size: min(3.2vh, 2.4vw); font-weight: 700; letter-spacing: .24em; color: #fff; padding: 1.2vh 2.4vw; border-radius: 999px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); }
+@media (orientation: portrait) { .cb-teams { grid-template-columns: 1fr; } .cb-vs { text-align: center; } .cb-t b { font-size: 8vw; } .cb-t small { font-size: 3.4vw; } .cb-go { font-size: 3vw; } .cb-court { font-size: 14vw; } }
+.tsu-ann-hint { font-size: clamp(11px, 1.4dvh, 13px); color: var(--ink-3); line-height: 1.4; align-self: end; padding-bottom: 4px; }

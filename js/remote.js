@@ -812,7 +812,7 @@
     de: 'Lose twice to be out. Losers-bracket winner meets the winners-bracket champion in the grand final.',
     pools: 'Pools play round robin; the top teams of each pool go on to a knockout playoff.'
   };
-  const ptDraft = Object.assign({ format: 'rr', courts: 2, pools: 2, advance: 2, target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles', courtChange: 0, name: '', teams: '' }, store.get('aopb.tourPhone', {}) || {});
+  const ptDraft = Object.assign({ format: 'rr', courts: 2, pools: 2, advance: 2, target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles', courtChange: 0, announce: 1, name: '', teams: '' }, store.get('aopb.tourPhone', {}) || {});
   let ptState = null;
   const ptList = () => $('ptTeams').value.split('\n').map((x) => x.trim().toUpperCase()).filter(Boolean);
   const ptEsc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -820,7 +820,9 @@
   function ptCountText(list) {
     const n = list.length;
     if (n < 2) return 'Add at least 2 teams.';
-    const dup = list.find((x, i) => list.indexOf(x) !== i); if (dup) return dup + ' is listed twice.';
+    const nm = list.map((x) => x.split(/\s*(?::|\s[-–]\s)/)[0].trim());
+    if (nm.some((x) => !x)) return 'Each line needs a team name.';
+    const dup = nm.find((x, i) => nm.indexOf(x) !== i); if (dup) return dup + ' is listed twice.';
     if (ptDraft.format === 'pools' && n < ptDraft.pools * 2) return ptDraft.pools + ' pools need at least ' + ptDraft.pools * 2 + ' teams.';
     const m = ptDraft.format === 'rr' ? n * (n - 1) / 2 : ptDraft.format === 'se' ? n - 1 : ptDraft.format === 'de' ? (2 * n - 2) + '–' + (2 * n - 1) : null;
     return n + ' teams' + (m != null ? ' · ' + m + ' matches' : '') + ' · ' + ptDraft.courts + ' court' + (ptDraft.courts > 1 ? 's' : '') + (ptDraft.courts === 1 ? ' · voice calls on' : '');
@@ -832,9 +834,9 @@
     const list = ptList(), txt = ptCountText(list);
     $('ptCount').textContent = txt; $('ptCount').classList.toggle('bad', !/teams ·/.test(txt));
     $('ptStart').disabled = !/teams ·/.test(txt);
-    const have = new Set(list);
+    const have = new Set(list.map((x) => x.split(/\s*(?::|\s[-–]\s)/)[0].trim()));
     $('ptSaved').innerHTML = savedTeams().filter((x) => !have.has(String(x.name).toUpperCase())).slice(0, 16)
-      .map((x) => '<button class="pt-chip" data-n="' + ptEsc(String(x.name).toUpperCase()) + '">+ ' + ptEsc(x.name) + '</button>').join('');
+      .map((x) => { const pl = (x.players || []).filter(Boolean); const line = String(x.name).toUpperCase() + (pl.length ? ': ' + pl.join(', ').toUpperCase() : ''); return '<button class="pt-chip" data-n="' + ptEsc(line) + '">+ ' + ptEsc(x.name) + '</button>'; }).join('');
   }
   document.querySelectorAll('.pt-seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.onclick = () => {
     ptDraft[seg.dataset.tk] = /^\d+$/.test(b.dataset.v) ? Number(b.dataset.v) : b.dataset.v; ptSave(); ptRenderSetup(); buzz(10);
