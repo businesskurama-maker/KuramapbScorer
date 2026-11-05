@@ -934,3 +934,4 @@ body.mode-live .voice-field, body.mode-act .voice-field { display: none; }   /* 
 .hist-acts { display: flex; flex-direction: column; gap: 8px; align-items: stretch; margin-top: 8px; }
 .hist-acts .mini-btn { align-self: center; color: #ff8a9b; border-color: rgba(255,77,106,.4); }
 #histDetail.hidden, #histList.hidden { display: none; }
+.r-status.ok.slow .dot { background: #ffb547; box-shadow: 0 0 8px #ffb547; }

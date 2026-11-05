@@ -39,6 +39,15 @@
 
   /* ---------- Status ---------- */
   let downSince = Date.now(), wasLive = false, kickT = null;
+  /* Reliability: connection quality (round-trip time) and taps kept while reconnecting */
+  var rtt = 0, queue = [];
+  setInterval(() => { if (link && connected) { try { link.sendMsg({ t: 'rtt', at: Date.now() }); } catch (e) {} } }, 5000);
+  function flushQueue() {
+    if (!queue.length || !link) return;
+    const q = queue.splice(0); let sent = 0;
+    for (const a of q) { if (link.send(a)) sent++; else { queue.unshift(...q.slice(sent)); break; } }
+    if (sent) flash(sent + ' saved tap' + (sent > 1 ? 's' : '') + ' sent');
+  }
   function setStatus(s) {
     if (leaving) return;
     // LIVE court: if the referee loses the court, they must scan the QR or enter the code again
@@ -52,9 +61,9 @@
     const el = $('status'), txt = $('statusTxt');
     el.classList.remove('ok', 'bad');
     connected = s === 'connected';
-    const labels = { connected: 'Live · ' + code, connecting: 'Connecting…', lost: 'Reconnecting…', nodisplay: 'Screen not found', nolib: 'Offline' };
+    const labels = { connected: 'Live · ' + code + (rtt ? ' · ' + rtt + ' ms' : ''), connecting: 'Connecting…', lost: 'Reconnecting…', nodisplay: 'Screen not found', nolib: 'Offline' };
     txt.textContent = labels[s] || s;
-    if (s === 'connected') el.classList.add('ok');
+    if (s === 'connected') { el.classList.add('ok'); el.classList.toggle('slow', rtt > 400); flushQueue(); }
     if (s === 'nodisplay' || s === 'nolib') el.classList.add('bad');
     renderCtrl();
   }
@@ -163,6 +172,7 @@
 
   function onLinkMessage(m) {
     if (leaving) return;
+    if (m.t === 'rtt') { rtt = Math.max(1, Date.now() - m.at); if (connected) { $('statusTxt').textContent = 'Live · ' + code + ' · ' + rtt + ' ms'; $('status').classList.toggle('slow', rtt > 400); } return; }
     if (m.t === 'authok' && m.silent) { authed = true; return; }
     if (m.t === 'authok' && mode === 'act') { authRetries = 0; authed = true; setGate(null); showActDone(m); buzz([40, 60, 40]); return; }
     if (m.t === 'authok' && mode === 'live') { authed = true; setGate(null); return; }
@@ -337,7 +347,11 @@
 
   function send(action) {
     if (!authed) { if (AUTH) sendAuth(true); flash(PBAuth.user ? 'Waiting for approval' : 'Sign in first'); return false; }
-    if (!link || !link.send(action)) { flash('Not connected'); buzz([20, 40, 20]); return false; }
+    if (!link || !link.send(action)) {
+      // Lost the screen for a moment: keep score taps and send them in order when it is back
+      if (link && ['rally', 'undo', 'tag'].includes(action.a) && queue.length < 12) { queue.push(action); flash('Saved · sends when reconnected'); buzz([20, 40, 20]); return true; }
+      flash('Not connected'); buzz([20, 40, 20]); return false;
+    }
     buzz(); return true;
   }
 

@@ -48,6 +48,7 @@
         c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, court: c.i + 1 }));
       },
       onMessage: (msg, reply) => {
+        if (msg.t === 'rtt') { reply(msg); return; }
         if (msg.t === 'auth' || msg.t === 'recheck') {   // referees don't sign in: the organizer's LIVE pass covers this court
           if (liveOK()) reply({ t: 'authok', free: true, live: true, silent: true });
           else reply({ t: 'denied', reason: 'LIVE_ENDED' });

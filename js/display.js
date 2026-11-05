@@ -209,6 +209,7 @@
 
   async function onRemoteMessage(msg, reply, id) {
     if (msg.t === 'release') { restartBoard('exit'); return; }   // remote signed out / exited the scoreboard
+    if (msg.t === 'rtt') { reply(msg); return; }   // connection-quality probe from the phone
     if (msg.t !== 'auth') return;
     if (!AUTH) { verified.add(id); reply({ t: 'authok', free: true }); return; }
     setPairMsg('Checking account…');
@@ -507,6 +508,7 @@
   }
   renderLicense();
   render();
+  if (state && !state.matchOver && (state.score[0] + state.score[1] + state.games[0] + state.games[1] > 0 || state.gameNo > 1)) setTimeout(() => toast('MATCH RESTORED'), 5600);   // reload / crash: the match continues where it was
   drawQr();
   showPair(true);          // every refresh shows the pairing QR; it hides itself when a remote (re)connects
   keepAwake();
