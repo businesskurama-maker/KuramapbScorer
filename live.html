@@ -27,6 +27,7 @@
     <div class="lv-actions">
       <span class="chip hidden" id="livePass"><span class="dot"></span><span id="livePassTxt"></span></span>
       <button class="chip tour-chip" id="tourBtn" title="Tournament: teams, schedule, standings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg><span id="tourChipTxt">Tournament</span></button>
+      <button class="chip hidden lv-voice" id="lvVoice" title="Voice score calls (1-court tournament)">🔊 <span id="lvVoiceTxt">Voice on</span></button>
       <button class="chip" id="qrBtn" title="Show every court's QR code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>Court QR codes</button>
       <button class="chip obs-chip" id="obsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 15h20"/></svg>OBS lower third</button>
       <button class="icon-btn" id="fsBtn" title="Full screen" aria-label="Full screen"></button>
@@ -113,6 +114,9 @@
         <input class="text-in" id="tourName" maxlength="28" placeholder="CITY OPEN 2026">
         <span class="eyebrow">Format</span>
         <div class="seg tsu-seg" id="tourFormat"><button data-v="rr">Round robin</button><button data-v="se">Single elim</button><button data-v="de">Double elim</button><button data-v="pools">Pools + playoffs</button></div>
+        <p class="tsu-fmt" id="tourFmtInfo"></p>
+        <div class="tsu-row"><div><span class="eyebrow">Courts</span><div class="seg" id="tourCourts"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button><button data-v="6">6</button></div></div><div><span class="eyebrow">Change court at half <small>(deciding game)</small></span><div class="seg" id="tourCC"><button data-v="0">No change</button><button data-v="1">Change court</button></div></div></div>
+        <p class="tsu-fmt tsu-voice" id="tourVoiceInfo">1 court: the loud voice calls every score and the winner on this screen.</p>
         <div class="tsu-row" id="poolRow"><div><span class="eyebrow">Pools</span><div class="seg" id="tourPools"><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button></div></div><div><span class="eyebrow">Advance per pool</span><div class="seg" id="tourAdv"><button data-v="1">1</button><button data-v="2">2</button></div></div></div>
         <div class="tsu-row"><div><span class="eyebrow">Game to</span><div class="seg" id="tourTarget"><button data-v="11">11</button><button data-v="15">15</button><button data-v="21">21</button></div></div><div><span class="eyebrow">Best of</span><div class="seg" id="tourBestOf"><button data-v="1">1</button><button data-v="3">3</button></div></div></div>
         <div class="tsu-row"><div><span class="eyebrow">Scoring</span><div class="seg" id="tourScoring"><button data-v="sideout">Side-out</button><button data-v="rally">Rally</button></div></div><div><span class="eyebrow">Play</span><div class="seg" id="tourMode"><button data-v="doubles">Doubles</button><button data-v="singles">Singles</button></div></div></div>
@@ -141,6 +145,7 @@
 <script src="js/link.js"></script>
 <script src="js/strip.js"></script>
 <script src="js/tour.js"></script>
+<script src="js/voice.js"></script>
 <script src="js/live.js"></script>
 </body>
 </html>

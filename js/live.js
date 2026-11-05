@@ -112,6 +112,7 @@
     if (c.evT === undefined) c.evT = ev ? ev.t : 0;
     else if (ev && ev.t !== c.evT) {
       c.evT = ev.t;
+      if (c.i === 0 && voiceOn()) liveAnnounce(st, ev);
       const show = { point: 1, sideout: 1, second: 1, undo: 1, server: 1, pfs: 1, newgame: 1 }[ev.type] && !st.gameOver && !st.matchOver && !st.playForServe;
       if (show) {
         const f = el.querySelector('.lvc-flash'), lbl = { sideout: 'SIDE OUT', second: '2ND SERVER', pfs: (s.names[ev.team] || '') + ' SERVES', newgame: 'GAME ' + st.gameNo }[ev.type] || '';
@@ -158,9 +159,12 @@
     const n = Number(b.dataset.n); if (n === cfg.n) return;
     const losing = courts.slice(n).filter((c) => c.remotes > 0 || c.state.score[0] + c.state.score[1] > 0);
     if (losing.length && !confirm('Remove ' + losing.map((c) => 'Court ' + (c.i + 1)).join(', ') + '? Their referees will be disconnected and the score cleared.')) return;
-    courts.slice(n).forEach((c) => { cfg.courts[c.i] = null; tourRelease(c); });
-    cfg.n = n; cfg.courts = cfg.courts.slice(0, n); layout();
+    setCourts(n);
   });
+  function setCourts(n) {
+    courts.slice(n).forEach((c) => { cfg.courts[c.i] = null; tourRelease(c); });
+    cfg.n = n; cfg.courts = cfg.courts.slice(0, n); layout(); if (typeof renderVoice === 'function') renderVoice();
+  }
 
   /* ---------- Organizer activation (LIVE pass) ---------- */
   let actLink = null;
@@ -359,7 +363,7 @@
   }
   function matchSettings(names) {
     const r = tour.rules;
-    return { names, target: r.target, bestOf: r.bestOf, scoring: r.scoring, mode: r.mode, players: [['', ''], ['', '']], firstServer: 0 };
+    return { names, target: r.target, bestOf: r.bestOf, scoring: r.scoring, mode: r.mode, courtChange: r.courtChange ? 1 : 0, players: [['', ''], ['', '']], firstServer: 0 };
   }
   function loadMatch(c, m) {
     clearTimeout(c.tourT); c.tourT = null;
@@ -367,6 +371,7 @@
     c.state = E.newMatch(matchSettings([tname(m.a), tname(m.b)]));
     saveTour(); courtPush(c);
     toast('COURT ' + (c.i + 1) + ' · ' + tname(m.a) + ' VS ' + tname(m.b));
+    if (c.i === 0 && voiceOn()) PBVoice.say([{ tts: 'Next match. ' + titleCase(tname(m.a)) + ' versus ' + titleCase(tname(m.b)) + '.' }]);
   }
   function finishCourt(c) {   // put the court's finished match into the tournament (or back in the queue if it wasn't finished)
     clearTimeout(c.tourT); c.tourT = null;
@@ -407,7 +412,58 @@
     const ch = tour && T.champion(tour);
     if (ch && !tour.champAt) { tour.champAt = Date.now(); saveTour(); toast('CHAMPION · ' + tname(ch)); if ($('tourOverlay').classList.contains('hidden')) openTour('bracket'); }
   }
+  /* Voice: a 1-court tournament calls every score and the winner out loud, like the solo scoreboard */
+  const FORMAT_INFO = {
+    rr: 'Everyone plays everyone once. Most wins takes the title; ties go to point difference.',
+    se: 'Lose once and you are out. Winners move up the bracket to the final. Top seeds get a bye when the team count is uneven.',
+    de: 'Lose twice to be out. A first loss drops a team to the losers bracket; its winner meets the winners-bracket champion in the grand final.',
+    pools: 'Teams are split into pools that play round robin. The top teams of each pool go on to a knockout playoff.'
+  };
+  const titleCase = (n) => String(n || '').toLowerCase().replace(/\b\w/g, (x) => x.toUpperCase());
+  function voiceOn() { return !!(window.PBVoice && tour && cfg.n === 1 && liveOK() && tour.voice !== 0); }
+  function liveAnnounce(st, ev) {
+    const V = PBVoice, call = V.callItems(E.callout(st)), gap = { gap: .3 }, s = st.settings;
+    const isDef = (t) => /^TEAM [AB]$/i.test(String(s.names[t] || '').trim()) || !String(s.names[t] || '').trim() || s.names[t] === 'TBD';
+    const nameItem = (t) => isDef(t) ? (t ? 'teamb' : 'teama') : { tts: titleCase(s.names[t]), fallback: t ? 'teamb' : 'teama' };
+    let items = null;
+    switch (ev.type) {
+      case 'point': case 'undo': case 'server': items = st.gameOver || st.matchOver || st.playForServe ? null : call; break;
+      case 'sideout': items = ['sideout', gap].concat(call); break;
+      case 'second': items = ['second', gap].concat(call); break;
+      case 'pfsStart': items = ['pfs']; break;
+      case 'toss': items = ['toss', gap].concat(isDef(ev.team) ? [ev.team ? 'sf_b' : 'sf_a'] : [nameItem(ev.team), 'servesfirst'], [gap], call); break;
+      case 'timeout': items = isDef(ev.team) ? [ev.team ? 'to_b' : 'to_a'] : ['timeout', nameItem(ev.team)]; break;
+      case 'timein': items = ['timein', gap].concat(call); break;
+      case 'pfs': items = (isDef(ev.team) ? [ev.team ? 'sf_b' : 'sf_a'] : [nameItem(ev.team), 'servesfirst']).concat([gap], call); break;
+      case 'newgame': items = [st.gameNo >= 2 && st.gameNo <= 5 ? 'g' + st.gameNo : 'game', gap].concat(call); break;
+      case 'game': case 'match': {
+        const g = st.gameLog[st.gameLog.length - 1] || { a: 0, b: 0 };
+        const ws = ev.team ? g.b : g.a, ls = ev.team ? g.a : g.b;
+        const who = isDef(ev.team) ? [(ev.type === 'match' ? 'wm_' : 'wg_') + (ev.team ? 'b' : 'a')] : [nameItem(ev.team), ev.type === 'match' ? 'winsmatch' : 'winsgame'];
+        items = [ev.type === 'match' ? 'match' : 'game', gap].concat(who, [gap], V.callItems(ws + '-' + ls));
+        break;
+      }
+    }
+    if (items && items.length) V.say(items);
+  }
+  function renderVoice() {
+    const show = !!(window.PBVoice && tour && cfg.n === 1);
+    $('lvVoice').classList.toggle('hidden', !show);
+    if (!show) return;
+    const on = tour.voice !== 0, ready = PBVoice.ready();
+    $('lvVoiceTxt').textContent = !on ? 'Voice off' : ready ? 'Voice on' : 'Tap for voice';
+    $('lvVoice').classList.toggle('ok', on && ready);
+    $('lvVoice').classList.toggle('need', on && !ready);
+  }
+  $('lvVoice').onclick = () => {
+    if (!tour) return;
+    if (tour.voice !== 0 && !PBVoice.ready()) { PBVoice.unlock(); setTimeout(() => { PBVoice.say(PBVoice.callItems(E.callout(courts[0].state))); renderVoice(); }, 150); return; }
+    tour.voice = tour.voice === 0 ? 1 : 0; saveTour(); renderVoice(); toast(tour.voice ? 'VOICE ON' : 'VOICE OFF');
+  };
+  if (window.PBVoice) { PBVoice.onState(renderVoice); setInterval(renderVoice, 2000); }
+
   function renderTourChip() {
+    if (typeof renderVoice === 'function') renderVoice();
     const ch = tour && T.champion(tour), p = tour && T.progress(tour);
     $('tourChipTxt').textContent = !tour ? 'Tournament' : ch ? 'Champion · ' + tname(ch) : tour.name + ' · ' + p.done + '/' + p.total;
     $('tourBtn').classList.toggle('on', !!tour);
@@ -432,8 +488,9 @@
   }
 
   /* Setup */
-  const draft = Object.assign({ format: 'rr', pools: 2, advance: 2, target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles', name: '', teams: '' }, store.get('aopb.tourDraft', {}) || {});
-  const SEGS = { tourFormat: 'format', tourPools: 'pools', tourAdv: 'advance', tourTarget: 'target', tourBestOf: 'bestOf', tourScoring: 'scoring', tourMode: 'mode' };
+  const draft = Object.assign({ format: 'rr', pools: 2, advance: 2, target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles', courtChange: 0, name: '', teams: '' }, store.get('aopb.tourDraft', {}) || {});
+  draft.courts = cfg.n;
+  const SEGS = { tourFormat: 'format', tourPools: 'pools', tourAdv: 'advance', tourTarget: 'target', tourBestOf: 'bestOf', tourScoring: 'scoring', tourMode: 'mode', tourCourts: 'courts', tourCC: 'courtChange' };
   Object.keys(SEGS).forEach((id) => $(id).querySelectorAll('button').forEach((b) => b.onclick = () => {
     const k = SEGS[id]; draft[k] = /^\d+$/.test(b.dataset.v) ? Number(b.dataset.v) : b.dataset.v; renderSetup();
   }));
@@ -451,6 +508,8 @@
   function renderSetup(keepText) {
     Object.keys(SEGS).forEach((id) => $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(draft[SEGS[id]]) === b.dataset.v)));
     $('poolRow').classList.toggle('hidden', draft.format !== 'pools');
+    $('tourFmtInfo').textContent = FORMAT_INFO[draft.format] || '';
+    $('tourVoiceInfo').classList.toggle('hidden', draft.courts !== 1);
     if (!keepText) { $('tourTeams').value = draft.teams || ''; $('tourName').value = draft.name || ''; }
     store.set('aopb.tourDraft', draft);
     const list = teamList(), bad = setupProblem(list);
@@ -458,15 +517,21 @@
     if (!bad) {
       const t = T.create({ format: draft.format, teams: list, pools: draft.pools, advance: draft.advance });
       const total = T.progress(t).total;
-      info += ' · ' + (draft.format === 'de' ? (2 * list.length - 2) + '–' + (2 * list.length - 1) : total) + ' matches' + (draft.format === 'pools' ? ' · ' + t.pools + ' pools, top ' + t.advance + ' go through' : '') + ' · ' + cfg.n + ' court' + (cfg.n > 1 ? 's' : '');
+      info += ' · ' + (draft.format === 'de' ? (2 * list.length - 2) + '–' + (2 * list.length - 1) : total) + ' matches' + (draft.format === 'pools' ? ' · ' + t.pools + ' pools, top ' + t.advance + ' go through' : '') + ' · ' + draft.courts + ' court' + (draft.courts > 1 ? 's' : '');
     }
     $('tourInfo').innerHTML = esc(info) + (bad ? '<b class="bad"> · ' + esc(bad) + '</b>' : '');
     $('tourStart').disabled = !!bad;
   }
   $('tourStart').onclick = () => {
     const list = teamList(); if (setupProblem(list)) return;
+    if (draft.courts !== cfg.n) {
+      const losing = courts.slice(draft.courts).filter((c) => c.remotes > 0 || c.state.score[0] + c.state.score[1] > 0);
+      if (losing.length && !confirm('Use ' + draft.courts + ' court' + (draft.courts > 1 ? 's' : '') + '? ' + losing.map((c) => 'Court ' + (c.i + 1)).join(', ') + ' will be removed and its referee disconnected.')) return;
+      setCourts(draft.courts);
+    }
     tour = T.create({ name: (draft.name || 'TOURNAMENT').trim().toUpperCase(), format: draft.format, teams: list, pools: draft.pools, advance: draft.advance,
-      rules: { target: draft.target, bestOf: draft.bestOf, scoring: draft.scoring, mode: draft.mode } });
+      rules: { target: draft.target, bestOf: draft.bestOf, scoring: draft.scoring, mode: draft.mode, courtChange: draft.courtChange ? 1 : 0 } });
+    if (window.PBVoice) PBVoice.unlock();
     saveTour(); tab = draft.format === 'rr' || draft.format === 'pools' ? 'matches' : 'bracket';
     const n = fillCourts();
     renderTour(); toast(n ? 'TOURNAMENT ON · ' + n + ' COURT' + (n > 1 ? 'S' : '') + ' LOADED' : 'TOURNAMENT ON · COURTS LOAD WHEN FREE');
