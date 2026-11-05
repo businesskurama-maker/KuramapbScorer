@@ -321,3 +321,22 @@
 .lv-voice.need { border-color: #39FF14 !important; color: #0b1a05 !important; background: #39FF14 !important; animation: pulse 1.6s ease-in-out infinite; }
 .lv-voice.ok { border-color: rgba(57,255,20,.6) !important; color: #b8ffa6 !important; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(57,255,20,.5); } 50% { box-shadow: 0 0 0 8px rgba(57,255,20,0); } }
+/* Tournament setup: tidy two-column layout that fits the screen */
+.lv-tour-sheet { height: auto; max-height: 94dvh; }
+.lv-tour-sheet:has(.lv-tour-run:not(.hidden)) { height: min(940px, 94dvh); }
+.lv-tour-setup { flex: 0 1 auto; min-height: 0; align-items: stretch; }
+.tsu-left { gap: clamp(8px, 1.3dvh, 14px); }
+.tsu-left > .eyebrow, .tsu-left > label.eyebrow { margin-bottom: -4px; }
+.tsu-row { gap: clamp(10px, 1.2vw, 16px); }
+.tsu-row .eyebrow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tsu-right { min-height: 0; }
+.tsu-teams { flex: 1 1 auto; min-height: clamp(140px, 24dvh, 420px); }
+.tsu-fmt { min-height: 2.8em; display: flex; align-items: center; }
+.tsu-fmt.tsu-voice { min-height: 0; }
+@media (max-width: 820px), (max-height: 560px) {
+  .lv-tour-sheet { overflow-y: auto; }
+  .lv-tour-setup { overflow: visible; }
+}
+@media (max-width: 820px) { .tsu-teams { min-height: 160px; } }
+
+/* Tournament on the organizer's phone */

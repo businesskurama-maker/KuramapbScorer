@@ -966,3 +966,40 @@ body.mode-live .club-sec, body.mode-act .club-sec { display: none; }
 .display.club .d-bottom .callout { display: none; }
 .setup #clubSw { grid-template-columns: repeat(7, 1fr); }
 .display.club .keys { display: none; }
+/* Organizer phone: tournament card */
+.act-done:has(.ptour) { justify-content: flex-start; overflow-y: auto; }
+.ptour { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 18px; border: 1px solid rgba(255,230,0,.35); background: rgba(255,230,0,.04); }
+.ptour-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.ptour-head h3 { margin: 0; font-family: var(--font-score); font-weight: 400; font-size: 24px; letter-spacing: .06em; color: #FFE600; }
+.ptour-st { font-size: 12px; color: var(--ink-3); letter-spacing: .08em; text-align: right; }
+#ptSetup, #ptRun { display: flex; flex-direction: column; gap: 10px; }
+#ptSetup.hidden, #ptRun.hidden, .pt-two.hidden, .pt-champ.hidden { display: none; }
+.ptf { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pt-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ptour .seg button { padding: 9px 2px; font-size: 11.5px; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ptour .seg button.on { background: #FFE600; color: #1a1600; }
+.pt-seg[data-tk="format"] { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
+.ptour .text-in { font-size: 15px; padding: 10px 12px; }
+.pt-teams { resize: vertical; line-height: 1.5; min-height: 130px; }
+.pt-info { margin: 0; font-size: 12.5px !important; color: var(--ink-2); line-height: 1.4; padding: 6px 10px; border-left: 3px solid #FFE600; background: rgba(255,230,0,.06); border-radius: 8px; }
+.pt-saved { display: flex; flex-wrap: wrap; gap: 6px; }
+.pt-saved:empty { display: none; }
+.pt-chip { border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--ink-2); border-radius: 999px; padding: 6px 10px; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em; cursor: pointer; }
+.pt-count { margin: 0; font-size: 13px !important; color: var(--ink-2); }
+.pt-count.bad { color: #ff8a9b; }
+#ptStart:disabled { opacity: .45; }
+.pt-err { margin: 0; color: #ff8a9b; font-size: 13px !important; }
+.pt-err:empty { display: none; }
+.pt-champ { padding: 10px 12px; border-radius: 12px; background: rgba(255,230,0,.12); border: 1px solid rgba(255,230,0,.5); }
+.pt-champ small { display: block; font-size: 10px; letter-spacing: .2em; color: #FFE600; font-weight: 700; }
+.pt-champ b { font-family: var(--font-score); font-weight: 400; font-size: 28px; color: #FFE600; letter-spacing: .05em; }
+.pt-m { display: grid; grid-template-columns: 74px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 13px; }
+.pt-m span { color: var(--ok); font-weight: 700; font-size: 11px; letter-spacing: .08em; } .pt-m span.nx { color: var(--ink-3); }
+.pt-m b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .pt-m i { color: var(--ink-3); font-style: normal; font-weight: 400; }
+.pt-tab { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+.pt-tab th { text-align: left; color: var(--ink-3); font-size: 10px; letter-spacing: .14em; padding: 4px 6px; }
+.pt-tab td { padding: 6px; border-top: 1px solid rgba(255,255,255,.06); }
+.pt-tab td:first-child { font-weight: 700; } .pt-tab th:not(:first-child), .pt-tab td:not(:first-child) { text-align: right; width: 2.6em; }
+.pt-tab tr:nth-child(2) td { color: #FFE600; }
+.pt-end { align-self: center; }
+@media (max-width: 420px) { .pt-two.pt-wide { grid-template-columns: 1fr; } }

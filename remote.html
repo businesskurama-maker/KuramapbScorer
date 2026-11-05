@@ -58,6 +58,30 @@
       <h2>LIVE is on</h2>
       <p>Every court on the LIVE screen is unlocked until <b id="actUntil">today</b>, plus the OBS lower third. Referees just scan their court’s QR code — no sign-in needed.</p>
       <p class="act-note">When your event is over, tap <b>Exit LIVE</b> so nobody else can use your pass on that screen.</p>
+      <section class="ptour" id="pTour">
+        <div class="ptour-head"><h3>Tournament</h3><span class="ptour-st" id="ptSt"></span></div>
+        <div id="ptSetup">
+          <input class="text-in" id="ptName" maxlength="28" placeholder="Tournament name">
+          <div class="ptf"><span class="eyebrow">Format</span><div class="seg pt-seg" data-tk="format"><button data-v="rr">Round robin</button><button data-v="se">Single elim</button><button data-v="de">Double elim</button><button data-v="pools">Pools</button></div></div>
+          <p class="pt-info" id="ptFmtInfo"></p>
+          <div class="ptf"><span class="eyebrow">Courts</span><div class="seg pt-seg" data-tk="courts"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button><button data-v="6">6</button></div></div>
+          <div class="pt-two" id="ptPoolRow"><div class="ptf"><span class="eyebrow">Pools</span><div class="seg pt-seg" data-tk="pools"><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button></div></div><div class="ptf"><span class="eyebrow">Advance</span><div class="seg pt-seg" data-tk="advance"><button data-v="1">1</button><button data-v="2">2</button></div></div></div>
+          <div class="pt-two"><div class="ptf"><span class="eyebrow">Game to</span><div class="seg pt-seg" data-tk="target"><button data-v="11">11</button><button data-v="15">15</button><button data-v="21">21</button></div></div><div class="ptf"><span class="eyebrow">Best of</span><div class="seg pt-seg" data-tk="bestOf"><button data-v="1">1</button><button data-v="3">3</button></div></div></div>
+          <div class="pt-two pt-wide"><div class="ptf"><span class="eyebrow">Scoring</span><div class="seg pt-seg" data-tk="scoring"><button data-v="sideout">Side-out</button><button data-v="rally">Rally</button></div></div><div class="ptf"><span class="eyebrow">Play</span><div class="seg pt-seg" data-tk="mode"><button data-v="doubles">Doubles</button><button data-v="singles">Singles</button></div></div></div>
+          <div class="ptf"><span class="eyebrow">Change court at half</span><div class="seg pt-seg" data-tk="courtChange"><button data-v="0">No change</button><button data-v="1">Change court</button></div></div>
+          <div class="ptf"><span class="eyebrow">Teams · one per line, best seed first</span><textarea class="text-in pt-teams" id="ptTeams" rows="6" placeholder="SMASH BROS&#10;DINK DYNASTY&#10;NET NINJAS&#10;KITCHEN KINGS"></textarea></div>
+          <div class="pt-saved" id="ptSaved"></div>
+          <p class="pt-count" id="ptCount"></p>
+          <button class="big-btn wide" id="ptStart">Start tournament &amp; deploy teams</button>
+        </div>
+        <div id="ptRun" class="hidden">
+          <div class="pt-champ hidden" id="ptChamp"></div>
+          <div id="ptUp"></div>
+          <div id="ptTable"></div>
+          <button class="mini-btn pt-end" id="ptEnd">End tournament</button>
+        </div>
+        <p class="pt-err" id="ptErr"></p>
+      </section>
       <button class="big-btn act-exit" id="actExitBtn">Exit LIVE</button>
       <button class="mini-btn" id="actDoneBtn">Close this phone · keep LIVE running</button>
     </div>

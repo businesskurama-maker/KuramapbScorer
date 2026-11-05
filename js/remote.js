@@ -153,7 +153,8 @@
   }
 
   async function sendAuth(force) {
-    if (!AUTH || !link || !connected) return;
+    if (!link || !connected) return;
+    if (!AUTH) { if (mode === 'act') link.sendMsg({ t: 'auth', device }); return; }   // no sign-in configured: the LIVE screen opens straight away
     if (mode === 'live' && !force) { authed = true; return; }   // LIVE court: the organizer's LIVE pass covers referees
     if (!PBAuth.user) { authed = false; setGate('signin'); return; }
     if (!force && Date.now() - lastAuthSend < 4000) return;
@@ -173,7 +174,7 @@
   function onLinkMessage(m) {
     if (leaving) return;
     if (m.t === 'rtt') { rtt = Math.max(1, Date.now() - m.at); if (connected) { $('statusTxt').textContent = 'Live · ' + code + ' · ' + rtt + ' ms'; $('status').classList.toggle('slow', rtt > 400); } return; }
-    if (onClubMsg(m)) return;
+    if (onClubMsg(m) || onTourMsg(m)) return;
     if (m.t === 'authok' && m.silent) { authed = true; if (mode === 'solo') { clubOK = !AUTH || !!m.brand; renderClub(); } return; }
     if (m.t === 'authok' && mode === 'act') { authRetries = 0; authed = true; setGate(null); showActDone(m); buzz([40, 60, 40]); return; }
     if (m.t === 'authok' && mode === 'live') { authed = true; setGate(null); return; }
@@ -427,9 +428,9 @@
   /* ---------- Controls ---------- */
   ['rL', 'rR'].forEach((id) => {
     const b = $(id);
-    b.addEventListener('click', () => { if (!b.disabled && send({ a: 'rally', team: Number(b.dataset.team) })) showTags(); });
+    b.addEventListener('click', () => { if (b.disabled) return; buzz(35); if (send({ a: 'rally', team: Number(b.dataset.team) })) showTags(); });
   });
-  $('undoBtn').onclick = () => send({ a: 'undo' });
+  $('undoBtn').onclick = () => { buzz([15, 30, 15]); send({ a: 'undo' }); };
   $('swapBtn').onclick = () => send({ a: 'swap' });
   $('serveBtn').onclick = () => { if (st) send({ a: 'server', team: 1 - st.serving }); };
   $('pfsBtn').onclick = () => { if (send({ a: 'pfs' })) flash('Play for serve'); };
@@ -727,6 +728,7 @@
     const t = m.until ? new Date(m.until) : null;
     $('actUntil').textContent = t ? t.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'today';
     $('actDone').classList.remove('hidden');
+    try { link && link.sendMsg({ t: 'tour?' }); } catch (e) {}
     setGate(null); $('shop').classList.add('hidden'); closeSheet();   // LIVE is on: nothing else to show on the organizer's phone
   }
   $('actDoneBtn').onclick = () => { leaveScreen(false, 'LIVE is still on. To referee a court, scan that court’s QR code.'); };
@@ -802,5 +804,77 @@
     if (clubOK && club.on && (club.logo || club.name || club.sponsor || club.sponsorLogo || club.accent)) sendClub(true);
   }
   renderClub();
+
+  /* ---------- Organizer phone: set up and start a tournament on the LIVE screen ---------- */
+  const PT_INFO = {
+    rr: 'Everyone plays everyone once. Most wins takes the title; ties go to point difference.',
+    se: 'Lose once and you are out. Winners move up the bracket to the final.',
+    de: 'Lose twice to be out. Losers-bracket winner meets the winners-bracket champion in the grand final.',
+    pools: 'Pools play round robin; the top teams of each pool go on to a knockout playoff.'
+  };
+  const ptDraft = Object.assign({ format: 'rr', courts: 2, pools: 2, advance: 2, target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles', courtChange: 0, name: '', teams: '' }, store.get('aopb.tourPhone', {}) || {});
+  let ptState = null;
+  const ptList = () => $('ptTeams').value.split('\n').map((x) => x.trim().toUpperCase()).filter(Boolean);
+  const ptEsc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function ptSave() { ptDraft.name = $('ptName').value; ptDraft.teams = $('ptTeams').value; store.set('aopb.tourPhone', ptDraft); }
+  function ptCountText(list) {
+    const n = list.length;
+    if (n < 2) return 'Add at least 2 teams.';
+    const dup = list.find((x, i) => list.indexOf(x) !== i); if (dup) return dup + ' is listed twice.';
+    if (ptDraft.format === 'pools' && n < ptDraft.pools * 2) return ptDraft.pools + ' pools need at least ' + ptDraft.pools * 2 + ' teams.';
+    const m = ptDraft.format === 'rr' ? n * (n - 1) / 2 : ptDraft.format === 'se' ? n - 1 : ptDraft.format === 'de' ? (2 * n - 2) + '–' + (2 * n - 1) : null;
+    return n + ' teams' + (m != null ? ' · ' + m + ' matches' : '') + ' · ' + ptDraft.courts + ' court' + (ptDraft.courts > 1 ? 's' : '') + (ptDraft.courts === 1 ? ' · voice calls on' : '');
+  }
+  function ptRenderSetup() {
+    document.querySelectorAll('.pt-seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(ptDraft[seg.dataset.tk]) === b.dataset.v)));
+    $('ptPoolRow').classList.toggle('hidden', ptDraft.format !== 'pools');
+    $('ptFmtInfo').textContent = PT_INFO[ptDraft.format] || '';
+    const list = ptList(), txt = ptCountText(list);
+    $('ptCount').textContent = txt; $('ptCount').classList.toggle('bad', !/teams ·/.test(txt));
+    $('ptStart').disabled = !/teams ·/.test(txt);
+    const have = new Set(list);
+    $('ptSaved').innerHTML = savedTeams().filter((x) => !have.has(String(x.name).toUpperCase())).slice(0, 16)
+      .map((x) => '<button class="pt-chip" data-n="' + ptEsc(String(x.name).toUpperCase()) + '">+ ' + ptEsc(x.name) + '</button>').join('');
+  }
+  document.querySelectorAll('.pt-seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.onclick = () => {
+    ptDraft[seg.dataset.tk] = /^\d+$/.test(b.dataset.v) ? Number(b.dataset.v) : b.dataset.v; ptSave(); ptRenderSetup(); buzz(10);
+  }));
+  $('ptName').value = ptDraft.name || ''; $('ptTeams').value = ptDraft.teams || '';
+  $('ptName').oninput = ptSave;
+  $('ptTeams').oninput = () => { ptSave(); ptRenderSetup(); };
+  $('ptSaved').onclick = (e) => {
+    const b = e.target.closest('.pt-chip'); if (!b) return;
+    const v = $('ptTeams').value.replace(/\s+$/, ''); $('ptTeams').value = (v ? v + '\n' : '') + b.dataset.n; ptSave(); ptRenderSetup(); buzz(10);
+  };
+  $('ptStart').onclick = () => {
+    if (!link || !connected) { flash('Not connected to the LIVE screen'); return; }
+    const list = ptList(); if (!/teams ·/.test(ptCountText(list))) return;
+    if (!confirm('Start ' + (ptDraft.name.trim() || 'the tournament') + ' with ' + list.length + ' teams on ' + ptDraft.courts + ' court' + (ptDraft.courts > 1 ? 's' : '') + '? The first matches load on the free courts right away.')) return;
+    $('ptErr').textContent = '';
+    link.sendMsg({ t: 'tourStart', opts: Object.assign({}, ptDraft, { teams: list }) });
+    $('ptStart').disabled = true; $('ptStart').textContent = 'Starting…';
+    setTimeout(() => { $('ptStart').textContent = 'Start tournament & deploy teams'; ptRenderSetup(); }, 2500);
+  };
+  $('ptEnd').onclick = () => {
+    if (!link || !connected || !ptState || !ptState.tour) return;
+    if (!confirm('End ' + ptState.tour.name + '? The schedule and results are cleared on the LIVE screen.')) return;
+    link.sendMsg({ t: 'tourEnd' });
+  };
+  function ptRender() {
+    const t = ptState && ptState.tour;
+    $('ptSetup').classList.toggle('hidden', !!t); $('ptRun').classList.toggle('hidden', !t);
+    if (!t) { $('ptSt').textContent = 'Not started'; if (ptState && ptState.courts && !store.get('aopb.tourPhone', null)) ptDraft.courts = ptState.courts; ptRenderSetup(); return; }
+    $('ptSt').textContent = t.name + ' · ' + t.done + '/' + t.total;
+    $('ptChamp').classList.toggle('hidden', !t.champ); $('ptChamp').innerHTML = t.champ ? '<small>Champion</small><b>' + ptEsc(t.champ) + '</b>' : '';
+    $('ptUp').innerHTML = (t.up || []).length ? '<span class="eyebrow">On court · up next</span>' + t.up.map((u) => '<div class="pt-m"><span class="' + (u[0] === 'NEXT' ? 'nx' : '') + '">' + ptEsc(u[0]) + '</span><b>' + ptEsc(u[1]) + ' <i>vs</i> ' + ptEsc(u[2]) + '</b></div>').join('') : '';
+    const tab = (rows) => '<table class="pt-tab"><tr><th>Team</th><th>W</th><th>L</th><th>+/-</th></tr>' + rows.map((r) => '<tr><td>' + ptEsc(r[0]) + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td><td>' + (r[3] > 0 ? '+' : '') + r[3] + '</td></tr>').join('') + '</table>';
+    $('ptTable').innerHTML = t.rows ? '<span class="eyebrow">Standings</span>' + tab(t.rows) : t.pools ? t.pools.map((p, i) => '<span class="eyebrow">Pool ' + String.fromCharCode(65 + i) + '</span>' + tab(p)).join('') : '';
+  }
+  function onTourMsg(m) {
+    if (m.t === 'tourState') { const was = ptState && ptState.tour; ptState = m; ptRender(); if (!was && m.tour) { flash('Tournament started'); buzz([30, 40, 30]); } return true; }
+    if (m.t === 'tourErr') { $('ptErr').textContent = m.reason || 'Could not start the tournament.'; $('ptStart').textContent = 'Start tournament & deploy teams'; ptRenderSetup(); buzz([60, 40, 60]); return true; }
+    return false;
+  }
+  ptRenderSetup();
   setMode(mode);
 })();
