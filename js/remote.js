@@ -398,6 +398,7 @@
     $('rallyBtns').classList.toggle('hidden', over || gated);
     $('nextBtn').classList.toggle('hidden', !over || gated);
     $('endBtns').classList.toggle('hidden', !st.matchOver || gated);
+    if (st.matchOver) maybeSaveMatch();
     $('nextBtn').classList.toggle('match-over', !!st.matchOver);
     if (st.matchOver) $('nextBtn').innerHTML = '🏆 ' + esc(s.names[st.winner]) + ' WINS!<small>' + (st.gameLog.length > 1 ? 'Games ' + st.games[st.winner] + '–' + st.games[1 - st.winner] + ' · ' : '') + 'Tap to change teams or rules</small>';
     else if (st.gameOver) $('nextBtn').innerHTML = 'START GAME ' + (st.gameNo + 1) + '<small>' + esc(s.names[st.gameLog[st.gameLog.length - 1].winner]) + ' took game ' + st.gameNo + '</small>';
@@ -544,6 +545,73 @@
   $('setBtn').onclick = openSheet;
   $('sheetX').onclick = closeSheet;
   $('sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') closeSheet(); });
+  /* ---------- Match history, stats & share cards ---------- */
+  let savedKeys = new Set(store.get('aopb.savedMatches', []) || []);
+  async function maybeSaveMatch() {
+    if (!st || !st.matchOver || mode !== 'solo' || !PBAuth.user || !st.id || savedKeys.has(st.id)) return;
+    savedKeys.add(st.id); store.set('aopb.savedMatches', [...savedKeys].slice(-200));
+    const s = st.settings, stx = PBEngine.stats(st);
+    const res = await PBAuth.saveMatch({ match_key: st.id, played_at: new Date(st.startedAt || Date.now()).toISOString(), mode: 'solo', names: s.names, colors: s.colors, players: s.players,
+      settings: { mode: s.mode, scoring: s.scoring, target: s.target, bestOf: s.bestOf, winBy: s.winBy }, games: st.gameLog, winner: st.winner, stats: stx });
+    if (res.ok) flash('Match saved to My matches'); else { savedKeys.delete(st.id); }
+  }
+  const fmtDate = (d) => new Date(d).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  let histCache = [];
+  async function openHist() {
+    $('hist').classList.remove('hidden'); $('histDetail').classList.add('hidden'); $('histList').classList.remove('hidden'); $('histTitle').textContent = 'My matches';
+    if (!PBAuth.user) { $('histList').innerHTML = '<p class="hint-sm">Sign in with Google to keep your match history.</p>'; return; }
+    $('histList').innerHTML = '<p class="hint-sm">Loading…</p>';
+    histCache = await PBAuth.myMatches();
+    if (!histCache.length) { $('histList').innerHTML = '<p class="hint-sm">No finished matches yet. When a match ends, it is saved here automatically.</p>'; return; }
+    const wins = {}; histCache.forEach((m) => { const w = m.names[m.winner]; wins[w] = (wins[w] || 0) + 1; });
+    const top = Object.entries(wins).sort((a, b) => b[1] - a[1])[0];
+    $('histList').innerHTML = '<div class="hist-sum"><div><b>' + histCache.length + '</b><span>matches</span></div><div><b>' + esc(top[0]) + '</b><span>most wins (' + top[1] + ')</span></div></div>' +
+      histCache.map((m, i) => '<button class="hist-item" data-i="' + i + '"><span class="hi-date">' + fmtDate(m.played_at) + '</span><span class="hi-teams"><b style="color:' + esc(m.colors[m.winner]) + '">' + esc(m.names[m.winner]) + '</b> def. ' + esc(m.names[1 - m.winner]) + '</span><span class="hi-score">' + m.games.map((g) => (m.winner ? g.b + '–' + g.a : g.a + '–' + g.b)).join(', ') + '</span></button>').join('');
+    $('histList').querySelectorAll('.hist-item').forEach((b) => b.onclick = () => showMatch(histCache[+b.dataset.i]));
+  }
+  function statRows(m) {
+    const T = m.stats && m.stats.teams; if (!T) return '';
+    const row = (lbl, f) => '<tr><td>' + f(0) + '</td><th>' + lbl + '</th><td>' + f(1) + '</td></tr>';
+    const tags = (t) => Object.entries(T[t].tags || {}).map(([k, v]) => v + ' ' + k).join(', ') || '—';
+    return '<table class="hist-stats"><thead><tr><td style="color:' + esc(m.colors[0]) + '">' + esc(m.names[0]) + '</td><th></th><td style="color:' + esc(m.colors[1]) + '">' + esc(m.names[1]) + '</td></tr></thead><tbody>' +
+      row('Points', (t) => T[t].points) + row('Points on serve', (t) => T[t].servePts) + row('Rallies won', (t) => T[t].rallies) + row('Side-out %', (t) => T[t].sideoutPct + '%') + row('Longest run', (t) => T[t].run) + row('Rally reasons', tags) +
+      '</tbody></table><p class="hint-sm">' + m.stats.rallies + ' rallies · about ' + m.stats.minutes + ' min</p>';
+  }
+  function showMatch(m) {
+    $('histList').classList.add('hidden'); const d = $('histDetail'); d.classList.remove('hidden'); $('histTitle').textContent = 'Match';
+    const w = m.winner, sc = m.games.map((g) => g.a + '–' + g.b).join('  ·  ');
+    d.innerHTML = '<button class="mini-btn" id="histBack">‹ All matches</button><div class="hist-head"><span class="hi-date">' + fmtDate(m.played_at) + ' · ' + (m.settings.mode === 'singles' ? 'Singles' : 'Doubles') + ' · to ' + m.settings.target + '</span><b style="color:' + esc(m.colors[w]) + '">🏆 ' + esc(m.names[w]) + '</b><span>def. ' + esc(m.names[1 - w]) + '</span><div class="hi-big">' + esc(sc) + '</div></div>' + statRows(m) +
+      '<div class="hist-acts"><button class="big-btn" id="histShare">Share result</button><button class="mini-btn" id="histDel">Delete</button></div>';
+    $('histBack').onclick = openHist;
+    $('histShare').onclick = () => shareCard(m);
+    $('histDel').onclick = async () => { if (!confirm('Delete this match from your history?')) return; await PBAuth.deleteMatch(m.id); openHist(); };
+  }
+  // Share card: a 1080×1080 image with the result, ready for Facebook / Messenger
+  async function shareCard(m) {
+    const c = document.createElement('canvas'); c.width = 1080; c.height = 1080; const x = c.getContext('2d');
+    const g = x.createRadialGradient(540, 380, 60, 540, 540, 760); g.addColorStop(0, '#2a0f4a'); g.addColorStop(1, '#06030f'); x.fillStyle = g; x.fillRect(0, 0, 1080, 1080);
+    const logo = await new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = 'icons/dinkykong-logo.png'; });
+    if (logo) x.drawImage(logo, 440, 50, 200, 192);
+    try { await document.fonts.load('80px "Bebas Neue"'); } catch (e) {}
+    const F = (sz) => sz + 'px "Bebas Neue", Impact, sans-serif';
+    const fit = (txt, sz, y, maxW) => { let z = sz; x.font = F(z); while (z > 20 && x.measureText(txt).width > (maxW || 980)) { z -= 4; x.font = F(z); } x.fillText(txt, 540, y); };
+    x.textAlign = 'center'; x.fillStyle = '#ffd21f'; x.font = F(52); x.fillText('MATCH RESULT', 540, 300);
+    const w = m.winner;
+    x.fillStyle = m.colors[w]; fit(String(m.names[w]), 120, 430);
+    x.fillStyle = '#cbd2f0'; fit('DEF. ' + String(m.names[1 - w]), 56, 510);
+    x.fillStyle = '#ffffff'; fit(m.games.map((g2) => (w ? g2.b + '-' + g2.a : g2.a + '-' + g2.b)).join('   '), 150, 690);
+    const T = m.stats && m.stats.teams;
+    if (T) { x.fillStyle = '#9fb0e0'; fit('LONGEST RUN ' + T[w].run + '  ·  SIDE-OUT ' + T[w].sideoutPct + '%  ·  ' + m.stats.rallies + ' RALLIES', 40, 790); }
+    x.fillStyle = '#FFE600'; x.fillRect(0, 900, 1080, 180); x.fillStyle = '#0b0f22'; x.font = F(78); x.fillText('DINKYKONG.PRO', 540, 1000); x.font = F(34); x.fillText(fmtDate(m.played_at).toUpperCase() + '  ·  SCORED WITH DINKYKONG', 540, 1050);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+    const file = new File([blob], 'dinkykong-result.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: 'DinkyKong match result', text: m.names[w] + ' def. ' + m.names[1 - w] + ' · dinkykong.pro' }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'dinkykong-result.png'; a.click(); flash('Result image saved');
+  }
+  $('histBtn').onclick = () => { closeSheet(); openHist(); };
+  $('histX').onclick = () => $('hist').classList.add('hidden');
+  $('hist').addEventListener('click', (e) => { if (e.target.id === 'hist') $('hist').classList.add('hidden'); });
+
   $('toDisplay').onclick = () => { try { localStorage.setItem('aopb.role', 'display'); } catch (e) {} store.del('aopb.remoteCode'); location.href = './?role=display'; };
   // Main menu: forget the remote role on this phone and show the lobby (no countdown)
   function toMenu() {

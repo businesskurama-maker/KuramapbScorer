@@ -236,6 +236,19 @@
     const { data, error } = await sb.rpc('request_purchase', { p_package: pkg, p_reference: ref });
     if (error) throw new Error(errCode(error)); return data;
   }
+  // Match history (finished matches saved by the signed-in scorer)
+  async function saveMatch(m) {
+    if (!sb || !user) return { ok: false };
+    const { error } = await sb.from('matches').insert(Object.assign({ user_id: user.id }, m));
+    if (error && !String(error.code).includes('23505')) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+  async function myMatches() {
+    if (!sb || !user) return [];
+    const { data } = await sb.from('matches').select('id,match_key,played_at,mode,names,colors,players,settings,games,winner,stats').eq('user_id', user.id).order('played_at', { ascending: false }).limit(100);
+    return data || [];
+  }
+  async function deleteMatch(id) { if (!sb || !user) return; await sb.from('matches').delete().eq('id', id); }
   async function myPurchases() {
     if (!sb || !user) return [];
     const { data } = await sb.from('purchases').select('id,package,amount_php,reference,status,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10);
@@ -262,7 +275,7 @@
   // Free mode counts as "allowed"
   function allowed() { return !enabled || passActive(); }
 
-  const api = {
+  const api = { saveMatch, myMatches, deleteMatch,
     enabled, init, refresh, signIn, signOut, startPass, passActive, passUntil, allowed, accessToken, verifyToken,
     async savePush(sub) {
       const j = sub.toJSON();
