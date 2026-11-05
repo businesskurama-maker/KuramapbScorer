@@ -18,10 +18,26 @@
   #strip.off { opacity: 0; transform: translateY(20%); }
   .obs-note { position: fixed; left: 12px; bottom: 12px; font: 600 14px system-ui, sans-serif; color: #fff; background: rgba(0,0,0,.7); padding: 8px 12px; border-radius: 8px; }
   .obs-note.hidden { display: none; }
+  /* Tournament board (top right) */
+  #tb { position: absolute; right: 3vw; top: 4.5vh; width: 23vw; font-family: 'Josefin Sans', system-ui, sans-serif; color: #fff; border-radius: .9vw; overflow: hidden;
+    background: linear-gradient(170deg, rgba(20,8,40,.92), rgba(5,8,20,.9)); box-shadow: 0 .5vw 2vw rgba(0,0,0,.5); transition: opacity .4s, transform .4s; }
+  #tb.off { opacity: 0; transform: translateY(-10%); }
+  #tb h4 { margin: 0; padding: .7vw 1vw .5vw; font: 400 1.5vw/1 'Bebas Neue', sans-serif; letter-spacing: .08em; background: linear-gradient(90deg, #5b2a9c, #2a1052); }
+  #tb .champ { padding: .8vw 1vw; text-align: center; } #tb .champ small { display: block; font-size: .7vw; letter-spacing: .2em; color: #FFE600; font-weight: 700; }
+  #tb .champ b { font: 400 2.2vw/1.1 'Bebas Neue', sans-serif; color: #FFE600; letter-spacing: .05em; text-shadow: 0 0 1vw rgba(255,230,0,.5); }
+  #tb table { width: 100%; border-collapse: collapse; font-size: .85vw; font-variant-numeric: tabular-nums; }
+  #tb td { padding: .28vw .6vw; border-top: 1px solid rgba(255,255,255,.08); white-space: nowrap; }
+  #tb td.n { max-width: 12vw; overflow: hidden; text-overflow: ellipsis; font-weight: 700; } #tb td.r { text-align: right; width: 2.2vw; color: #c9d0f0; }
+  #tb tr:first-child td { color: #FFE600; }
+  #tb .pl { padding: .3vw .6vw 0; font-size: .65vw; letter-spacing: .2em; color: #00E5FF; font-weight: 700; }
+  #tb .up { padding: .3vw 0 .4vw; } #tb .up div { display: grid; grid-template-columns: 4.6vw 1fr; gap: .4vw; padding: .25vw .6vw; font-size: .8vw; border-top: 1px solid rgba(255,255,255,.08); }
+  #tb .up span { color: #39FF14; font-weight: 700; letter-spacing: .06em; font-size: .7vw; } #tb .up span.nx { color: #9aa3c7; }
+  #tb .up b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; } #tb .up i { color: #9aa3c7; font-style: normal; }
 </style>
 </head>
 <body>
 <div class="lv-strip off" id="strip"></div>
+<div class="off" id="tb"></div>
 <div class="obs-note hidden" id="note"></div>
 <script>window.PB_OBS = true;</script>
 <script src="js/config.js"></script>
@@ -36,12 +52,28 @@
   if (!key) { say('Missing OBS link key — copy the link again from the LIVE screen.'); return; }
   let last = 0, relay = null, lastMsg = null;
   const brand = { id: null, logo: null, caption: '' };
+  const tb = document.getElementById('tb');
+  const e = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function board(b) {
+    if (!b) { tb.classList.add('off'); return; }
+    const tab = (rows) => '<table>' + rows.map((r) => '<tr><td class="n">' + e(r[0]) + '</td><td class="r">' + r[1] + '</td><td class="r">' + r[2] + '</td><td class="r">' + (r[3] > 0 ? '+' : '') + r[3] + '</td></tr>').join('') + '</table>';
+    let h = '<h4>' + e(b.name) + '</h4>';
+    if (b.champ) h += '<div class="champ"><small>CHAMPION</small><b>' + e(b.champ) + '</b></div>';
+    else {
+      if (b.rows) h += tab(b.rows);
+      if (b.pools) h += b.pools.map((p, i) => '<div class="pl">POOL ' + String.fromCharCode(65 + i) + '</div>' + tab(p)).join('');
+      if (b.up && b.up.length) h += '<div class="up">' + b.up.map((u) => '<div><span class="' + (u[0] === 'NEXT' ? 'nx' : '') + '">' + e(u[0]) + '</span><b>' + e(u[1]) + ' <i>vs</i> ' + e(u[2]) + '</b></div>').join('') + '</div>';
+    }
+    tb.innerHTML = h; tb.classList.remove('off');
+  }
   function show(m) {
     last = Date.now(); lastMsg = m;
     if (m.brand && m.brand !== brand.id && relay) relay.send({ t: 'brand?' });   // logo changed → fetch it once
+    board(m.on ? m.tour : null);
     if (!m.on) { strip.classList.add('off'); say('LIVE pass not active on the LIVE screen'); return; }
     say(''); PBStrip.render(strip, m.courts || [], { logo: brand.logo, caption: m.caption != null ? m.caption : brand.caption }); strip.classList.remove('off');
   }
+  window.__obsShow = show;   // test hook
   PBAuth.relay('dk-obs-' + key, (m) => {
     if (m && m.t === 'obs') show(m);
     if (m && m.t === 'brand') { brand.id = m.id; brand.logo = m.logo || null; brand.caption = m.caption || ''; if (lastMsg) show(lastMsg); }
@@ -51,7 +83,7 @@
     setInterval(() => { if (Date.now() - last > 12000) r.send({ t: 'sync' }); }, 6000);
   }).catch(() => say('Could not connect — check the internet connection'));
   // Hide quietly if the LIVE screen goes away for a while
-  setInterval(() => { if (last && Date.now() - last > 30000) { strip.classList.add('off'); } }, 5000);
+  setInterval(() => { if (last && Date.now() - last > 30000) { strip.classList.add('off'); tb.classList.add('off'); } }, 5000);
 })();
 </script>
 </body>

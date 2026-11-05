@@ -24,14 +24,14 @@
   const liveOK = () => !AUTH || (license && new Date(license.until).getTime() > Date.now());
 
   function rand(n) { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; let s = ''; crypto.getRandomValues(new Uint8Array(n)).forEach((b) => { s += a[b % a.length]; }); return s; }
-  function save() { store.set(KEY, { n: cfg.n, obsKey: cfg.obsKey, actCode: cfg.actCode, courts: courts.map((c) => ({ code: c.code, state: c.state })) }); }
+  function save() { store.set(KEY, { n: cfg.n, obsKey: cfg.obsKey, actCode: cfg.actCode, courts: courts.map((c) => ({ code: c.code, state: c.state, tm: c.tm || null })) }); }
   const remoteUrl = (code, extra) => new URL('remote.html?c=' + code + (extra || ''), location.href).href;
 
   /* ---------- Courts ---------- */
   const courts = [];   // { code, state, link, remotes, el }
   function makeCourt(i) {
     const prev = cfg.courts[i] || {};
-    const c = { i, code: prev.code || PBLink.makeCode(), state: E.ensure(prev.state && prev.state.v === 1 ? prev.state : E.newMatch()), link: null, remotes: 0, el: null, prev: prev.state ? prev.state.score.slice() : [0, 0] };
+    const c = { i, code: prev.code || PBLink.makeCode(), state: E.ensure(prev.state && prev.state.v === 1 ? prev.state : E.newMatch()), tm: prev.tm || null, link: null, remotes: 0, el: null, prev: prev.state ? prev.state.score.slice() : [0, 0] };
     if (c.state.matchOver && !prev.keepFinal) { /* keep the final on screen until a new match is started from the remote */ }
     return c;
   }
@@ -43,8 +43,9 @@
       onAction: (action, reply) => {
         if (!liveOK()) { reply({ t: 'denied', reason: 'LIVE_ENDED' }); return; }
         if (action && action.a === 'rally' && action.side != null) action = { a: 'rally', team: c.state.swapped ? 1 - action.side : action.side };
+        if (action && action.a === 'new' && tour) { tourNext(c); return; }   // tournament court: "New match" loads the next scheduled match
         c.state = E.apply(c.state, action);
-        save(); renderCourt(c); pushObs();
+        save(); renderCourt(c); pushObs(); tourWatch(c);
         c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, court: c.i + 1 }));
       },
       onMessage: (msg, reply) => {
@@ -87,7 +88,9 @@
     const st = c.state, s = st.settings;
     const left = st.swapped ? 1 : 0;
     const pub = E.publicState(st);
-    el.querySelector('.lvc-meta').textContent = (s.bestOf > 1 ? 'GAME ' + st.gameNo + ' · BEST OF ' + s.bestOf : 'TO ' + s.target) + ' · ' + (s.scoring === 'rally' ? 'RALLY' : (s.mode === 'doubles' ? 'DOUBLES' : 'SINGLES'));
+    const tm = tour && c.tm ? tour.matches.find((m) => m.id === c.tm) : null;
+    el.classList.toggle('tour', !!tour);
+    el.querySelector('.lvc-meta').textContent = (tm ? tm.label + ' · ' : tour && !st.matchOver && st.score[0] + st.score[1] === 0 && !c.tm ? 'WAITING FOR NEXT MATCH · ' : '') + (s.bestOf > 1 ? 'GAME ' + st.gameNo + ' · BEST OF ' + s.bestOf : 'TO ' + s.target) + ' · ' + (s.scoring === 'rally' ? 'RALLY' : (s.mode === 'doubles' ? 'DOUBLES' : 'SINGLES'));
     el.querySelectorAll('.lvc-team').forEach((tEl, side) => {
       const t = side === 0 ? left : 1 - left;
       tEl.style.setProperty('--c', s.colors[t]);
@@ -127,7 +130,7 @@
     fin.classList.toggle('hidden', !st.matchOver);
     if (st.matchOver) {
       el.querySelector('.lvc-winner').textContent = s.names[st.winner]; el.querySelector('.lvc-winner').style.color = s.colors[st.winner];
-      el.querySelector('.lvc-games').textContent = st.gameLog.map((g) => g.a + '–' + g.b).join('  ·  ');
+      el.querySelector('.lvc-games').textContent = st.gameLog.map((g) => g.a + '–' + g.b).join('  ·  ') + (tm ? '   ·   NEXT MATCH LOADS SOON' : '');
     }
   }
 
@@ -155,7 +158,7 @@
     const n = Number(b.dataset.n); if (n === cfg.n) return;
     const losing = courts.slice(n).filter((c) => c.remotes > 0 || c.state.score[0] + c.state.score[1] > 0);
     if (losing.length && !confirm('Remove ' + losing.map((c) => 'Court ' + (c.i + 1)).join(', ') + '? Their referees will be disconnected and the score cleared.')) return;
-    courts.slice(n).forEach((c) => { cfg.courts[c.i] = null; });
+    courts.slice(n).forEach((c) => { cfg.courts[c.i] = null; tourRelease(c); });
     cfg.n = n; cfg.courts = cfg.courts.slice(0, n); layout();
   });
 
@@ -202,6 +205,7 @@
     });
     setTimeout(() => { courts.forEach((c) => { if (!c.link && linkReady) startCourtLink(c); renderCourt(c); }); renderAllQr(); }, 900);
     brand = { id: rand(8), logo: null, caption: '' }; store.del('aopb.liveBrand'); renderBrand();
+    tour = null; saveTour(); courts.forEach((c) => { c.tm = null; clearTimeout(c.tourT); }); $('tourOverlay').classList.add('hidden'); renderTourChip();
     $('stripToggle').checked = false; applyStrip();
     // new activation code so the previous organizer's phone can't switch it back on
     const oldAct = actLink; cfg.actCode = PBLink.makeCode(); actLink = null;
@@ -261,7 +265,7 @@
     const opts = { logo: brand.logo, caption: brand.caption };
     PBStrip.render($('strip'), list, opts); PBStrip.render($('obsPreview'), list, opts);
     clearTimeout(obsTimer);
-    obsTimer = setTimeout(() => { if (obs) obs.send({ t: 'obs', on: liveOK(), courts: liveOK() ? list : [], brand: brand.id, caption: brand.caption, at: Date.now() }); }, 120);
+    obsTimer = setTimeout(() => { if (obs) obs.send({ t: 'obs', on: liveOK(), courts: liveOK() ? list : [], brand: brand.id, caption: brand.caption, tour: liveOK() && obsTour ? tourBoard() : null, at: Date.now() }); }, 120);
   }
   function startObs() {
     if (obs) obs.close();
@@ -329,13 +333,230 @@
   $('qrBtn').onclick = () => showQrs(-1);
   $('qrClose').onclick = () => $('qrOverlay').classList.add('hidden');
 
+  /* ---------- Tournament: round robin · single / double elimination · pools + playoffs ---------- */
+  const T = PBTour;
+  let tour = store.get('aopb.liveTour', null);
+  let obsTour = !!store.get('aopb.obsTour', false);
+  function saveTour() { if (tour) store.set('aopb.liveTour', tour); else store.del('aopb.liveTour'); }
+  const tname = (id) => T.teamName(tour, id);
+  const mnum = (m) => '#' + (tour.matches.indexOf(m) + 1);
+  const mById = (id) => tour && tour.matches.find((x) => x.id === id);
+  function isFree(c) {
+    const st = c.state;
+    return !c.tm && (st.matchOver || (st.score[0] + st.score[1] === 0 && st.games[0] + st.games[1] === 0 && st.gameNo === 1));
+  }
+  function courtPush(c) {
+    save(); renderCourt(c); pushObs();
+    if (c.link) c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, court: c.i + 1 }));
+  }
+  function matchSettings(names) {
+    const r = tour.rules;
+    return { names, target: r.target, bestOf: r.bestOf, scoring: r.scoring, mode: r.mode, players: [['', ''], ['', '']], firstServer: 0 };
+  }
+  function loadMatch(c, m) {
+    clearTimeout(c.tourT); c.tourT = null;
+    m.status = 'live'; m.court = c.i; c.tm = m.id;
+    c.state = E.newMatch(matchSettings([tname(m.a), tname(m.b)]));
+    saveTour(); courtPush(c);
+    toast('COURT ' + (c.i + 1) + ' · ' + tname(m.a) + ' VS ' + tname(m.b));
+  }
+  function finishCourt(c) {   // put the court's finished match into the tournament (or back in the queue if it wasn't finished)
+    clearTimeout(c.tourT); c.tourT = null;
+    const m = mById(c.tm); c.tm = null;
+    if (!m || m.status === 'done') return;
+    if (c.state.matchOver) T.record(tour, m.id, c.state.gameLog.map((g) => ({ a: g.a, b: g.b })));
+    else { m.status = 'ready'; m.court = null; T.resolve(tour); }
+    saveTour();
+  }
+  function tourRelease(c) {
+    clearTimeout(c.tourT); c.tourT = null;
+    const m = mById(c.tm); if (m && m.status === 'live') { m.status = 'ready'; m.court = null; }
+    c.tm = null; saveTour();
+  }
+  function fillCourts() {
+    if (!tour) return 0;
+    let n = 0;
+    for (const c of courts) { if (!isFree(c)) continue; const m = T.nextFor(tour); if (!m) break; loadMatch(c, m); n++; }
+    tourChanged();
+    return n;
+  }
+  function tourNext(c) {   // referee tapped "New match", or the final has been on screen long enough
+    finishCourt(c);
+    const m = T.nextFor(tour);
+    if (m) loadMatch(c, m);
+    else { c.state = E.newMatch(matchSettings(['TBD', 'TBD'])); courtPush(c); }
+    fillCourts();
+  }
+  function tourWatch(c) {
+    if (!tour || !c.tm) return;
+    if (c.state.matchOver && !c.tourT) c.tourT = setTimeout(() => { c.tourT = null; if (c.tm && c.state.matchOver) tourNext(c); }, 40000);
+    if (!c.state.matchOver && c.tourT) { clearTimeout(c.tourT); c.tourT = null; }
+  }
+  function tourChanged() {
+    renderTourChip();
+    if (!$('tourOverlay').classList.contains('hidden')) renderTour();
+    courts.forEach(renderCourt); pushObs();
+    const ch = tour && T.champion(tour);
+    if (ch && !tour.champAt) { tour.champAt = Date.now(); saveTour(); toast('CHAMPION · ' + tname(ch)); if ($('tourOverlay').classList.contains('hidden')) openTour('bracket'); }
+  }
+  function renderTourChip() {
+    const ch = tour && T.champion(tour), p = tour && T.progress(tour);
+    $('tourChipTxt').textContent = !tour ? 'Tournament' : ch ? 'Champion · ' + tname(ch) : tour.name + ' · ' + p.done + '/' + p.total;
+    $('tourBtn').classList.toggle('on', !!tour);
+  }
+  function readyList() {
+    const order = { rr: 0, pool: 0, w: 1, l: 1, po: 2, gf: 3 };
+    return tour.matches.filter((m) => m.status === 'ready').sort((x, y) => (order[x.stage] - order[y.stage]) || (x.round - y.round) || tour.matches.indexOf(x) - tour.matches.indexOf(y));
+  }
+
+  // OBS: small board in the top corner (standings or pools while they run, then who's on court / up next)
+  function tourBoard() {
+    if (!tour) return null;
+    const ch = T.champion(tour);
+    const row = (r) => [r.name, r.w, r.l, r.pd];
+    const b = { name: tour.name, champ: ch ? tname(ch) : null, rows: null, pools: null, up: [] };
+    const poolsLive = tour.format === 'pools' && tour.matches.some((m) => m.stage === 'pool' && m.status !== 'done');
+    if (tour.format === 'rr') b.rows = T.standings(tour).slice(0, 8).map(row);
+    else if (poolsLive) b.pools = tour.poolTeams.map((_, i) => T.standings(tour, i).slice(0, 5).map(row));
+    b.up = tour.matches.filter((m) => m.status === 'live').map((m) => ['COURT ' + (m.court + 1), tname(m.a), tname(m.b), m.label])
+      .concat(readyList().map((m) => ['NEXT', tname(m.a), tname(m.b), m.label])).slice(0, 5);
+    return b;
+  }
+
+  /* Setup */
+  const draft = Object.assign({ format: 'rr', pools: 2, advance: 2, target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles', name: '', teams: '' }, store.get('aopb.tourDraft', {}) || {});
+  const SEGS = { tourFormat: 'format', tourPools: 'pools', tourAdv: 'advance', tourTarget: 'target', tourBestOf: 'bestOf', tourScoring: 'scoring', tourMode: 'mode' };
+  Object.keys(SEGS).forEach((id) => $(id).querySelectorAll('button').forEach((b) => b.onclick = () => {
+    const k = SEGS[id]; draft[k] = /^\d+$/.test(b.dataset.v) ? Number(b.dataset.v) : b.dataset.v; renderSetup();
+  }));
+  const teamList = () => $('tourTeams').value.split('\n').map((x) => x.trim().toUpperCase()).filter(Boolean);
+  $('tourTeams').oninput = () => { draft.teams = $('tourTeams').value; renderSetup(true); };
+  $('tourName').oninput = () => { draft.name = $('tourName').value; store.set('aopb.tourDraft', draft); };
+  ['tourTeams', 'tourName'].forEach((id) => $(id).addEventListener('keydown', (e) => e.stopPropagation()));
+  function setupProblem(list) {
+    if (list.length < 2) return 'Add at least 2 teams.';
+    const dup = list.find((x, i) => list.indexOf(x) !== i); if (dup) return dup + ' is listed twice.';
+    if (draft.format === 'pools' && list.length < draft.pools * 2) return draft.pools + ' pools need at least ' + draft.pools * 2 + ' teams.';
+    if (list.length > 64) return 'Up to 64 teams.';
+    return '';
+  }
+  function renderSetup(keepText) {
+    Object.keys(SEGS).forEach((id) => $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(draft[SEGS[id]]) === b.dataset.v)));
+    $('poolRow').classList.toggle('hidden', draft.format !== 'pools');
+    if (!keepText) { $('tourTeams').value = draft.teams || ''; $('tourName').value = draft.name || ''; }
+    store.set('aopb.tourDraft', draft);
+    const list = teamList(), bad = setupProblem(list);
+    let info = list.length + ' team' + (list.length === 1 ? '' : 's');
+    if (!bad) {
+      const t = T.create({ format: draft.format, teams: list, pools: draft.pools, advance: draft.advance });
+      const total = T.progress(t).total;
+      info += ' · ' + (draft.format === 'de' ? (2 * list.length - 2) + '–' + (2 * list.length - 1) : total) + ' matches' + (draft.format === 'pools' ? ' · ' + t.pools + ' pools, top ' + t.advance + ' go through' : '') + ' · ' + cfg.n + ' court' + (cfg.n > 1 ? 's' : '');
+    }
+    $('tourInfo').innerHTML = esc(info) + (bad ? '<b class="bad"> · ' + esc(bad) + '</b>' : '');
+    $('tourStart').disabled = !!bad;
+  }
+  $('tourStart').onclick = () => {
+    const list = teamList(); if (setupProblem(list)) return;
+    tour = T.create({ name: (draft.name || 'TOURNAMENT').trim().toUpperCase(), format: draft.format, teams: list, pools: draft.pools, advance: draft.advance,
+      rules: { target: draft.target, bestOf: draft.bestOf, scoring: draft.scoring, mode: draft.mode } });
+    saveTour(); tab = draft.format === 'rr' || draft.format === 'pools' ? 'matches' : 'bracket';
+    const n = fillCourts();
+    renderTour(); toast(n ? 'TOURNAMENT ON · ' + n + ' COURT' + (n > 1 ? 'S' : '') + ' LOADED' : 'TOURNAMENT ON · COURTS LOAD WHEN FREE');
+  };
+
+  /* Running view */
+  let tab = 'matches';
+  $('tourTabs').querySelectorAll('button').forEach((b) => b.onclick = () => { tab = b.dataset.v; renderTour(); });
+  function srcText(src) {
+    if (!src) return 'TBD';
+    if (src.pool != null) return 'POOL ' + String.fromCharCode(65 + src.pool) + ' #' + (src.rank + 1);
+    const m = mById(src.m); return (src.take === 'W' ? 'Winner ' : 'Loser ') + (m ? mnum(m) : '');
+  }
+  const side = (m, k) => m[k] != null ? tname(m[k]) : srcText(m['src' + k.toUpperCase()]);
+  function scoreText(m) { return m.result && !m.result.bye ? m.result.games.map((g) => g.a + '–' + g.b).join(', ') : ''; }
+  function matchRow(m) {
+    const w = m.result && m.result.winner;
+    const st = m.status === 'live' ? '<span class="trm-court">COURT ' + (m.court + 1) + '</span>'
+      : m.status === 'ready' ? '<button class="btn trm-btn" data-score="' + m.id + '">Enter score</button>'
+      : m.status === 'done' ? '<span class="trm-res">' + esc(scoreText(m)) + '</span>' : '<span class="trm-wait">Waiting</span>';
+    return '<div class="trm st-' + m.status + '"><span class="trm-no">' + mnum(m) + '</span><span class="trm-lbl">' + esc(m.label) + '</span>' +
+      '<span class="trm-teams"><b class="' + (w === 'a' ? 'win' : '') + '">' + esc(side(m, 'a')) + '</b><i>vs</i><b class="' + (w === 'b' ? 'win' : '') + '">' + esc(side(m, 'b')) + '</b></span>' + st + '</div>';
+  }
+  function tableHtml(rows, adv, title) {
+    return '<div class="trt">' + (title ? '<h3>' + esc(title) + '</h3>' : '') + '<table><thead><tr><th></th><th>Team</th><th>P</th><th>W</th><th>L</th><th>+/-</th></tr></thead><tbody>' +
+      rows.map((r, i) => '<tr class="' + (i < adv ? 'adv' : '') + '"><td>' + (i + 1) + '</td><td>' + esc(r.name) + '</td><td>' + r.p + '</td><td>' + r.w + '</td><td>' + r.l + '</td><td>' + (r.pd > 0 ? '+' : '') + r.pd + '</td></tr>').join('') + '</tbody></table></div>';
+  }
+  function bracketHtml(stage, title) {
+    const ms = tour.matches.filter((m) => m.stage === stage && !(m.a === T.BYE && m.b === T.BYE) && !(stage === 'l' && m.result && m.result.bye));
+    if (!ms.length) return '';
+    const cols = [];
+    ms.forEach((m) => { const k = m.stage === 'gf' ? 100 + m.round : m.round; (cols[k] = cols[k] || []).push(m); });
+    const card = (m) => {
+      const w = m.result && m.result.winner, bye = m.result && m.result.bye;
+      const ln = (k) => '<div class="trb-t ' + (w === k ? 'win' : '') + (m[k] === T.BYE ? ' bye' : '') + '"><span>' + esc(side(m, k)) + '</span><b>' + (m.result && !bye ? (m.result.games.length > 1 ? m.result.games.filter((g) => (k === 'a' ? g.a > g.b : g.b > g.a)).length : (k === 'a' ? m.result.pa : m.result.pb)) : '') + '</b></div>';
+      return '<div class="trb-m st-' + m.status + (bye ? ' isbye' : '') + '"><small>' + mnum(m) + (m.status === 'live' ? ' · COURT ' + (m.court + 1) : '') + '</small>' + ln('a') + ln('b') + '</div>';
+    };
+    return '<div class="trb"><h3>' + esc(title) + '</h3><div class="trb-cols">' + cols.filter(Boolean).map((col) => '<div class="trb-col"><span class="eyebrow">' + esc(col[0].label.replace(/^(WINNERS|LOSERS|PLAYOFF) · /, '')) + '</span>' + col.map(card).join('') + '</div>').join('') + '</div></div>';
+  }
+  function renderTour() {
+    const setup = !tour;
+    $('tourSetup').classList.toggle('hidden', !setup); $('tourRun').classList.toggle('hidden', setup);
+    if (setup) { $('tourTitle').textContent = 'Tournament'; $('tourSub').textContent = 'Enter the teams and pick a format. Matches go to free courts by themselves, and the next match loads when a court finishes.'; renderSetup(); return; }
+    const F = { rr: 'Round robin', se: 'Single elimination', de: 'Double elimination', pools: 'Pools + playoffs' }[tour.format];
+    const p = T.progress(tour), r = tour.rules;
+    $('tourTitle').textContent = tour.name;
+    $('tourSub').textContent = F + ' · ' + tour.teams.length + ' teams · ' + p.done + ' of ' + p.total + ' matches played · game to ' + r.target + (r.bestOf > 1 ? ', best of ' + r.bestOf : '') + ' · ' + (r.scoring === 'rally' ? 'rally' : 'side-out') + ' scoring';
+    const hasTable = tour.format === 'rr' || tour.format === 'pools', hasBracket = tour.format !== 'rr';
+    if (tab === 'table' && !hasTable) tab = 'bracket';
+    if (tab === 'bracket' && !hasBracket) tab = 'table';
+    $('tourTabs').querySelectorAll('button').forEach((b) => { b.classList.toggle('on', b.dataset.v === tab); b.classList.toggle('hidden', (b.dataset.v === 'table' && !hasTable) || (b.dataset.v === 'bracket' && !hasBracket)); });
+    const ch = T.champion(tour);
+    $('tourChamp').classList.toggle('hidden', !ch);
+    if (ch) $('tourChamp').innerHTML = '<span class="eyebrow">Champion</span><b>' + esc(tname(ch)) + '</b>';
+    $('tourFill').disabled = !courts.some(isFree) || !T.nextFor(tour);
+    let html = '';
+    if (tab === 'matches') {
+      const real = tour.matches.filter((m) => !(m.result && m.result.bye));
+      const live = real.filter((m) => m.status === 'live'), ready = readyList(), wait = real.filter((m) => m.status === 'wait'), done = real.filter((m) => m.status === 'done').reverse();
+      const sec = (t, list) => list.length ? '<h3>' + t + ' <small>' + list.length + '</small></h3>' + list.map(matchRow).join('') : '';
+      html = sec('On court', live) + sec('Up next', ready) + sec('Waiting for results', wait) + sec('Results', done);
+    } else if (tab === 'table') {
+      html = tour.format === 'rr' ? tableHtml(T.standings(tour), 1) : '<div class="trt-grid">' + tour.poolTeams.map((_, i) => tableHtml(T.standings(tour, i), tour.advance, 'Pool ' + String.fromCharCode(65 + i))).join('') + '</div>';
+    } else {
+      html = tour.format === 'se' ? bracketHtml('w', 'Bracket') : tour.format === 'pools' ? bracketHtml('po', 'Playoffs')
+        : bracketHtml('w', 'Winners bracket') + bracketHtml('l', 'Losers bracket') + bracketHtml('gf', 'Grand final');
+    }
+    $('tourView').innerHTML = html || '<p class="trn-empty">Nothing here yet.</p>';
+    $('tourView').querySelectorAll('[data-score]').forEach((b) => b.onclick = () => manualScore(b.dataset.score));
+  }
+  function manualScore(id) {   // a match played without a referee phone
+    const m = mById(id); if (!m || m.status !== 'ready') return;
+    const txt = prompt('Score for ' + tname(m.a) + ' vs ' + tname(m.b) + ' (' + tname(m.a) + ' first).\nOne game: 11-7   ·   Best of 3: 11-7, 8-11, 11-9');
+    if (!txt) return;
+    const games = txt.split(/[,;\s]+/).filter(Boolean).map((g) => g.split(/[-–:]/).map(Number)).filter((g) => g.length === 2 && g.every((x) => x >= 0 && x < 100) && g[0] !== g[1]).map((g) => ({ a: g[0], b: g[1] }));
+    if (!games.length) { toast('USE A SCORE LIKE 11-7'); return; }
+    T.record(tour, id, games); saveTour(); fillCourts(); toast('RESULT SAVED');
+  }
+  function openTour(t) { if (t) tab = t; renderTour(); $('tourOverlay').classList.remove('hidden'); }
+  $('tourBtn').onclick = () => openTour();
+  $('tourClose').onclick = () => $('tourOverlay').classList.add('hidden');
+  $('tourFill').onclick = () => { const n = fillCourts(); toast(n ? n + ' COURT' + (n > 1 ? 'S' : '') + ' LOADED' : 'NO FREE COURT'); };
+  $('tourEnd').onclick = () => {
+    if (!confirm('End ' + tour.name + '? The schedule and results are cleared. Scores on the courts stay.')) return;
+    courts.forEach((c) => { clearTimeout(c.tourT); c.tourT = null; c.tm = null; });
+    tour = null; saveTour(); save(); renderTour(); renderTourChip(); courts.forEach(renderCourt); pushObs(); toast('TOURNAMENT ENDED');
+  };
+  $('obsTourToggle').checked = obsTour;
+  $('obsTourToggle').onchange = () => { obsTour = $('obsTourToggle').checked; store.set('aopb.obsTour', obsTour); pushObs(); };
+  renderTourChip();
+
   /* ---------- UI bits ---------- */
   let toastT;
   function toast(t) { const el = $('toast'); el.textContent = t; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 1800); }
   $('fsBtn').innerHTML = ICON.full;
   $('actFs').onclick = () => $('fsBtn').click();
   $('fsBtn').onclick = () => { const d = document.documentElement; if (!document.fullscreenElement) (d.requestFullscreen || function () {}).call(d); else document.exitFullscreen(); keepAwake(); };
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') ['qrOverlay', 'obsOverlay'].forEach((id) => $(id).classList.add('hidden')); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') ['qrOverlay', 'obsOverlay', 'tourOverlay'].forEach((id) => $(id).classList.add('hidden')); });
 
   // Presence: count this LIVE screen in "online now" / "courts scoring"
   let liveHandle = null;
@@ -346,6 +567,7 @@
   let linkReady = false;
   try { sessionStorage.setItem('aopb.tabRole', 'display'); localStorage.setItem('aopb.role', 'display'); } catch (e) {}
   layout(); renderLicense(); keepAwake();
+  if (tour) courts.forEach((c) => { if (c.tm && !mById(c.tm)) c.tm = null; tourWatch(c); });
   Promise.allSettled([loadScript(LIBS.qr), loadScript(LIBS.peer)]).then(() => {
     linkReady = true;
     courts.forEach((c) => { if (!c.link) startCourtLink(c); });
