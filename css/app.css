@@ -868,3 +868,16 @@ body.mode-live .voice-field, body.mode-act .voice-field { display: none; }   /* 
 .remote:has(#actDone:not(.hidden)) { height: 100dvh; min-height: 0; overflow: hidden; }
 .act-done { gap: clamp(8px, 1.8dvh, 14px); padding: clamp(16px, 3dvh, 28px) 20px; }
 .act-done h2 { font-size: clamp(28px, 5dvh, 38px); }
+
+/* Scoreboard always fits the screen width: the top bar shrinks/wraps instead of widening the page */
+.display { grid-template-columns: minmax(0, 1fr); }
+.d-top { grid-template-columns: auto minmax(0, 1fr) auto; min-width: 0; }
+.d-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: center; letter-spacing: .22em; font-size: clamp(11px, min(2.2vh, 1.25vw), 26px); }
+.d-status { min-width: 0; flex-wrap: wrap; justify-content: flex-end; row-gap: .8vh; }
+.d-top .chip { font-size: clamp(10px, min(1.7vh, 1.05vw), 20px); padding: .45em .9em; letter-spacing: .1em; }
+.court, #court { min-width: 0; }
+@media (max-width: 1500px) { .d-top { gap: 1.2vw; padding-left: 1.6vw; padding-right: 1.6vw; } }
+@media (max-width: 1200px) { .d-meta { letter-spacing: .14em; } .d-sound { font-size: 0 !important; } .d-sound::before { content: '🔊 Voice'; font-size: clamp(10px, 1.6vh, 16px); } }
+@media (orientation: portrait) { .d-top { grid-template-columns: auto minmax(0, 1fr); } .d-meta { grid-column: 1 / -1; } }
+@media (max-width: 1500px) { .d-meta { letter-spacing: .12em; } }
+@media (max-width: 1200px) { .d-sound { font-size: 0 !important; padding: .4em .8em !important; } .d-sound::before { font-size: clamp(10px, min(1.7vh, 1.05vw), 16px); letter-spacing: .08em; } }

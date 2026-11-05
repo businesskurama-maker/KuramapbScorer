@@ -256,7 +256,7 @@
     const el = $('passChip'); if (!el) return;
     if (!AUTH) { el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
-    if (licensed()) { el.classList.add('ok'); $('passTxt').textContent = 'Pass until ' + hhmm(license.until); }
+    if (licensed()) { el.classList.add('ok'); $('passTxt').textContent = 'Pass · ' + hhmm(license.until); }
     else { el.classList.remove('ok'); $('passTxt').textContent = 'Sign-in needed'; }
     renderPairUser();
     $('userChip').classList.toggle('hidden', !licensed());
