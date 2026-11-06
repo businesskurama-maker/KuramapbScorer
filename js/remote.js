@@ -1018,3 +1018,19 @@
   setInterval(maybeAskTeams, 1500);
   setMode(mode);
 })();
+
+/* Device bar: long-press shows the label without running the button */
+(function () {
+  const bar = document.querySelector('#sheet .dev-bar .sheet-actions'); if (!bar) return;
+  let timer = 0, shown = null, hideT = 0;
+  const clear = () => { clearTimeout(timer); timer = 0; };
+  const hide = () => { if (shown) shown.classList.remove('tip'); shown = null; };
+  bar.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('.act-btn'); if (!b || e.pointerType === 'mouse') return;
+    clear(); bar._held = false;
+    timer = setTimeout(() => { hide(); bar._held = true; shown = b; b.classList.add('tip'); try { navigator.vibrate && navigator.vibrate(15); } catch (_) {} clearTimeout(hideT); hideT = setTimeout(hide, 1600); }, 450);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => bar.addEventListener(ev, clear));
+  bar.addEventListener('click', (e) => { if (bar._held) { bar._held = false; e.preventDefault(); e.stopPropagation(); } }, true);
+  bar.addEventListener('contextmenu', (e) => e.preventDefault());
+})();

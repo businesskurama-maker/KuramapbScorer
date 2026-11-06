@@ -1217,3 +1217,7 @@ body.mode-act .act-done { min-height: 0; flex: 1 1 auto; overflow-y: auto; -webk
 #sheet .dev-bar .act-btn:first-child:hover::after, #sheet .dev-bar .act-btn:first-child:focus-visible::after,
 #sheet .dev-bar .act-btn:last-child:hover::after, #sheet .dev-bar .act-btn:last-child:focus-visible::after,
 #sheet .dev-bar .act-btn#unpair:nth-last-child(2):has(+ .hidden):hover::after { transform: translate(0, 0); }
+#sheet .dev-bar .act-btn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+#sheet .dev-bar .act-btn.tip::after { opacity: 1; transform: translate(-50%, 0); }
+#sheet .dev-bar .act-btn:first-child.tip::after, #sheet .dev-bar .act-btn:last-child.tip::after, #sheet .dev-bar .act-btn#unpair:nth-last-child(2):has(+ .hidden).tip::after { transform: translate(0, 0); }
+@media (hover: none) { #sheet .dev-bar .act-btn:not(.tip):hover::after { opacity: 0; } }
