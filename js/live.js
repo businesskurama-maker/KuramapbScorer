@@ -555,6 +555,7 @@
   function renderSetup(keepText) {
     Object.keys(SEGS).forEach((id) => $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(draft[SEGS[id]]) === b.dataset.v)));
     $('poolRow').classList.toggle('hidden', draft.format !== 'pools');
+    $('poolRow2').classList.toggle('hidden', draft.format !== 'pools');
     $('tourFmtInfo').textContent = FORMAT_INFO[draft.format] || '';
     $('tourVoiceInfo').classList.toggle('hidden', draft.courts !== 1);
     store.set('aopb.liveAnnounce', draft.announce ? 1 : 0); if (typeof renderVoice === 'function') renderVoice();

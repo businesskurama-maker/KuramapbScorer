@@ -382,3 +382,18 @@
 .cb-card { gap: 2.6vh; }
 .cb-court { display: none; }
 .cb-label { font-size: min(3vh, 2.2vw); }
+/* Tournament setup: even grid of settings */
+.tsu-f { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.tsu-f.hidden { display: none; }
+.tsu-f .eyebrow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 !important; }
+.tsu-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(8px, 1.3dvh, 14px) clamp(10px, 1.2vw, 16px); align-items: end; }
+.tsu-grid .tsu-fmt { grid-column: 1 / -1; margin: 0; }
+.tsu-grid .tsu-fmt.hidden { display: none; }
+.tsu-f .tsu-fmt { margin-top: 4px; min-height: 0; }
+.tsu-hint { font-size: clamp(11px, 1.4dvh, 13px); color: var(--ink-3); line-height: 1.4; }
+.tsu-hint b { color: var(--ink-2); font-weight: 700; letter-spacing: .04em; }
+.tsu-right { gap: clamp(8px, 1.3dvh, 12px); }
+.tsu-right .tsu-teams { min-height: 0; }
+.tsu-grid .tsu-f:has(#tourCC) { grid-column: 1 / -1; }
+.tsu-seg button { letter-spacing: .02em; }
+@media (max-width: 820px) { .tsu-right { margin-top: 12px; } }
