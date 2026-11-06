@@ -135,7 +135,7 @@
     if (offer) renderGatePkgs();
     if (state === 'denied') { lastDenied = opts; refreshPending(); } else $('gatePending').classList.add('hidden');
     const p = PBAuth.profile;
-    if (state === 'signin') { $('gateTitle').textContent = 'Sign in to start scoring'; $('gateBody').textContent = 'Continue with Google. New here? Your first 7 days are free — every feature, including LIVE for OBS. After that, a PHP 50 donation unlocks 24 hours.'; }
+    if (state === 'signin') { $('gateTitle').textContent = 'Sign in to start scoring'; $('gateBody').textContent = 'Continue with Google. New here? Your first month is free — every feature, including LIVE for OBS. After that, a PHP 50 donation unlocks 24 hours.'; }
     if (state === 'checking') { $('gateTitle').textContent = 'Checking your pass…'; $('gateBody').textContent = 'One moment.'; }
     if (state === 'denied') {
       const who = opts.email || (p && p.email) || 'This account';
@@ -749,7 +749,7 @@
   function renderClub() {
     $('clubSec').classList.toggle('locked', AUTH && !clubOK);
     $('clubLock').textContent = AUTH && !clubOK
-      ? 'Your club logo, colour and sponsor on the TV scoreboard. Part of the LIVE pass — also included in the first 7 days of a new account.'
+      ? 'Your club logo, colour and sponsor on the TV scoreboard. Part of the LIVE pass — also included in the 1-month free trial of a new account.'
       : 'Shows on the TV scoreboard while you are signed in. Part of your LIVE pass.';
     $('clubOn').querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(club.on ? 1 : 0) === b.dataset.v));
     $('clubLogoBox').classList.toggle('has', !!club.logo); $('clubLogoPrev').src = club.logo || '';
