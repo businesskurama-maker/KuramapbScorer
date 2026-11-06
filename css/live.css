@@ -418,3 +418,26 @@
 .lv-obs-right .pair-actions .btn { min-height: clamp(40px, 5.5dvh, 50px); }
 @media (max-width: 760px) { .lbe-fields { grid-template-columns: 1fr; } .lbe-live { margin-left: 0 !important; width: 100%; } }
 .lv-obs-body { align-items: stretch; }
+/* Activation card: clean hierarchy */
+.lv-act .pair-text { gap: clamp(10px, 1.8dvh, 18px); }
+.lv-act .act-lead { margin: 0; max-width: 60ch; }
+.act-prices { display: flex; flex-wrap: wrap; gap: 8px; }
+.act-prices .ap { display: inline-flex; align-items: baseline; gap: 6px; padding: 7px 12px 6px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.04); font-size: clamp(11px, 1.5dvh, 14px); color: var(--ink-2); white-space: nowrap; }
+.act-prices .ap b { color: #fff; font-weight: 800; letter-spacing: .04em; }
+.act-prices .ap.free { border-color: rgba(57,255,20,.55); background: rgba(57,255,20,.1); color: #c9ffbd; }
+.act-prices .ap.free b { color: #39FF14; }
+.act-codes { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(12px, 1.6vw, 22px); align-items: stretch; }
+.act-codebox { display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 12px 18px; border-radius: 16px; border: 1px solid var(--line); background: rgba(255,255,255,.03); }
+.act-codebox .code { margin: 0; line-height: 1; }
+.lv-act .trial-box { justify-content: center; border-style: solid; border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.03); }
+.lv-act .trial-row .btn { min-width: 9em; }
+.lv-act .trial-err:empty { display: none; }
+@media (max-width: 900px) { .act-codes { grid-template-columns: 1fr; } }
+.act-codes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.act-codebox .code { font-size: min(7vh, 3.4vw); letter-spacing: .16em; white-space: nowrap; overflow: hidden; }
+.lv-act .trial-row { grid-template-columns: minmax(0, 1fr) auto; }
+.lv-act .trial-row .text-in { min-width: 0; font-size: clamp(13px, 1.8dvh, 18px); letter-spacing: .08em; }
+.lv-act .trial-row .btn { min-width: 0; padding-left: 18px; padding-right: 18px; }
+@media (max-width: 900px) { .act-codes { grid-template-columns: 1fr; } .act-codebox .code { font-size: min(7vh, 9vw); } }
+.act-codebox .eyebrow, .lv-act .trial-box .eyebrow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: clamp(9px, 1.2dvh, 12px); }
+@media (max-width: 900px), (orientation: portrait) { .act-prices { justify-content: center; } }

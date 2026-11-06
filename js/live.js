@@ -240,14 +240,14 @@
   $('trialBtn').onclick = async () => {
     const code = $('trialIn').value.replace(/[^A-Za-z0-9]/g, '');
     const err = $('trialErr'); err.className = 'trial-err';
-    if (code.length < 10) { err.textContent = 'Trial codes look like DK-XXXX-XXXX.'; return; }
+    if (code.length < 10) { err.textContent = 'Promo codes look like DK-XXXX-XXXX.'; return; }
     $('trialBtn').disabled = true; err.textContent = 'Checking code…';
     let res; try { res = await PBAuth.redeemLiveCode(code, screenId); } catch (e) { res = { ok: false, reason: 'ERROR' }; }
     $('trialBtn').disabled = false;
     if (res.ok) {
-      license = { until: res.until, email: 'Trial code', name: 'Trial', trial: true };
+      license = { until: res.until, email: 'Promo code', name: 'Promo', trial: true };
       err.className = 'trial-err ok'; err.textContent = ''; $('trialIn').value = '';
-      renderLicense(); pushObs(); toast('LIVE TRIAL · 1 HOUR');
+      renderLicense(); pushObs(); toast('LIVE ON · PROMO CODE');
     } else {
       err.textContent = res.reason === 'USED_CODE' ? 'This code was already used.' : res.reason === 'EXPIRED_CODE' ? 'This code has expired (codes must be used within 7 days).'
         : res.reason === 'BAD_CODE' ? 'That code isn’t valid. Check it and try again.' : 'Could not check the code — check the internet connection.';

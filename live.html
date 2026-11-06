@@ -46,13 +46,19 @@
     <div class="pair-text">
       <div class="eyebrow">DinkyKong LIVE · organizer</div>
       <h1>Scan to activate LIVE</h1>
-      <p>Organizer: scan with your phone and sign in with the same Google account you use for the scoreboard. A <b>LIVE pass</b> — from <b>PHP 20 / hour</b> (PHP 50 / 4 hours · PHP 150 / day · PHP 300 / 3 days) — unlocks every court on this screen and the OBS lower third. <b>New accounts: first month free.</b> Referees just scan their court’s QR — no sign-in needed.</p>
+      <p class="act-lead">Scan with your phone and sign in with the same Google account you use for the scoreboard. Unlocks every court on this screen and the OBS lower third. Referees just scan their court’s QR, with no sign-in needed.</p>
+      <div class="act-prices" aria-label="LIVE pass prices">
+        <span class="ap"><b>PHP 20</b>1 hour</span><span class="ap"><b>PHP 50</b>4 hours</span><span class="ap"><b>PHP 150</b>1 day</span><span class="ap"><b>PHP 300</b>3 days</span>
+        <span class="ap free"><b>FREE</b>1st month · new accounts</span>
+      </div>
       <div class="pair-status" id="actStatus"></div>
-      <div><div class="eyebrow">Or type this code on the organizer’s phone</div><div class="code" id="actCode">······</div></div>
-      <div class="trial-box">
-        <span class="eyebrow">Have a trial code?</span>
-        <div class="trial-row"><input class="text-in" id="trialIn" maxlength="14" placeholder="DK-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn primary" id="trialBtn">Activate 1 hour</button></div>
-        <div class="trial-err" id="trialErr"></div>
+      <div class="act-codes">
+        <div class="act-codebox"><span class="eyebrow">Or enter this code on your phone</span><div class="code" id="actCode">······</div></div>
+        <div class="trial-box">
+          <span class="eyebrow">Have a promo code?</span>
+          <div class="trial-row"><input class="text-in" id="trialIn" maxlength="14" placeholder="DK-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Promo code"><button class="btn primary" id="trialBtn">Activate</button></div>
+          <div class="trial-err" id="trialErr"></div>
+        </div>
       </div>
       <div class="pair-actions"><button class="btn" id="actFs">Full screen</button><a class="btn menu-btn" href="./?menu=1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>Main menu</a></div>
     </div>
