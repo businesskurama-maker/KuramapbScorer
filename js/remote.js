@@ -39,6 +39,9 @@
      if that was refused, again on click).
      iPhone: Safari has no Vibration API; iOS 18+ gives a system haptic when a hidden <input switch> is toggled
      from a click, so we toggle a fresh one on every score tap. */
+  // Score taps use a long, full-strength pulse: the web cannot set vibration strength, only length,
+  // and a longer pulse lets the motor reach full power, so it feels much stronger.
+  const TAP_MS = 90;
   let lastBuzz = 0, buzzOk = false, warnedHaptics = false;
   const CAN_VIB = typeof navigator.vibrate === 'function';
   const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -53,7 +56,7 @@
   function buzz(ms) {
     lastBuzz = Date.now(); buzzOk = false;
     if (CAN_VIB) { try { buzzOk = navigator.vibrate(typeof ms === 'number' ? Math.max(30, ms) : (ms || 30)) !== false; } catch (e) { buzzOk = false; } }
-    else { iosHaptic(); buzzOk = IOS && IOS_VER >= 18; }
+    else { iosHaptic(); if (ms === TAP_MS) setTimeout(iosHaptic, 55); buzzOk = IOS && IOS_VER >= 18; }
     return buzzOk;
   }
   function hapticsNote() {
@@ -453,15 +456,15 @@
   ['rL', 'rR'].forEach((id) => {
     const b = $(id);
     // Vibrate the moment the finger lands; if the phone refused (no user tap yet), vibrate again on click
-    b.addEventListener('pointerdown', () => { if (!b.disabled && CAN_VIB) buzz(45); });
+    b.addEventListener('pointerdown', () => { if (!b.disabled && CAN_VIB) buzz(TAP_MS); });
     b.addEventListener('click', () => {
       if (b.disabled) return;
-      if (!CAN_VIB || !buzzOk || Date.now() - lastBuzz > 600) buzz(45);
+      if (!CAN_VIB || !buzzOk || Date.now() - lastBuzz > 600) buzz(TAP_MS);
       hapticsNote();
       if (send({ a: 'rally', team: Number(b.dataset.team) })) showTags();
     });
   });
-  $('undoBtn').onclick = () => { buzz([15, 30, 15]); send({ a: 'undo' }); };
+  $('undoBtn').onclick = () => { buzz([60, 40, 60]); send({ a: 'undo' }); };
   $('swapBtn').onclick = () => send({ a: 'swap' });
   $('serveBtn').onclick = () => { if (st) send({ a: 'server', team: 1 - st.serving }); };
   $('pfsBtn').onclick = () => { if (send({ a: 'pfs' })) flash('Play for serve'); };
