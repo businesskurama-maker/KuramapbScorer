@@ -1034,3 +1034,28 @@ body.mode-live .club-sec, body.mode-act .club-sec { display: none; }
 #ptStart { font-size: 15px; letter-spacing: .1em; white-space: normal; line-height: 1.2; }
 .pt-endrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .pt-endrow .mini-btn { width: 100%; justify-content: center; }
+
+/* ===== Small phones (and phones with large text): keep every remote screen compact ===== */
+@media (max-width: 380px) {
+  .start-row .pfs-btn { padding: 8px 10px; gap: 6px; min-height: 0; }
+  .start-row .pfs-btn small { display: none; }
+  .start-row .pfs-btn b { font-size: 13px; line-height: 1.1; }
+  .start-row .pfs-ico { font-size: 18px; }
+  .start-row .pfs-ico svg { width: 18px; height: 18px; }
+  .rally .lbl { font-size: 9.5px; letter-spacing: .12em; white-space: nowrap; }
+  .rally .nm { font-size: clamp(22px, 8.4vw, 36px); word-break: normal; overflow-wrap: anywhere; }
+  .rally.is-serving::after { top: 34px; font-size: 9.5px; padding: 4px 9px 3px; letter-spacing: .14em; }
+  .rally .what { font-size: 10.5px; padding: 5px 9px; }
+  .rally-btns { gap: 8px; min-height: 200px; }
+  body.mode-live .r-head .brand-sm span { font-size: 0; letter-spacing: 0; overflow: visible; }
+  body.mode-live .r-head .brand-sm span::after { font-size: 10px; margin-left: 0; }
+  .tool { padding: 9px 2px 8px; gap: 4px; font-size: 9px; letter-spacing: .04em; }
+  .tool svg { width: 19px; height: 19px; }
+}
+@media (max-width: 340px) {
+  .r-head .brand-sm span { display: none; }
+  body.mode-live .r-head .brand-sm span { display: inline; }
+}
+@media (max-height: 640px) {
+  .rally-btns { min-height: 170px; }
+}
