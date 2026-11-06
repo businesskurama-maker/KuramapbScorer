@@ -451,7 +451,7 @@
   $('tagRow').querySelectorAll('button').forEach((b) => b.onclick = () => { if (send({ a: 'tag', tag: b.dataset.tag })) { flash(b.textContent); $('tagRow').classList.add('hidden'); } });
   $('nextBtn').onclick = () => { if (!st) return; if (st.matchOver) openSheet(); else send({ a: 'next' }); };
   // After the winner is announced: rematch with the same teams, or leave
-  $('endNew').onclick = () => { if (st && send({ a: 'new', settings: st.settings })) { flash('New match'); buzz && buzz(30); } };
+  $('endNew').onclick = () => { if (st) openTeamWiz('new'); };
   $('endExit').onclick = () => {
     if (!confirm('Exit? ' + (mode === 'live' ? 'This phone leaves the court.' : 'The scoreboard restarts and shows a new QR code for the next players.'))) return;
     leaveScreen(true, mode === 'live' ? 'You left the court.' : 'Thanks for playing! The scoreboard is ready for the next players.');
@@ -918,5 +918,73 @@
     return false;
   }
   ptRenderSetup();
+
+  /* ---------- New match: ask for both teams (left side first, as seen facing the scoreboard) ---------- */
+  const tw = { step: 0, kind: 'new', base: null, teams: [null, null], left: 0 };
+  const isDefTeam = (n) => !n || /^TEAM [AB]$/i.test(String(n).trim());
+  function openTeamWiz(kind) {
+    if (!st || mode !== 'solo') return;
+    tw.kind = kind; tw.base = JSON.parse(JSON.stringify(st.settings));
+    tw.left = kind === 'rename' && st.swapped ? 1 : 0;   // a new match starts unswapped: team 1 is on the left
+    const s = tw.base, pl = s.players || [[], []];
+    tw.teams = [0, 1].map((side) => { const t = side === 0 ? tw.left : 1 - tw.left; return { name: isDefTeam(s.names[t]) ? '' : s.names[t], p: [(pl[t] || [])[0] || '', (pl[t] || [])[1] || ''], color: s.colors[t] }; });
+    tw.step = 0; twPaint(); $('teamWiz').classList.remove('hidden'); buzz(15);
+    setTimeout(() => { try { $('twName').focus(); $('twName').select(); } catch (e) {} }, 120);
+  }
+  function twRead() { const t = tw.teams[tw.step]; t.name = $('twName').value.trim().toUpperCase(); t.p = [$('twP1').value.trim(), $('twP2').value.trim()]; }
+  function twPaint() {
+    const i = tw.step, t = tw.teams[i], other = tw.teams[1 - i], singles = tw.base.mode === 'singles';
+    $('twStep').textContent = 'TEAM ' + (i + 1) + ' OF 2';
+    $('twTitle').textContent = i ? 'SECOND TEAM' : 'FIRST TEAM';
+    $('twSide').textContent = (i ? 'Right' : 'Left') + ' side of the court, facing the scoreboard';
+    $('twHalfL').setAttribute('fill-opacity', i ? '0' : '.85'); $('twHalfR').setAttribute('fill-opacity', i ? '.85' : '0');
+    $('twName').value = t.name; $('twP1').value = t.p[0]; $('twP2').value = t.p[1];
+    $('twP2w').classList.toggle('hidden', singles); $('twP1').previousElementSibling.textContent = singles ? 'Player' : 'Player 1';
+    $('twSw').innerHTML = PALETTE.slice(0, 6).map((c) => { const taken = i === 1 && c.toLowerCase() === String(other.color).toLowerCase(); return '<button type="button" class="sw' + (c.toLowerCase() === String(t.color).toLowerCase() ? ' on' : '') + (taken ? ' taken' : '') + '" data-c="' + c + '" style="background:' + c + '" aria-label="' + c + (taken ? ' (first team)' : '') + '"' + (taken ? ' disabled' : '') + '></button>'; }).join('');
+    $('twSw').querySelectorAll('.sw').forEach((b) => b.onclick = () => { if (b.disabled) return; twRead(); t.color = b.dataset.c; twPaint(); buzz(8); });
+    const used = new Set([other.name].filter(Boolean).map((x) => x.toLowerCase()));
+    $('twSaved').innerHTML = savedTeams().filter((x) => !used.has(String(x.name).toLowerCase())).slice(0, 10).map((x, k) => '<button type="button" class="tw-chip" data-k="' + k + '"><i style="background:' + esc(x.color || '#888') + '"></i>' + esc(x.name) + '</button>').join('');
+    $('twSaved').querySelectorAll('.tw-chip').forEach((b) => b.onclick = () => {
+      const x = savedTeams().filter((y) => !used.has(String(y.name).toLowerCase()))[+b.dataset.k]; if (!x) return;
+      t.name = x.name; t.p = [(x.players || [])[0] || '', (x.players || [])[1] || ''];
+      if (x.color && !(i === 1 && x.color.toLowerCase() === String(other.color).toLowerCase())) t.color = x.color;
+      twPaint(); buzz(10);
+    });
+    $('twBack').textContent = i ? '← Back' : 'Skip';
+    $('twNext').textContent = i ? 'Start match' : 'Next: second team →';
+  }
+  function twFinish() {
+    const [L, R] = tw.teams, left = tw.left;
+    const byTeam = left === 0 ? [L, R] : [R, L];
+    const names = byTeam.map((t, k) => t.name || (t.p.filter(Boolean).join(' & ').toUpperCase().slice(0, 18)) || (k ? 'TEAM B' : 'TEAM A'));
+    const players = byTeam.map((t) => [t.p[0], tw.base.mode === 'singles' ? '' : t.p[1]]);
+    let colors = byTeam.map((t) => t.color);
+    if (String(colors[0]).toLowerCase() === String(colors[1]).toLowerCase()) colors[1] = PALETTE.find((c) => c.toLowerCase() !== String(colors[0]).toLowerCase());
+    // remember named teams on this phone for next time
+    byTeam.forEach((t, k) => { if (!t.name) return; const list = savedTeams().filter((x) => x.name.toLowerCase() !== names[k].toLowerCase()); list.unshift({ name: names[k], players: players[k], color: colors[k] }); store.set(SAVED_T, list.slice(0, 40)); });
+    rememberPlayers(players);
+    const ok = tw.kind === 'new' ? send({ a: 'new', settings: Object.assign({}, tw.base, { names, players, colors }) }) : send({ a: 'rename', names, colors, players });
+    if (ok) { $('teamWiz').classList.add('hidden'); flash(tw.kind === 'new' ? 'New match · ' + names[0] + ' vs ' + names[1] : names[0] + ' vs ' + names[1]); buzz(30); }
+  }
+  $('twNext').onclick = () => { twRead(); if (tw.step === 0) { tw.step = 1; twPaint(); setTimeout(() => { try { $('twName').focus(); } catch (e) {} }, 80); } else twFinish(); };
+  $('twBack').onclick = () => {
+    twRead();
+    if (tw.step === 1) { tw.step = 0; twPaint(); return; }
+    // Skip: keep the teams as they are
+    $('teamWiz').classList.add('hidden');
+    if (tw.kind === 'new' && send({ a: 'new', settings: tw.base })) flash('New match');
+  };
+  $('twClose').onclick = () => $('teamWiz').classList.add('hidden');
+  ['twName', 'twP1', 'twP2'].forEach((id) => $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const nx = { twName: 'twP1', twP1: tw.base && tw.base.mode === 'singles' ? null : 'twP2', twP2: null }[id]; if (nx) $(nx).focus(); else $('twNext').click(); } }));
+  // A fresh match with default names on this screen: ask once for the teams
+  const twAsked = new Set();
+  function maybeAskTeams() {
+    if (!st || mode !== 'solo' || !authed || !connected || st.matchOver || twAsked.has(st.id)) return;
+    const fresh = st.score[0] + st.score[1] === 0 && st.games[0] + st.games[1] === 0 && st.gameNo === 1 && !st.playForServe;
+    if (!fresh || !isDefTeam(st.settings.names[0]) || !isDefTeam(st.settings.names[1])) return;
+    if (!$('teamWiz').classList.contains('hidden') || !$('sheet').classList.contains('hidden')) return;
+    twAsked.add(st.id); openTeamWiz('rename');
+  }
+  setInterval(maybeAskTeams, 1500);
   setMode(mode);
 })();
