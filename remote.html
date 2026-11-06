@@ -43,6 +43,7 @@
 
   <!-- Controller -->
   <section id="ctrl" class="hidden" style="display:flex;flex-direction:column;gap:12px;flex:1">
+    <div class="reconn hidden" id="reconn" role="status"><span class="reconn-spin"></span><span id="reconnTxt">Reconnecting…</span><button class="mini-btn" id="reconnNow">Retry now</button></div>
     <div class="conn-help hidden" id="connHelp" role="alert">
       <div><b>Can’t reach the scoreboard</b><span id="connHelpTxt">It may have restarted with a new code. Scan its QR code again.</span></div>
       <div class="conn-help-btns"><button class="mini-btn" id="connRetry">Retry</button><button class="big-btn" id="connRescan">Scan again</button></div>

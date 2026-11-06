@@ -1094,3 +1094,10 @@ body.mode-act #ctrl { flex: 1 1 auto; min-height: 0; display: flex; flex-directi
 body.mode-act .act-done { min-height: 0; flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 #ptStart:disabled { opacity: 1; background: #24561a; color: rgba(6,18,4,.75); }
 #ptStart { bottom: 8px; }
+/* Connection checker banner */
+.reconn { display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 12px; border-radius: 14px; background: rgba(255,200,0,.1); border: 1px solid rgba(255,210,31,.5); color: #ffe68a; font-size: 13px; font-weight: 700; }
+.reconn.hidden { display: none; }
+.reconn #reconnTxt { flex: 1; min-width: 0; }
+.reconn .mini-btn { flex: none; }
+.reconn-spin { width: 16px; height: 16px; flex: none; border-radius: 50%; border: 3px solid rgba(255,230,0,.25); border-top-color: #FFE600; animation: rspin .8s linear infinite; }
+@keyframes rspin { to { transform: rotate(360deg); } }

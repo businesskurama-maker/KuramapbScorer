@@ -176,6 +176,7 @@
       getState: () => Object.assign(E.publicState(E.newMatch({ names: ['LIVE', 'ACTIVATION'] })), { liveAct: true }),
       onAction: (a, reply) => reply({ t: 'denied', reason: 'ACTIVATION_ONLY' }),
       onMessage: async (msg, reply, id) => {
+        if (msg.t === 'rtt') { reply(msg); return; }   // connection checker on the organizer's phone
         if (msg.t === 'release') { exitLive(); return; }   // organizer tapped "Exit LIVE" on their phone
         if (msg.t === 'tour?' || msg.t === 'tourStart' || msg.t === 'tourEnd' || msg.t === 'tourRestart') {   // tournament from the organizer's phone
           if (!liveOK() || (AUTH && !actOk.has(id))) { reply({ t: 'tourErr', reason: 'Activate LIVE first.' }); return; }

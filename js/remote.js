@@ -19,10 +19,11 @@
 
   const params = new URLSearchParams(location.search);
   const wantScan = params.get('scan') === '1';
-  let code = PBLink.normCode(params.get('c') || (wantScan ? '' : store.get('aopb.remoteCode', '')));
+  const liveRef = store.get('aopb.liveRef', null), liveRefOk = !!(liveRef && liveRef.code && Date.now() - liveRef.at < 6 * 3600e3);
+  let code = PBLink.normCode(params.get('c') || (wantScan ? '' : store.get('aopb.remoteCode', '') || (liveRefOk ? liveRef.code : '')));
   // 'solo' = normal scoreboard · 'live' = a court on a LIVE screen (referee, no sign-in) · 'act' = organizer activating LIVE
   let mode = params.get('live') === '1' ? 'live' : params.get('act') === '1' ? 'act'
-    : (code && code === store.get('aopb.remoteCode', '') ? store.get('aopb.remoteMode', 'solo') : 'solo');
+    : (code && code === store.get('aopb.remoteCode', '') ? store.get('aopb.remoteMode', 'solo') : (liveRefOk && code === liveRef.code ? 'live' : 'solo'));
   let scanMode = null;
   function setMode(m) {
     mode = m; store.set('aopb.remoteMode', m);
@@ -41,7 +42,6 @@
   let downSince = Date.now(), wasLive = false, kickT = null;
   /* Reliability: connection quality (round-trip time) and taps kept while reconnecting */
   var rtt = 0, queue = [];
-  setInterval(() => { if (link && connected) { try { link.sendMsg({ t: 'rtt', at: Date.now() }); } catch (e) {} } }, 5000);
   function flushQueue() {
     if (!queue.length || !link) return;
     const q = queue.splice(0); let sent = 0;
@@ -51,10 +51,7 @@
   function setStatus(s) {
     if (leaving) return;
     // LIVE court: if the referee loses the court, they must scan the QR or enter the code again
-    if (mode === 'live') {
-      if (s === 'connected') { wasLive = true; clearTimeout(kickT); kickT = null; }
-      else if (wasLive && !kickT) kickT = setTimeout(() => { kickT = null; if (!connected && mode === 'live') { wasLive = false; leaveScreen(false, 'Connection to the court was lost. Scan the court’s QR code or enter its code again.'); buzz([80, 60, 80]); } }, 8000);
-    }
+    if (mode === 'live' && s === 'connected') wasLive = true;   // LIVE referees now reconnect by themselves (see the connection checker)
     if (s === 'connected') { downSince = 0; $('connHelp').classList.add('hidden'); }
     else if (!downSince) downSince = Date.now();
     if (s === 'connected' && !connected) setTimeout(sendAuth, 50);
@@ -65,7 +62,7 @@
     txt.textContent = labels[s] || s;
     if (s === 'connected') { el.classList.add('ok'); el.classList.toggle('slow', rtt > 400); flushQueue(); }
     if (s === 'nodisplay' || s === 'nolib') el.classList.add('bad');
-    renderCtrl();
+    renderCtrl(); renderReconn();
   }
 
   /* ---------- Join ---------- */
@@ -83,7 +80,7 @@
     if (scanMode) { setMode(scanMode); scanMode = null; } else setMode(mode);
     store.set('aopb.remoteCode', code); touch(); stopScan();
     history.replaceState(null, '', 'remote.html?c=' + code + modeQS());
-    if (mode === 'live') { store.del('aopb.remoteCode'); history.replaceState(null, '', 'remote.html'); }   // LIVE referees always re-enter the code / rescan
+    if (mode === 'live') { store.del('aopb.remoteCode'); store.set('aopb.liveRef', { code, at: Date.now() }); history.replaceState(null, '', 'remote.html'); }   // remembered 6 h for auto-rejoin
     $('join').classList.add('hidden'); $('ctrl').classList.remove('hidden');
     if (link) link.destroy();
     link = PBLink.client({ code, onState, onStatus: setStatus, onMessage: onLinkMessage });
@@ -97,6 +94,7 @@
   /* ---------- State from display ---------- */
   function onState(s) {
     if (leaving) return;
+    heard();
     if (s && s.liveCourt && mode !== 'live') { setMode('live'); setGate(null); store.del('aopb.remoteCode'); history.replaceState(null, '', 'remote.html'); }
     if (s && s.liveAct && mode !== 'act') setMode('act');
     touch();
@@ -172,6 +170,7 @@
   }
 
   function onLinkMessage(m) {
+    heard();
     if (leaving) return;
     if (m.t === 'rtt') { rtt = Math.max(1, Date.now() - m.at); if (connected) { $('statusTxt').textContent = 'Live · ' + code + ' · ' + rtt + ' ms'; $('status').classList.toggle('slow', rtt > 400); } return; }
     if (onClubMsg(m) || onTourMsg(m)) return;
@@ -195,7 +194,7 @@
     leaving = true;
     const l = link; link = null; st = null; connected = false; authed = false;
     setTimeout(() => { try { l && l.destroy(); } catch (e) {} }, notify ? 600 : 0);
-    store.del('aopb.remoteCode'); store.del('aopb.remoteMode'); code = ''; setMode('solo'); $('actDone').classList.add('hidden');
+    store.del('aopb.remoteCode'); store.del('aopb.remoteMode'); store.del('aopb.liveRef'); code = ''; setMode('solo'); $('actDone').classList.add('hidden');
     $('status').classList.remove('ok', 'bad');
     history.replaceState(null, '', 'remote.html');
     setGate(null); closeSheet(); showJoin(msg || '');
@@ -713,9 +712,41 @@
   PBAuth.live('p-' + device.slice(0, 12), { r: 'phone' }, () => {}).catch(() => {});
   /* Match setup: show a divider under the title once the sheet scrolls */
   (function () { const sh = document.querySelector('#sheet .sheet'); if (sh) sh.addEventListener('scroll', () => sh.classList.toggle('scrolled', sh.scrollTop > 4), { passive: true }); })();
+  /* Connection checker: every few seconds make sure the screen still answers. If it goes quiet or the link drops,
+     rebuild the connection by itself (auto-reconnect), and send any saved taps when it's back. */
+  let lastHeard = Date.now(), relinkN = 0, relinkAt = 0;
+  function heard() { lastHeard = Date.now(); relinkN = 0; }
+  function relink(why) {
+    if (!code || leaving || !$('join').classList.contains('hidden')) return;
+    relinkAt = Date.now(); relinkN++; lastHeard = Date.now();
+    try { if (link) link.destroy(); } catch (e) {}
+    link = PBLink.client({ code, onState, onStatus: setStatus, onMessage: onLinkMessage });
+    renderReconn();
+  }
+  function renderReconn() {
+    const b = $('reconn'); if (!b) return;
+    const down = !connected && link && downSince && Date.now() - downSince > 2500 && $('join').classList.contains('hidden') && !leaving;
+    b.classList.toggle('hidden', !down);
+    if (down) $('reconnTxt').textContent = (mode === 'live' ? 'Reconnecting to the court' : 'Reconnecting to the scoreboard') + (relinkN ? ' · try ' + relinkN : '') + (queue.length ? ' · ' + queue.length + ' tap' + (queue.length > 1 ? 's' : '') + ' saved' : '');
+  }
+  setInterval(() => {
+    if (leaving || !code || !link) return;
+    const now = Date.now();
+    if (connected) {
+      try { link.sendMsg({ t: 'rtt', at: now }); } catch (e) {}
+      if (now - lastHeard > 16000) { setStatus('lost'); relink('silent'); }   // connected on paper, but the screen stopped answering
+    } else if (downSince && now - downSince > 5000) {
+      const wait = Math.min(20000, 4000 + relinkN * 3000);   // 4 s, 7 s, 10 s … up to 20 s between tries
+      if (now - relinkAt > wait) relink('down');
+    }
+    renderReconn();
+  }, 3000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && code && link && !leaving) { if (!connected) relink('wake'); else { try { link.sendMsg({ t: 'rtt', at: Date.now() }); } catch (e) {} } } });
+  window.addEventListener('online', () => { if (code && link && !connected && !leaving) relink('online'); });
+  $('reconnNow') && ($('reconnNow').onclick = () => { flash('Reconnecting…'); relink('tap'); });
   /* Stuck connecting? After 15 s offer "Scan again" (the scoreboard may have restarted with a new code). */
   setInterval(() => {
-    const show = !leaving && link && !connected && downSince && Date.now() - downSince > 15000 && !$('ctrl').classList.contains('hidden');
+    const show = !leaving && link && !connected && downSince && Date.now() - downSince > (mode === 'live' ? 45000 : 20000) && !$('ctrl').classList.contains('hidden');
     if (show) $('connHelpTxt').textContent = navigator.onLine === false
       ? 'This phone is offline. Check Wi-Fi or mobile data, then tap Retry.'
       : 'Scoreboard ' + code + ' isn’t answering. It may have restarted with a new code — scan its QR code again.';
