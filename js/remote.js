@@ -484,7 +484,36 @@
     document.querySelectorAll('.pl2, .dbl-only').forEach((el) => el.classList.toggle('hidden', single));
     document.querySelectorAll('.player-row').forEach((el) => el.classList.toggle('single', single));
     $('pA0').placeholder = $('pB0').placeholder = single ? 'Player name' : 'Player 1';
+    syncRuleSelects();
   }
+  /* Compact rules: every rule button row becomes a small dropdown in a 2-column grid */
+  function buildRuleSelects() {
+    const grid = $('rulesGrid'); if (!grid || grid.childElementCount) return;
+    document.querySelectorAll('.rules-sec .field').forEach((f) => {
+      const seg = f.querySelector('.seg[data-k]'); if (!seg) return;
+      const eb = f.querySelector('.eyebrow'); const label = eb ? eb.childNodes[0].textContent.replace(/·.*$/, '').trim() : seg.dataset.k;
+      const cell = document.createElement('label'); cell.className = 'rs-cell' + (f.classList.contains('voice-field') ? ' voice-field' : '');
+      const sel = document.createElement('select'); sel.className = 'rs-sel'; sel.dataset.k = seg.dataset.k;
+      seg.querySelectorAll('button').forEach((b) => { const o = document.createElement('option'); o.value = b.dataset.v; o.textContent = b.textContent; sel.appendChild(o); });
+      sel.onchange = () => { const b = seg.querySelector('button[data-v="' + sel.value + '"]'); if (b) b.click(); };
+      const SHORT = { target: 'Points to win', timeouts: 'Timeouts', tags: 'Rally reasons', voice: 'Voice calls', courtChange: 'Court change' };
+      const sp = document.createElement('span'); sp.textContent = SHORT[seg.dataset.k] || label;
+      cell.appendChild(sp); cell.appendChild(sel); grid.appendChild(cell);
+      f.classList.add('as-select');
+    });
+  }
+  function syncRuleSelects() {
+    document.querySelectorAll('.rs-sel').forEach((sel) => {
+      const seg = document.querySelector('.seg[data-k="' + sel.dataset.k + '"]');
+      [...sel.options].forEach((o) => { const b = seg && seg.querySelector('button[data-v="' + o.value + '"]'); if (b) o.textContent = b.textContent; });
+      sel.value = String(draft[sel.dataset.k]);
+    });
+  }
+  document.querySelectorAll('.sheet-tabs button').forEach((b) => b.onclick = () => {
+    document.querySelectorAll('.sheet-tabs button').forEach((x) => x.classList.toggle('on', x === b));
+    document.querySelectorAll('#sheet .sheet > [data-tab]').forEach((sec) => sec.classList.toggle('tab-off', sec.dataset.tab !== b.dataset.tab));
+    const sh = document.querySelector('#sheet .sheet'); if (sh) sh.scrollTop = 0;
+  });
   function openSheet() {
     const base = st ? st.settings : PBEngine.DEFAULT_SETTINGS;
     draft = JSON.parse(JSON.stringify(base));
@@ -492,7 +521,7 @@
     const pls = (draft.players || [['', ''], ['', '']]);
     $('pA0').value = pls[0][0] || ''; $('pA1').value = pls[0][1] || ''; $('pB0').value = pls[1][0] || ''; $('pB1').value = pls[1][1] || '';
     swatches($('swA'), 0); swatches($('swB'), 1);
-    paintSheet();
+    buildRuleSelects(); paintSheet();
     $('sheet').classList.remove('hidden');
   }
   function closeSheet() { $('sheet').classList.add('hidden'); }
@@ -975,6 +1004,7 @@
     if (tw.kind === 'new' && send({ a: 'new', settings: tw.base })) flash('New match');
   };
   $('twClose').onclick = () => $('teamWiz').classList.add('hidden');
+  $('twOpen').onclick = () => { closeSheet(); openTeamWiz('rename'); };
   ['twName', 'twP1', 'twP2'].forEach((id) => $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const nx = { twName: 'twP1', twP1: tw.base && tw.base.mode === 'singles' ? null : 'twP2', twP2: null }[id]; if (nx) $(nx).focus(); else $('twNext').click(); } }));
   // A fresh match with default names on this screen: ask once for the teams
   const twAsked = new Set();

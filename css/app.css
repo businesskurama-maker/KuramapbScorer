@@ -1129,3 +1129,80 @@ body.mode-act .act-done { min-height: 0; flex: 1 1 auto; overflow-y: auto; -webk
 .tw-chip i { width: 10px; height: 10px; border-radius: 50%; }
 .tw-btns { display: grid; grid-template-columns: auto 1fr; gap: 10px; margin-top: 4px; }
 .tw-btns .big-btn { min-height: 52px; font-size: 15px; }
+
+/* ---- Compact setup sheet: tabs + rules grid + device bar (v108) ---- */
+.sheet.setup { gap: 10px; padding-bottom: 0; }
+.sheet-tabs { position: sticky; top: 54px; z-index: 3; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-top: -4px; border-radius: 14px; background: var(--navy-800); border: 1px solid var(--line); flex: none; }
+.sheet-tabs button { height: 36px; border: 0; border-radius: 10px; background: transparent; color: var(--ink-2); font: inherit; font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; }
+.sheet-tabs button.on { background: var(--cyan, #00E5FF); color: #021018; }
+#sheet .setup-sec.tab-off { display: none; }
+#sheet .setup-sec { gap: 8px; padding: 8px 0 2px; border-top: 0; }
+#sheet .sec-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; }
+#sheet .sec-title .tw-open { font-size: 10px; letter-spacing: .08em; padding: 5px 9px; text-transform: none; }
+#sheet .hint-sm { font-size: 11px; margin: -2px 0 0; }
+/* team cards: two side by side */
+#sheet .setup-sec[data-tab="setup"]:first-of-type, #sheet .teams-grid { }
+#sheet .team-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#sheet .team-edit { gap: 6px; padding: 8px; border-radius: 14px; min-width: 0; }
+#sheet .team-edit .text-in { height: 36px; padding: 0 10px; font-size: 14px; border-radius: 10px; min-width: 0; width: 100%; }
+#sheet .team-edit .team-in { font-weight: 700; }
+#sheet .team-edit .player-row { display: flex; flex-direction: column; gap: 6px; }
+#sheet .team-edit .saved-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+#sheet .team-edit .saved-chips:empty { display: none; }
+#sheet .team-edit .mini-btn { font-size: 10px; padding: 4px 8px; }
+#sheet .team-edit .swatches { gap: 5px; flex-wrap: wrap; }
+#sheet .team-edit .swatches button { width: 22px; height: 22px; }
+#sheet .team-edit .swap-btn { align-self: stretch; }
+#sheet #applyNames { height: 42px; font-size: 13px; }
+/* rules: dropdown grid */
+#sheet .rules-sec .field.as-select { display: none; }
+.rules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.rs-cell { display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.025); min-width: 0; }
+.rs-cell span { font-size: 9.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rs-sel { appearance: none; -webkit-appearance: none; width: 100%; height: 28px; border: 0; padding: 0 22px 0 0; background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2300E5FF' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 2px center / 11px 8px; color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; }
+.rs-sel option { background: #0b1026; color: #fff; }
+#sheet #newMatch { height: 46px; font-size: 14px; }
+/* club tab */
+#sheet .club-sec .field { gap: 6px; }
+/* device bar: sticky footer on both tabs */
+#sheet .dev-bar { position: sticky; bottom: 0; z-index: 3; margin: 4px -16px 0; padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); background: var(--navy-900); border-top: 1px solid var(--line); box-shadow: 0 -10px 20px -12px rgba(0,0,0,.8); }
+#sheet .dev-bar .sheet-actions { display: flex; gap: 6px; }
+#sheet .dev-bar .act-btn { flex: 1 1 0; min-width: 0; min-height: 54px; padding: 6px 2px; gap: 4px; border-radius: 12px; font-size: 8.5px; letter-spacing: .04em; line-height: 1.1; }
+#sheet .dev-bar .act-btn svg { width: 19px; height: 19px; }
+#sheet .dev-bar .act-btn.hidden { display: none; }
+@media (max-width: 380px) {
+  #sheet .dev-bar { margin: 4px -12px 0; }
+  .rs-sel { font-size: 13px; }
+}
+/* v108 tighten */
+#sheet .sheet-head { flex-wrap: wrap; row-gap: 8px; padding-top: 6px; padding-bottom: 8px; }
+#sheet .sheet-head h2 { font-size: 24px; }
+#sheet .sheet-head .close-x { width: 34px; height: 34px; font-size: 19px; }
+#sheet .sheet-head .sheet-tabs { position: static; flex: 1 0 100%; margin: 0; order: 3; }
+#sheet .sheet-grab { margin-top: 6px; }
+#sheet .account.tab-off { display: none !important; }
+#sheet .sv-empty { display: none; }
+#sheet .team-edit .saved-row { justify-content: space-between; }
+#sheet .team-edit .tools { display: flex; gap: 4px; }
+#sheet .team-edit .swatches button, #sheet .team-edit .swatches .sw { width: 20px; height: 20px; }
+.rules-grid { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.rs-cell { padding: 5px 7px; border-radius: 10px; gap: 1px; }
+.rs-cell span { font-size: 8.5px; letter-spacing: .1em; }
+.rs-sel { font-size: 12.5px; height: 24px; padding-right: 16px; background-size: 9px 6px; }
+.setup-go { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; }
+.setup-go .big-btn { height: 50px; min-height: 0; padding: 4px 6px; font-size: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; line-height: 1.1; }
+.setup-go .big-btn small { font-size: 9.5px; font-weight: 600; letter-spacing: .06em; opacity: .7; text-transform: none; }
+#sheet .club-sec { gap: 6px; }
+#sheet .club-sec .text-in { height: 40px; font-size: 14px; }
+#sheet .club-sec .seg button { height: 36px; }
+#sheet .sheet-grab { margin-top: 4px; height: 4px; }
+#sheet .sheet-head { padding-top: 2px; }
+#sheet .team-edit .text-in { height: 33px; }
+#sheet .team-edit { gap: 5px; padding: 7px; }
+#sheet .setup-sec { gap: 6px; padding-top: 4px; }
+.rs-cell { padding: 4px 7px; }
+.setup-go .big-btn { height: 46px; }
+#sheet .dev-bar { padding-top: 6px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+#sheet .dev-bar .act-btn { min-height: 48px; }
+#sheet .club-sec .swatches { gap: 6px; flex-wrap: nowrap; }
+#sheet .club-sec .swatches > * { width: 34px; height: 34px; flex: none; }

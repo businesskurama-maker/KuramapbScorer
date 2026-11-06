@@ -166,11 +166,12 @@
   <div class="sheet setup" role="dialog" aria-label="Match setup">
     <div class="sheet-grab" aria-hidden="true"></div>
     <header class="sheet-head">
-      <h2>Match setup</h2>
+      <h2>Settings</h2>
       <button class="close-x" id="sheetX" aria-label="Close">×</button>
+      <div class="sheet-tabs" role="tablist"><button role="tab" class="on" data-tab="setup">Match setup</button><button role="tab" data-tab="club">Club branding</button></div>
     </header>
 
-    <div class="account hidden" id="account">
+    <div class="account hidden tab-off" id="account" data-tab="club">
       <div class="acc-top">
         <img id="accAvatar" alt="">
         <div class="acc-id"><b id="accName"></b><span class="acc-pill" id="accInfo"></span></div>
@@ -178,29 +179,28 @@
       <div class="acc-btns"><button class="mini-btn" id="accBuy">Donate</button><button class="mini-btn" id="accOut">Sign out</button></div>
     </div>
 
-    <section class="setup-sec">
-      <h3 class="sec-title">Teams</h3>
+    <section class="setup-sec" data-tab="setup">
+      <h3 class="sec-title">Teams <button class="mini-btn tw-open" id="twOpen" type="button">Edit teams step by step</button></h3>
+      <div class="team-pair">
       <div class="team-edit" data-team="0">
         <div class="team-edit-head"><span class="team-dot" id="dotA"></span><input class="text-in team-in" id="nA" maxlength="18" placeholder="Team name" aria-label="Team A name"></div>
         <div class="player-row"><input class="text-in" id="pA0" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 1" aria-label="Team A player 1"><input class="text-in pl2" id="pA1" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 2" aria-label="Team A player 2"></div>
-        <div class="saved-row"><div class="saved-chips" id="svA" aria-label="Saved teams"></div><button class="mini-btn save-team" id="saveA" data-team="0">☆ Save team</button></div>
+        <div class="saved-row"><div class="saved-chips" id="svA" aria-label="Saved teams"></div><span class="tools"><button class="mini-btn save-team" id="saveA" data-team="0">☆ Save</button><button class="mini-btn swap-btn dbl-only" id="ptA">⇄ Swap</button></span></div>
         <div class="swatches" id="swA" role="group" aria-label="Team A color"></div>
-        <button class="mini-btn swap-btn dbl-only" id="ptA">⇄ Swap court positions</button>
       </div>
       <div class="team-edit" data-team="1">
         <div class="team-edit-head"><span class="team-dot" id="dotB"></span><input class="text-in team-in" id="nB" maxlength="18" placeholder="Team name" aria-label="Team B name"></div>
         <div class="player-row"><input class="text-in" id="pB0" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 1" aria-label="Team B player 1"><input class="text-in pl2" id="pB1" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 2" aria-label="Team B player 2"></div>
-        <div class="saved-row"><div class="saved-chips" id="svB" aria-label="Saved teams"></div><button class="mini-btn save-team" id="saveB" data-team="1">☆ Save team</button></div>
+        <div class="saved-row"><div class="saved-chips" id="svB" aria-label="Saved teams"></div><span class="tools"><button class="mini-btn save-team" id="saveB" data-team="1">☆ Save</button><button class="mini-btn swap-btn dbl-only" id="ptB">⇄ Swap</button></span></div>
         <div class="swatches" id="swB" role="group" aria-label="Team B color"></div>
-        <button class="mini-btn swap-btn dbl-only" id="ptB">⇄ Swap court positions</button>
+      </div>
       </div>
       <datalist id="savedPl"></datalist>
-      <button class="big-btn wide cyan" id="applyNames">Update names &amp; colors</button>
-      <p class="hint-sm">Names and colors update without resetting the score. Player 1 starts in the right-hand court.</p>
     </section>
 
-    <section class="setup-sec">
+    <section class="setup-sec rules-sec" data-tab="setup">
       <h3 class="sec-title">Match rules</h3>
+      <div class="rules-grid" id="rulesGrid"></div>
       <div class="field"><span class="eyebrow">Format</span><div class="seg" data-k="mode"><button data-v="doubles">Doubles</button><button data-v="singles">Singles</button></div></div>
       <div class="field"><span class="eyebrow">Scoring</span><div class="seg" data-k="scoring"><button data-v="sideout">Side-out</button><button data-v="rally">Rally</button></div></div>
       <div class="field"><span class="eyebrow">Points to win · win by 2</span><div class="seg" data-k="target"><button data-v="11">11</button><button data-v="15">15</button><button data-v="21">21</button></div></div>
@@ -211,11 +211,10 @@
       <div class="field"><span class="eyebrow">Rally reasons <small class="eb-note">(for stats)</small></span><div class="seg" data-k="tags"><button data-v="0">Off</button><button data-v="1">On</button></div></div>
       <div class="field voice-field"><span class="eyebrow">Voice score calls <small class="eb-note">(loud voice on the scoreboard)</small></span><div class="seg" data-k="voice"><button data-v="1">On</button><button data-v="0">Off</button></div></div>
       <div class="field"><span class="eyebrow">Change court at half <small class="eb-note">(deciding game)</small></span><div class="seg" data-k="courtChange"><button data-v="0">No change</button><button data-v="1">Change court</button></div></div>
-      <button class="big-btn wide" id="newMatch">Start new match</button>
-      <p class="hint-sm">Starting a new match resets the score to 0–0.</p>
+      <div class="setup-go"><button class="big-btn cyan" id="applyNames">Update teams<small>keeps the score</small></button><button class="big-btn" id="newMatch">New match<small>score to 0–0</small></button></div>
     </section>
 
-    <section class="setup-sec club-sec" id="clubSec">
+    <section class="setup-sec club-sec tab-off" id="clubSec" data-tab="club">
       <h3 class="sec-title">Club branding <span class="club-badge">LIVE pass</span></h3>
       <p class="hint-sm club-lock" id="clubLock">Your club logo, colour and sponsor on the TV scoreboard. Part of the LIVE pass — and included in the 1-month free trial of a new account.</p>
       <div class="field"><span class="eyebrow">Show on the scoreboard</span><div class="seg" id="clubOn"><button data-v="1">On</button><button data-v="0">Off</button></div></div>
@@ -234,8 +233,7 @@
       <p class="hint-sm" id="clubMsg"></p>
     </section>
 
-    <section class="setup-sec">
-      <h3 class="sec-title">This device</h3>
+    <section class="setup-sec dev-bar">
       <div class="sheet-actions">
         <button class="act-btn" id="histBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><span>My matches</span></button>
         <button class="act-btn" id="toDisplay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>Use as scoreboard</span></button>
