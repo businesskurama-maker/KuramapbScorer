@@ -83,18 +83,22 @@
       </div>
       <div class="lv-obs-right">
         <div class="lv-brand-edit">
-          <div class="lv-logo-box"><img id="logoPrev" src="icons/dinkykong-logo.png" alt="Lower third logo"></div>
-          <div class="lv-brand-fields">
-            <span class="eyebrow">Logo &amp; caption</span>
-            <div class="lv-brand-btns">
-              <label class="btn primary lv-upload">Upload logo<input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>
-              <button class="btn" id="logoReset">DinkyKong logo</button>
+          <span class="eyebrow lbe-title">Branding</span>
+          <div class="lbe-logo">
+            <div class="lv-logo-box"><img id="logoPrev" src="icons/dinkykong-logo.png" alt="Lower third logo"></div>
+            <div class="lbe-logo-side">
+              <div class="lv-brand-btns">
+                <label class="btn primary lv-upload">Upload logo<input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>
+                <button class="btn" id="logoReset">Use DinkyKong</button>
+              </div>
+              <small class="lv-hint">PNG with a transparent background looks best.</small>
             </div>
           </div>
-          <input class="text-in lv-cap" id="captionIn" maxlength="18" placeholder="Caption under the logo (e.g. CITY OPEN 2026)">
-          <input class="text-in lv-cap" id="sponsorIn" maxlength="28" placeholder="Sponsor line (e.g. POWERED BY ACME)">
-          <div class="lv-accent"><span class="eyebrow">Colour</span><div class="accent-sw" id="accentSw"></div></div>
-          <small class="lv-hint">PNG with a transparent background looks best. Changes show in OBS within seconds.</small>
+          <div class="lbe-fields">
+            <label class="lbe-f"><span>Caption</span><input class="text-in lv-cap" id="captionIn" maxlength="18" placeholder="CITY OPEN 2026"></label>
+            <label class="lbe-f"><span>Sponsor line</span><input class="text-in lv-cap" id="sponsorIn" maxlength="28" placeholder="POWERED BY ACME"></label>
+          </div>
+          <div class="lv-accent"><span class="lbe-k">Colour</span><div class="accent-sw" id="accentSw"></div><small class="lv-hint lbe-live">Changes show in OBS within seconds</small></div>
         </div>
         <label class="lv-toggle"><input type="checkbox" id="obsTourToggle"><span></span>Tournament board in OBS <small>(standings · up next)</small></label>
         <label class="lv-toggle"><input type="checkbox" id="stripToggle"><span></span>Show it on this screen too <small>(window capture)</small></label>

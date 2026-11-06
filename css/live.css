@@ -397,3 +397,24 @@
 .tsu-grid .tsu-f:has(#tourCC) { grid-column: 1 / -1; }
 .tsu-seg button { letter-spacing: .02em; }
 @media (max-width: 820px) { .tsu-right { margin-top: 12px; } }
+/* OBS settings: tidy branding card */
+.lv-brand-edit { display: flex !important; flex-direction: column; align-items: stretch !important; gap: clamp(8px, 1.3dvh, 12px) !important; padding: clamp(10px, 1.6dvh, 16px) !important; }
+.lbe-title { margin: 0 !important; }
+.lbe-logo { display: flex; align-items: center; gap: 14px; }
+.lbe-logo .lv-logo-box { width: clamp(56px, 8dvh, 76px); height: clamp(56px, 8dvh, 76px); flex: none; border-radius: 14px; }
+.lbe-logo-side { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.lv-brand-edit .lv-brand-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.lv-brand-edit .btn { padding: clamp(7px, 1dvh, 10px) clamp(12px, 1vw, 16px); font-size: clamp(11px, 1.4dvh, 13px); letter-spacing: .1em; min-height: 0; }
+.lbe-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.lbe-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.lbe-f > span, .lbe-k { font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); }
+.lv-brand-edit .text-in { font-size: clamp(13px, 1.6dvh, 15px); padding: clamp(7px, 1dvh, 10px) 12px; letter-spacing: .06em; }
+.lv-brand-edit .lv-accent { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lv-brand-edit .lv-hint { font-size: 11px; color: var(--ink-3); line-height: 1.35; margin: 0; }
+.lbe-live { margin-left: auto !important; }
+.lv-obs-right { display: flex; flex-direction: column; gap: clamp(8px, 1.3dvh, 12px); min-width: 0; }
+.lv-obs-right .lv-toggle { padding: clamp(8px, 1.2dvh, 12px) 14px; font-size: clamp(12px, 1.5dvh, 14px); }
+.lv-obs-right .pair-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto; }
+.lv-obs-right .pair-actions .btn { min-height: clamp(40px, 5.5dvh, 50px); }
+@media (max-width: 760px) { .lbe-fields { grid-template-columns: 1fr; } .lbe-live { margin-left: 0 !important; width: 100%; } }
+.lv-obs-body { align-items: stretch; }
