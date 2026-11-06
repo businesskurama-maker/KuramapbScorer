@@ -404,7 +404,7 @@
       b.dataset.team = t;
       b.querySelector('.nm').textContent = s.names[t];
       b.querySelector('.what').textContent = outcome(t);
-      b.querySelector('.who').innerHTML = st.hasPlayers ? st.court[t].map((p) => p.serving ? '<b>● ' + esc(p.name) + '</b>' : esc(p.name)).join('<br>') : '';
+      b.querySelector('.who').innerHTML = st.hasPlayers && Array.isArray(st.court) && st.court[t] ? st.court[t].map((p) => p.serving ? '<b>● ' + esc(p.name) + '</b>' : esc(p.name)).join('<br>') : '';
       b.disabled = !connected || st.gameOver || st.matchOver;
       b.classList.toggle('is-serving', st.serving === t && !st.matchOver && !st.pfs);
     });

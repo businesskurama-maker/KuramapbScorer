@@ -39,7 +39,7 @@
     if (typeof PBLink === 'undefined') return;
     c.link = PBLink.host({
       code: c.code,
-      getState: () => Object.assign(E.publicState(c.state), { liveCourt: true, court: c.i + 1 }),
+      getState: () => Object.assign(E.publicState(c.state), { liveCourt: true, courtNo: c.i + 1 }),
       onAction: (action, reply) => {
         if (!liveOK()) { reply({ t: 'denied', reason: 'LIVE_ENDED' }); return; }
         if (action && action.a === 'rally' && action.side != null) action = { a: 'rally', team: c.state.swapped ? 1 - action.side : action.side };
@@ -47,7 +47,7 @@
         c.state = E.apply(c.state, action);
         if (action && action.a === 'new') setTimeout(() => courtCall(c, ''), 50);   // announce who plays on this court
         save(); renderCourt(c); pushObs(); tourWatch(c);
-        c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, court: c.i + 1 }));
+        c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, courtNo: c.i + 1 }));
       },
       onMessage: (msg, reply) => {
         if (msg.t === 'rtt') { reply(msg); return; }
@@ -371,7 +371,7 @@
   }
   function courtPush(c) {
     save(); renderCourt(c); pushObs();
-    if (c.link) c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, court: c.i + 1 }));
+    if (c.link) c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, courtNo: c.i + 1 }));
   }
   function matchSettings(names, players) {
     const r = tour.rules, pl = (players || [[], []]).map((p) => [p[0] || '', p[1] || '']);
