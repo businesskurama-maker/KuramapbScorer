@@ -34,7 +34,25 @@
   try { localStorage.setItem('aopb.role', 'remote'); } catch (e) {}
   const touch = () => { try { localStorage.setItem('aopb.remoteAt', String(Date.now())); } catch (e) {} };
 
-  function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms || 18); } catch (e) {} }
+  /* Haptics: Android uses the Vibration API; iPhone (no Vibration API) gets a tap from a hidden iOS switch */
+  let lastBuzz = 0, iosTap = null;
+  const CAN_VIB = typeof navigator.vibrate === 'function';
+  function iosHaptic() {
+    try {
+      if (!iosTap) {
+        const l = document.createElement('label'); l.setAttribute('aria-hidden', 'true');
+        l.style.cssText = 'position:fixed;left:-99px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+        const i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1;
+        l.appendChild(i); document.body.appendChild(l); iosTap = l;
+      }
+      iosTap.click();
+    } catch (e) {}
+  }
+  function buzz(ms) {
+    lastBuzz = Date.now();
+    if (CAN_VIB) { try { navigator.vibrate(typeof ms === 'number' ? Math.max(30, ms) : (ms || 30)); } catch (e) {} }
+    else iosHaptic();
+  }
   let flashT;
   function flash(t) { const f = $('flash'); f.textContent = t; f.classList.add('show'); clearTimeout(flashT); flashT = setTimeout(() => f.classList.remove('show'), 1400); }
 
@@ -353,7 +371,7 @@
       if (link && ['rally', 'undo', 'tag'].includes(action.a) && queue.length < 12) { queue.push(action); flash('Saved · sends when reconnected'); buzz([20, 40, 20]); return true; }
       flash('Not connected'); buzz([20, 40, 20]); return false;
     }
-    buzz(); return true;
+    if (Date.now() - lastBuzz > 400) buzz(); return true;
   }
 
   function outcome(team) {
@@ -427,7 +445,9 @@
   /* ---------- Controls ---------- */
   ['rL', 'rR'].forEach((id) => {
     const b = $(id);
-    b.addEventListener('click', () => { if (b.disabled) return; buzz(35); if (send({ a: 'rally', team: Number(b.dataset.team) })) showTags(); });
+    // Vibrate the moment the finger lands, then score on release
+    b.addEventListener('pointerdown', () => { if (!b.disabled) buzz(45); });
+    b.addEventListener('click', () => { if (b.disabled) return; if (Date.now() - lastBuzz > 400) buzz(45); if (send({ a: 'rally', team: Number(b.dataset.team) })) showTags(); });
   });
   $('undoBtn').onclick = () => { buzz([15, 30, 15]); send({ a: 'undo' }); };
   $('swapBtn').onclick = () => send({ a: 'swap' });
