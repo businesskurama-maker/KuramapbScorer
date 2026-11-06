@@ -855,7 +855,7 @@
     $('ptErr').textContent = '';
     link.sendMsg({ t: 'tourStart', opts: Object.assign({}, ptDraft, { teams: list }) });
     $('ptStart').disabled = true; $('ptStart').textContent = 'Starting…';
-    setTimeout(() => { $('ptStart').textContent = 'Start tournament & deploy teams'; ptRenderSetup(); }, 2500);
+    setTimeout(() => { $('ptStart').textContent = 'Start & deploy teams'; ptRenderSetup(); }, 2500);
   };
   $('ptEnd').onclick = () => {
     if (!link || !connected || !ptState || !ptState.tour) return;
@@ -875,7 +875,7 @@
   }
   function onTourMsg(m) {
     if (m.t === 'tourState') { const was = ptState && ptState.tour; ptState = m; ptRender(); if (!was && m.tour) { flash('Tournament started'); buzz([30, 40, 30]); } return true; }
-    if (m.t === 'tourErr') { $('ptErr').textContent = m.reason || 'Could not start the tournament.'; $('ptStart').textContent = 'Start tournament & deploy teams'; ptRenderSetup(); buzz([60, 40, 60]); return true; }
+    if (m.t === 'tourErr') { $('ptErr').textContent = m.reason || 'Could not start the tournament.'; $('ptStart').textContent = 'Start & deploy teams'; ptRenderSetup(); buzz([60, 40, 60]); return true; }
     return false;
   }
   ptRenderSetup();

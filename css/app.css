@@ -1003,3 +1003,32 @@ body.mode-live .club-sec, body.mode-act .club-sec { display: none; }
 .pt-tab tr:nth-child(2) td { color: #FFE600; }
 .pt-end { align-self: center; }
 @media (max-width: 420px) { .pt-two.pt-wide { grid-template-columns: 1fr; } }
+
+/* ===== Organizer phone (LIVE is on + tournament): compact, fits small screens ===== */
+.r-head { min-width: 0; }
+.r-head .brand-sm { min-width: 0; flex: 0 1 auto; overflow: hidden; }
+.r-head .brand-sm span { overflow: hidden; text-overflow: ellipsis; }
+.r-status { min-width: 0; flex: 0 1 auto; max-width: 52%; overflow: hidden; }
+.r-status #statusTxt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 420px) { .r-head .brand-sm b { display: none; } .r-head .brand-sm { letter-spacing: .12em; } }
+.act-done:has(.ptour) { align-items: stretch; text-align: left; gap: 10px; padding: 14px 12px 16px; border-radius: 20px; }
+.act-done:has(.ptour) > .act-badge { align-self: flex-start; font-size: 11px; padding: 4px 9px 3px; letter-spacing: .18em; }
+.act-done:has(.ptour) > h2 { font-size: clamp(24px, 7vw, 30px); line-height: 1; margin-top: -2px; }
+.act-done:has(.ptour) > p { font-size: 13.5px; line-height: 1.45; }
+.act-done:has(.ptour) > p.act-note { font-size: 12px; }
+.act-done .ptour { padding: 12px 10px; border-radius: 16px; gap: 9px; margin-top: 4px; }
+.ptour-head h3 { font-size: 22px; }
+.ptour .eyebrow { font-size: 10px; letter-spacing: .16em; }
+.ptour .seg { padding: 3px; gap: 2px; }
+.ptour .seg button { padding: 8px 2px; font-size: 11px; letter-spacing: .02em; border-radius: 10px; }
+.ptour .text-in { font-size: 14px; padding: 9px 11px; }
+.pt-info { font-size: 12px !important; padding: 6px 9px; }
+.pt-two { gap: 8px; }
+.pt-teams { min-height: 120px; font-size: 13px !important; }
+.act-done .big-btn { max-width: none; }
+.act-done:has(.ptour) .act-exit { margin-top: 4px; }
+@media (max-width: 360px) { .ptour .seg button { font-size: 10px; padding: 8px 1px; } .pt-seg[data-tk="courts"] button { font-size: 11px; } }
+@media (min-width: 340px) { .pt-two.pt-wide { grid-template-columns: 1fr 1fr; } }
+.pt-hint { font-size: 11.5px; color: var(--ink-3); line-height: 1.35; }
+.pt-hint b { color: var(--ink-2); }
+#ptStart { font-size: 15px; letter-spacing: .1em; white-space: normal; line-height: 1.2; }
