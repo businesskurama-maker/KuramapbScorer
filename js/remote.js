@@ -829,6 +829,8 @@
   }
   function ptRenderSetup() {
     document.querySelectorAll('.pt-seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(ptDraft[seg.dataset.tk]) === b.dataset.v)));
+    document.querySelectorAll('.pt-sel').forEach((el) => { el.value = String(ptDraft[el.dataset.tk]); });
+    $('ptPoolRow2').classList.toggle('hidden', ptDraft.format !== 'pools');
     $('ptPoolRow').classList.toggle('hidden', ptDraft.format !== 'pools');
     $('ptFmtInfo').textContent = PT_INFO[ptDraft.format] || '';
     const list = ptList(), txt = ptCountText(list);
@@ -838,6 +840,7 @@
     $('ptSaved').innerHTML = savedTeams().filter((x) => !have.has(String(x.name).toUpperCase())).slice(0, 16)
       .map((x) => { const pl = (x.players || []).filter(Boolean); const line = String(x.name).toUpperCase() + (pl.length ? ': ' + pl.join(', ').toUpperCase() : ''); return '<button class="pt-chip" data-n="' + ptEsc(line) + '">+ ' + ptEsc(x.name) + '</button>'; }).join('');
   }
+  document.querySelectorAll('.pt-sel').forEach((el) => el.onchange = () => { ptDraft[el.dataset.tk] = /^\d+$/.test(el.value) ? Number(el.value) : el.value; ptSave(); ptRenderSetup(); buzz(10); });
   document.querySelectorAll('.pt-seg').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.onclick = () => {
     ptDraft[seg.dataset.tk] = /^\d+$/.test(b.dataset.v) ? Number(b.dataset.v) : b.dataset.v; ptSave(); ptRenderSetup(); buzz(10);
   }));

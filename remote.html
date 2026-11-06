@@ -54,23 +54,26 @@
     </div>
 
     <div class="act-done hidden" id="actDone">
-      <div class="act-badge">LIVE</div>
-      <h2>LIVE is on</h2>
-      <p>Every court on the LIVE screen is unlocked until <b id="actUntil">today</b>, plus the OBS lower third. Referees just scan their court’s QR code — no sign-in needed.</p>
-      <p class="act-note">When your event is over, tap <b>Exit LIVE</b> so nobody else can use your pass on that screen.</p>
+      <div class="act-top"><span class="act-badge">LIVE</span><div class="act-sum"><b>LIVE is on</b><span>Until <b id="actUntil">today</b> · all courts + OBS</span></div></div>
+      <p class="act-note">Referees scan their court’s QR — no sign-in. Tap <b>Exit LIVE</b> when your event is over.</p>
       <section class="ptour" id="pTour">
         <div class="ptour-head"><h3>Tournament</h3><span class="ptour-st" id="ptSt"></span></div>
         <div id="ptSetup">
           <input class="text-in" id="ptName" maxlength="28" placeholder="Tournament name">
-          <div class="ptf"><span class="eyebrow">Format</span><div class="seg pt-seg" data-tk="format"><button data-v="rr">Round robin</button><button data-v="se">Single elim</button><button data-v="de">Double elim</button><button data-v="pools">Pools</button></div></div>
+          <div class="pt-grid">
+            <label class="pt-cell"><span>Format</span><select class="pt-sel" data-tk="format"><option value="rr">Round robin</option><option value="se">Single elim</option><option value="de">Double elim</option><option value="pools">Pools + playoffs</option></select></label>
+            <label class="pt-cell"><span>Courts</span><select class="pt-sel" data-tk="courts"><option value="1">1 court</option><option value="2">2 courts</option><option value="3">3 courts</option><option value="4">4 courts</option><option value="5">5 courts</option><option value="6">6 courts</option></select></label>
+            <label class="pt-cell" id="ptPoolRow"><span>Pools</span><select class="pt-sel" data-tk="pools"><option value="2">2 pools</option><option value="3">3 pools</option><option value="4">4 pools</option></select></label>
+            <label class="pt-cell" id="ptPoolRow2"><span>Advance</span><select class="pt-sel" data-tk="advance"><option value="1">Top 1 per pool</option><option value="2">Top 2 per pool</option></select></label>
+            <label class="pt-cell"><span>Game to</span><select class="pt-sel" data-tk="target"><option value="11">11 points</option><option value="15">15 points</option><option value="21">21 points</option></select></label>
+            <label class="pt-cell"><span>Best of</span><select class="pt-sel" data-tk="bestOf"><option value="1">1 game</option><option value="3">3 games</option></select></label>
+            <label class="pt-cell"><span>Scoring</span><select class="pt-sel" data-tk="scoring"><option value="sideout">Side-out</option><option value="rally">Rally</option></select></label>
+            <label class="pt-cell"><span>Play</span><select class="pt-sel" data-tk="mode"><option value="doubles">Doubles</option><option value="singles">Singles</option></select></label>
+            <label class="pt-cell"><span>Court at half</span><select class="pt-sel" data-tk="courtChange"><option value="0">No change</option><option value="1">Change court</option></select></label>
+            <label class="pt-cell"><span>Court calls</span><select class="pt-sel" data-tk="announce"><option value="1">Announce</option><option value="0">Silent</option></select></label>
+          </div>
           <p class="pt-info" id="ptFmtInfo"></p>
-          <div class="ptf"><span class="eyebrow">Courts</span><div class="seg pt-seg" data-tk="courts"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button><button data-v="6">6</button></div></div>
-          <div class="pt-two" id="ptPoolRow"><div class="ptf"><span class="eyebrow">Pools</span><div class="seg pt-seg" data-tk="pools"><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button></div></div><div class="ptf"><span class="eyebrow">Advance</span><div class="seg pt-seg" data-tk="advance"><button data-v="1">1</button><button data-v="2">2</button></div></div></div>
-          <div class="pt-two"><div class="ptf"><span class="eyebrow">Game to</span><div class="seg pt-seg" data-tk="target"><button data-v="11">11</button><button data-v="15">15</button><button data-v="21">21</button></div></div><div class="ptf"><span class="eyebrow">Best of</span><div class="seg pt-seg" data-tk="bestOf"><button data-v="1">1</button><button data-v="3">3</button></div></div></div>
-          <div class="pt-two pt-wide"><div class="ptf"><span class="eyebrow">Scoring</span><div class="seg pt-seg" data-tk="scoring"><button data-v="sideout">Side-out</button><button data-v="rally">Rally</button></div></div><div class="ptf"><span class="eyebrow">Play</span><div class="seg pt-seg" data-tk="mode"><button data-v="doubles">Doubles</button><button data-v="singles">Singles</button></div></div></div>
-          <div class="ptf"><span class="eyebrow">Change court at half</span><div class="seg pt-seg" data-tk="courtChange"><button data-v="0">No change</button><button data-v="1">Change court</button></div></div>
-          <div class="ptf"><span class="eyebrow">Court calls <small class="eb-note">(voice + banner)</small></span><div class="seg pt-seg" data-tk="announce"><button data-v="1">Announce</button><button data-v="0">Silent</button></div></div>
-          <div class="ptf"><span class="eyebrow">Teams · one per line</span><span class="pt-hint">Best seed first · players after a colon, e.g. <b>NET NINJAS: JUAN, MARIA</b></span><textarea class="text-in pt-teams" id="ptTeams" rows="6" placeholder="NET NINJAS: JUAN, MARIA&#10;DINK DYNASTY: ANA, BEN&#10;SMASH BROS: LEO, MIA&#10;KITCHEN KINGS"></textarea></div>
+          <div class="ptf"><span class="eyebrow">Teams · one per line</span><span class="pt-hint">Best seed first · players after a colon: <b>NET NINJAS: JUAN, MARIA</b></span><textarea class="text-in pt-teams" id="ptTeams" rows="5" placeholder="NET NINJAS: JUAN, MARIA&#10;DINK DYNASTY: ANA, BEN&#10;SMASH BROS: LEO, MIA&#10;KITCHEN KINGS"></textarea></div>
           <div class="pt-saved" id="ptSaved"></div>
           <p class="pt-count" id="ptCount"></p>
           <button class="big-btn wide" id="ptStart">Start &amp; deploy teams</button>
