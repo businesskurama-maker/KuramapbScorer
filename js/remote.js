@@ -34,24 +34,31 @@
   try { localStorage.setItem('aopb.role', 'remote'); } catch (e) {}
   const touch = () => { try { localStorage.setItem('aopb.remoteAt', String(Date.now())); } catch (e) {} };
 
-  /* Haptics: Android uses the Vibration API; iPhone (no Vibration API) gets a tap from a hidden iOS switch */
-  let lastBuzz = 0, iosTap = null;
+  /* Haptics.
+     Android: Vibration API (Chrome needs the tap to count as a real user tap, so we call it on pointerdown AND,
+     if that was refused, again on click).
+     iPhone: Safari has no Vibration API; iOS 18+ gives a system haptic when a hidden <input switch> is toggled
+     from a click, so we toggle a fresh one on every score tap. */
+  let lastBuzz = 0, buzzOk = false, warnedHaptics = false;
   const CAN_VIB = typeof navigator.vibrate === 'function';
+  const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const IOS_VER = (() => { const m = navigator.userAgent.match(/OS (\d+)_/); return m ? Number(m[1]) : 0; })();
   function iosHaptic() {
     try {
-      if (!iosTap) {
-        const l = document.createElement('label'); l.setAttribute('aria-hidden', 'true');
-        l.style.cssText = 'position:fixed;left:-99px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
-        const i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1;
-        l.appendChild(i); document.body.appendChild(l); iosTap = l;
-      }
-      iosTap.click();
+      const l = document.createElement('label'); l.ariaHidden = 'true'; l.style.display = 'none';
+      const i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', '');
+      l.appendChild(i); document.head.appendChild(l); l.click(); document.head.removeChild(l);
     } catch (e) {}
   }
   function buzz(ms) {
-    lastBuzz = Date.now();
-    if (CAN_VIB) { try { navigator.vibrate(typeof ms === 'number' ? Math.max(30, ms) : (ms || 30)); } catch (e) {} }
-    else iosHaptic();
+    lastBuzz = Date.now(); buzzOk = false;
+    if (CAN_VIB) { try { buzzOk = navigator.vibrate(typeof ms === 'number' ? Math.max(30, ms) : (ms || 30)) !== false; } catch (e) { buzzOk = false; } }
+    else { iosHaptic(); buzzOk = IOS && IOS_VER >= 18; }
+    return buzzOk;
+  }
+  function hapticsNote() {
+    if (warnedHaptics) return; warnedHaptics = true;
+    if (!CAN_VIB && !(IOS && IOS_VER >= 18)) setTimeout(() => flash(IOS ? 'Tap vibration needs iOS 18 or newer' : 'This browser cannot vibrate · try Chrome'), 1500);
   }
   let flashT;
   function flash(t) { const f = $('flash'); f.textContent = t; f.classList.add('show'); clearTimeout(flashT); flashT = setTimeout(() => f.classList.remove('show'), 1400); }
@@ -445,9 +452,14 @@
   /* ---------- Controls ---------- */
   ['rL', 'rR'].forEach((id) => {
     const b = $(id);
-    // Vibrate the moment the finger lands, then score on release
-    b.addEventListener('pointerdown', () => { if (!b.disabled) buzz(45); });
-    b.addEventListener('click', () => { if (b.disabled) return; if (Date.now() - lastBuzz > 400) buzz(45); if (send({ a: 'rally', team: Number(b.dataset.team) })) showTags(); });
+    // Vibrate the moment the finger lands; if the phone refused (no user tap yet), vibrate again on click
+    b.addEventListener('pointerdown', () => { if (!b.disabled && CAN_VIB) buzz(45); });
+    b.addEventListener('click', () => {
+      if (b.disabled) return;
+      if (!CAN_VIB || !buzzOk || Date.now() - lastBuzz > 600) buzz(45);
+      hapticsNote();
+      if (send({ a: 'rally', team: Number(b.dataset.team) })) showTags();
+    });
   });
   $('undoBtn').onclick = () => { buzz([15, 30, 15]); send({ a: 'undo' }); };
   $('swapBtn').onclick = () => send({ a: 'swap' });
