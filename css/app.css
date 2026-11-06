@@ -1206,3 +1206,14 @@ body.mode-act .act-done { min-height: 0; flex: 1 1 auto; overflow-y: auto; -webk
 #sheet .dev-bar .act-btn { min-height: 48px; }
 #sheet .club-sec .swatches { gap: 6px; flex-wrap: nowrap; }
 #sheet .club-sec .swatches > * { width: 34px; height: 34px; flex: none; }
+/* device bar: icons only, label on hover */
+#sheet .dev-bar .act-btn { position: relative; min-height: 44px; padding: 0; }
+#sheet .dev-bar .act-btn span { display: none; }
+#sheet .dev-bar .act-btn svg { width: 22px; height: 22px; }
+#sheet .dev-bar .act-btn::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translate(-50%, 4px); padding: 6px 10px; border-radius: 8px; background: #fff; color: #0b1026; font-size: 11px; font-weight: 800; letter-spacing: .06em; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .15s, transform .15s; box-shadow: 0 6px 18px rgba(0,0,0,.45); z-index: 5; }
+#sheet .dev-bar .act-btn:first-child::after { left: 0; transform: translate(0, 4px); }
+#sheet .dev-bar .act-btn:last-child::after, #sheet .dev-bar .act-btn#unpair:nth-last-child(2):has(+ .hidden)::after { left: auto; right: 0; transform: translate(0, 4px); }
+#sheet .dev-bar .act-btn:hover::after, #sheet .dev-bar .act-btn:focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
+#sheet .dev-bar .act-btn:first-child:hover::after, #sheet .dev-bar .act-btn:first-child:focus-visible::after,
+#sheet .dev-bar .act-btn:last-child:hover::after, #sheet .dev-bar .act-btn:last-child:focus-visible::after,
+#sheet .dev-bar .act-btn#unpair:nth-last-child(2):has(+ .hidden):hover::after { transform: translate(0, 0); }
