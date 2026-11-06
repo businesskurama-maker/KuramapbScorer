@@ -177,13 +177,14 @@
       onAction: (a, reply) => reply({ t: 'denied', reason: 'ACTIVATION_ONLY' }),
       onMessage: async (msg, reply, id) => {
         if (msg.t === 'release') { exitLive(); return; }   // organizer tapped "Exit LIVE" on their phone
-        if (msg.t === 'tour?' || msg.t === 'tourStart' || msg.t === 'tourEnd') {   // tournament from the organizer's phone
+        if (msg.t === 'tour?' || msg.t === 'tourStart' || msg.t === 'tourEnd' || msg.t === 'tourRestart') {   // tournament from the organizer's phone
           if (!liveOK() || (AUTH && !actOk.has(id))) { reply({ t: 'tourErr', reason: 'Activate LIVE first.' }); return; }
           if (msg.t === 'tourStart') {
             if (tour && !msg.replace) { reply({ t: 'tourErr', reason: 'A tournament is already running.' }); return; }
             const bad = startTour(msg.opts || {}); if (bad) { reply({ t: 'tourErr', reason: bad }); return; }
           }
           if (msg.t === 'tourEnd' && tour) endTour();
+          if (msg.t === 'tourRestart' && tour) restartTour();
           reply(tourPhoneState()); return;
         }
         if (msg.t !== 'auth') return;
@@ -598,6 +599,19 @@
     phoneTour();
     return '';
   }
+  // Same teams, format and rules; a fresh schedule, loaded on the courts again
+  function restartTour() {
+    if (!tour) return;
+    const t = tour;
+    const opts = { name: t.name, format: t.format, pools: t.pools, advance: t.advance, courts: cfg.n, announce: announceOn() ? 1 : 0,
+      target: t.rules.target, bestOf: t.rules.bestOf, scoring: t.rules.scoring, mode: t.rules.mode, courtChange: t.rules.courtChange,
+      teams: t.teams.map((x) => x.name + (x.players && x.players.length ? ': ' + x.players.join(', ') : '')) };
+    courts.forEach((c) => { clearTimeout(c.tourT); c.tourT = null; if (c.tm) { c.tm = null; c.state = E.newMatch(Object.assign({}, c.state.settings, { names: ['TBD', 'TBD'] })); courtPush(c); } });
+    tour = null; saveTour();
+    const bad = startTour(opts);
+    if (bad) { toast(bad); openTour(); return; }
+    toast('TOURNAMENT RESTARTED');
+  }
   function endTour() {
     courts.forEach((c) => { clearTimeout(c.tourT); c.tourT = null; c.tm = null; });
     tour = null; saveTour(); save(); renderTourChip(); courts.forEach(renderCourt); pushObs(); phoneTour();
@@ -694,7 +708,6 @@
     $('tourChamp').classList.toggle('hidden', !ch);
     if (ch) $('tourChamp').innerHTML = '<span class="eyebrow">Champion</span><b>' + esc(tname(ch)) + '</b>';
     $('tourFill').disabled = !courts.some(isFree) || !T.nextFor(tour);
-    $('tourEnd').textContent = ch ? 'New tournament' : 'End tournament';
     $('tourEnd').classList.toggle('primary', !!ch);
     let html = '';
     if (tab === 'matches') {
@@ -724,8 +737,12 @@
   $('tourClose').onclick = () => $('tourOverlay').classList.add('hidden');
   $('tourFill').onclick = () => { const n = fillCourts(); toast(n ? n + ' COURT' + (n > 1 ? 'S' : '') + ' LOADED' : 'NO FREE COURT'); };
   $('tourEnd').onclick = () => {
-    if (!T.champion(tour) && !confirm('End ' + tour.name + ' and set up a new tournament? The schedule and results are cleared; the team list stays.')) return;
+    if (!T.champion(tour) && !confirm('Set up a new tournament? ' + tour.name + '’s schedule and results are cleared; the team list stays.')) return;
     endTour();
+  };
+  $('tourRestart').onclick = () => {
+    if (!confirm('Restart ' + tour.name + ' from the first match? All results are cleared; teams and settings stay the same.')) return;
+    restartTour();
   };
   $('obsTourToggle').checked = obsTour;
   $('obsTourToggle').onchange = () => { obsTour = $('obsTourToggle').checked; store.set('aopb.obsTour', obsTour); pushObs(); };

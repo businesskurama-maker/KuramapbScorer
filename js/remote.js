@@ -859,8 +859,13 @@
   };
   $('ptEnd').onclick = () => {
     if (!link || !connected || !ptState || !ptState.tour) return;
-    if (!ptState.tour.champ && !confirm('End ' + ptState.tour.name + ' and set up a new one? Results are cleared; your team list stays.')) return;
+    if (!ptState.tour.champ && !confirm('Set up a new tournament? ' + ptState.tour.name + '’s results are cleared; your team list stays.')) return;
     link.sendMsg({ t: 'tourEnd' });
+  };
+  $('ptRestart').onclick = () => {
+    if (!link || !connected || !ptState || !ptState.tour) return;
+    if (!confirm('Restart ' + ptState.tour.name + ' from the first match? All results are cleared; teams and settings stay the same.')) return;
+    link.sendMsg({ t: 'tourRestart' }); flash('Restarting…');
   };
   function ptRender() {
     const t = ptState && ptState.tour;
@@ -868,7 +873,7 @@
     if (!t) { $('ptSt').textContent = 'Not started'; if (ptState && ptState.courts && !store.get('aopb.tourPhone', null)) ptDraft.courts = ptState.courts; ptRenderSetup(); return; }
     $('ptSt').textContent = t.name + ' · ' + t.done + '/' + t.total;
     $('ptChamp').classList.toggle('hidden', !t.champ);
-    $('ptEnd').textContent = t.champ ? 'New tournament' : 'End tournament'; $('ptChamp').innerHTML = t.champ ? '<small>Champion</small><b>' + ptEsc(t.champ) + '</b>' : '';
+    $('ptChamp').innerHTML = t.champ ? '<small>Champion</small><b>' + ptEsc(t.champ) + '</b>' : '';
     $('ptUp').innerHTML = (t.up || []).length ? '<span class="eyebrow">On court · up next</span>' + t.up.map((u) => '<div class="pt-m"><span class="' + (u[0] === 'NEXT' ? 'nx' : '') + '">' + ptEsc(u[0]) + '</span><b>' + ptEsc(u[1]) + ' <i>vs</i> ' + ptEsc(u[2]) + '</b></div>').join('') : '';
     const tab = (rows) => '<table class="pt-tab"><tr><th>Team</th><th>W</th><th>L</th><th>+/-</th></tr>' + rows.map((r) => '<tr><td>' + ptEsc(r[0]) + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td><td>' + (r[3] > 0 ? '+' : '') + r[3] + '</td></tr>').join('') + '</table>';
     $('ptTable').innerHTML = t.rows ? '<span class="eyebrow">Standings</span>' + tab(t.rows) : t.pools ? t.pools.map((p, i) => '<span class="eyebrow">Pool ' + String.fromCharCode(65 + i) + '</span>' + tab(p)).join('') : '';
