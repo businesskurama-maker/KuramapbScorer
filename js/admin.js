@@ -34,7 +34,7 @@
     const pages = Math.max(1, Math.ceil(all.length / PER_PAGE));
     if (userPage > pages - 1) userPage = pages - 1;
     const list = all.slice(userPage * PER_PAGE, (userPage + 1) * PER_PAGE);
-    renderPager($('usersPager'), userPage, all.length, all.length === 1 ? 'user' : 'users', (p) => { userPage = p; renderUsers(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    renderPager($('usersPager'), userPage, all.length, all.length === 1 ? 'user' : 'users', (p) => { userPage = p; renderUsers(); (document.querySelector('.o-view:not(.hidden)') || document.body).scrollTo({ top: 0, behavior: 'smooth' }); });
     $('rows').innerHTML = list.map((u) => {
       const active = u.pass_until && new Date(u.pass_until) > new Date();
       return '<tr>' +
@@ -168,7 +168,7 @@
     try {
       let { rows, total } = await PBAuth.ledgerPage(ledgerPageNo, PER_PAGE);
       if (!rows.length && ledgerPageNo > 0) { ledgerPageNo = Math.max(0, Math.ceil(total / PER_PAGE) - 1); ({ rows, total } = await PBAuth.ledgerPage(ledgerPageNo, PER_PAGE)); }
-      renderPager($('ledgerPager'), ledgerPageNo, total, 'entries', (p) => { ledgerPageNo = p; loadLedger(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+      renderPager($('ledgerPager'), ledgerPageNo, total, 'entries', (p) => { ledgerPageNo = p; loadLedger(); (document.querySelector('.o-view:not(.hidden)') || document.body).scrollTo({ top: 0, behavior: 'smooth' }); });
       $('ledger').innerHTML = rows.map((r) => '<tr><td>' + fmt(r.created_at) + '</td><td>' + esc((byId[r.user_id] && byId[r.user_id].email) || r.user_id.slice(0, 8)) + '</td>' +
         '<td class="num ' + (r.delta > 0 ? 'delta-pos' : 'delta-neg') + '">' + (r.delta > 0 ? '+' : '') + r.delta + '</td><td>' + esc(r.reason) + '</td></tr>').join('') ||
         '<tr><td colspan="4" style="color:var(--ink-3)">No activity yet.</td></tr>';
@@ -230,7 +230,7 @@
   }
   function liveToast(text) {
     const t = $('liveToast'); t.textContent = text; t.classList.remove('hidden');
-    t.onclick = () => { t.classList.add('hidden'); if (window.__ownerTab) window.__ownerTab('don', true); $('pending').scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+    t.onclick = () => { t.classList.add('hidden'); if (window.__ownerTab) window.__ownerTab('don'); $('pending').scrollIntoView({ behavior: 'smooth', block: 'center' }); };
     clearTimeout(liveToast.t); liveToast.t = setTimeout(() => t.classList.add('hidden'), 8000);
   }
   function onNewDonation(p) {

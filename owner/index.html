@@ -243,6 +243,22 @@
     td:has(.act)::before { display: none; }
     .act button { padding: 9px; }
   }
+
+  /* ===== app shell: page fixed to the screen, each tab frame scrolls inside ===== */
+  html, body { height: 100%; overflow: hidden !important; }
+  .admin { height: 100dvh; min-height: 0; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 12px; }
+  .admin > .center { overflow-y: auto; }
+  .o-panel { flex: 1 1 auto; min-height: 0; }
+  .o-tabs { position: relative; top: auto; flex: none; }
+  .alert-card, .install-bar { flex: none; }
+  .o-view { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding-top: 0 !important; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }
+  .o-view::-webkit-scrollbar { width: 6px; } .o-view::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 6px; }
+  .o-view .v-head { position: sticky; top: 0; z-index: 2; margin: 0 -16px 10px; padding: 14px 16px 10px; background: var(--navy-800); border-bottom: 1px solid var(--line); }
+  @media (max-width: 720px) {
+    .admin { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+    .o-tabs { position: fixed; }
+    .o-view .v-head { margin: 0 -12px 10px; padding: 12px 12px 8px; }
+  }
 </style>
 </head>
 <body>
@@ -373,7 +389,7 @@
     tabs.forEach((b) => b.classList.toggle('on', b.dataset.view === v));
     document.querySelectorAll('.o-view').forEach((s) => s.classList.toggle('hidden', s.dataset.view !== v));
     try { localStorage.setItem('aopb.ownerTab', v); } catch (e) {}
-    if (!keep) window.scrollTo({ top: 0, behavior: 'smooth' });
+    const cur = document.querySelector('.o-view[data-view="' + v + '"]'); if (cur && !keep) cur.scrollTop = 0;
   }
   tabs.forEach((b) => b.onclick = () => go(b.dataset.view));
   window.__ownerTab = go;
