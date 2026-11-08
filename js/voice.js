@@ -11,7 +11,7 @@
     if (pending[k]) return pending[k];
     if (!ensureCtx()) return Promise.resolve(null);
     return (pending[k] = fetch(BASE + (k[0] === 'c' ? 'c/' + k.slice(1) : k) + '.mp3').then((r) => { if (!r.ok) throw 0; return r.arrayBuffer(); })
-      .then((a) => new Promise((res, rej) => ctx.decodeAudioData(a, res, rej))).then((b) => (bufs[k] = b)).catch(() => null));
+      .then((a) => new Promise((res, rej) => ctx.decodeAudioData(a, res, rej))).then((b) => (bufs[k] = b)).catch(() => null).then((b) => { if (!b) delete pending[k]; return b; }));
   }
   const AC = window.AudioContext || window.webkitAudioContext;
   let ctx = null, out = null, bufs = {}, loading = null, gen = 0, active = [];
@@ -27,15 +27,48 @@
     ctx.onstatechange = () => listeners.forEach((f) => f());
     return ctx;
   }
+  /* Self-healing audio: TVs and laptops can suspend, interrupt or freeze the audio engine (screen saver, HDMI/Bluetooth
+     output change, tab in background). Before, that silenced the voice for good. Now we resume it, and if it stays
+     dead we build a fresh audio engine and carry on with the clips already loaded. */
+  let lastT = -1, stallN = 0;
+  function rebuild() {
+    const old = ctx; ctx = null; out = null;
+    try { old && old.close && old.close().catch(() => {}); } catch (e) {}
+    ensureCtx(); lastT = -1; stallN = 0;
+    listeners.forEach((f) => f());
+  }
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r, ms))]);
+  async function wake() {
+    if (!AC) return false;
+    if (!ctx || ctx.state === 'closed') rebuild();
+    if (ctx.state !== 'running') { try { await withTimeout(ctx.resume(), 900); } catch (e) {} }
+    if (ctx.state !== 'running') { rebuild(); try { await withTimeout(ctx.resume(), 900); } catch (e) {} }
+    return ctx.state === 'running';
+  }
+  setInterval(() => {   // watchdog: a "running" engine whose clock stopped is frozen
+    if (!ctx) return;
+    if (ctx.state === 'running' && document.visibilityState === 'visible') {
+      if (ctx.currentTime === lastT) { if (++stallN >= 2) rebuild(); } else stallN = 0;
+      lastT = ctx.currentTime;
+    } else if (ctx.state !== 'closed') { ctx.resume().catch(() => {}); }
+  }, 4000);
+  ['visibilitychange', 'focus', 'pageshow', 'online'].forEach((e) => (e === 'visibilitychange' ? document : window).addEventListener(e, () => { if (ctx && document.visibilityState !== 'hidden' && ctx.state !== 'running') ctx.resume().catch(() => {}); }));
+  // Chrome's speech engine can hang (stops after ~15 s or gets stuck "speaking"); keep it awake
+  setInterval(() => { try { if (window.speechSynthesis && speechSynthesis.speaking) { speechSynthesis.resume(); } } catch (e) {} }, 5000);
+
+  let loadedAt = 0;
   function load() {
+    // retry clips that failed (offline, decoder hiccup) at most every 30 s
+    if (loading && Date.now() - loadedAt > 30000 && KEYS.some((k) => !bufs[k])) loading = null;
     if (loading) return loading;
+    loadedAt = Date.now();
     if (!ensureCtx()) return (loading = Promise.resolve());
     loading = Promise.all(KEYS.map((k) => fetch(BASE + k + '.mp3').then((r) => r.arrayBuffer())
       .then((a) => new Promise((res, rej) => ctx.decodeAudioData(a, res, rej))).then((b) => { bufs[k] = b; }).catch(() => {})));
     return loading;
   }
   function unlock() {
-    ensureCtx(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    ensureCtx(); if (ctx && ctx.state !== 'running') { if (ctx.state === 'closed') rebuild(); ctx.resume().catch(() => {}); }
     load();
     try { if (window.speechSynthesis && !unlock.tts) { unlock.tts = true; const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } } catch (e) {}
   }
@@ -65,7 +98,9 @@
         if (v) u.voice = v; u.lang = (v && v.lang) || 'en-US'; u.rate = it_rate || .9; u.pitch = 1.05; u.volume = 1;
         let done = false; const fin = (ok) => { if (!done) { done = true; resolve(ok); } };
         u.onend = () => fin(true); u.onerror = () => fin(false);
-        speechSynthesis.speak(u); setTimeout(() => fin(true), 400 + text.length * 120);
+        const go = () => { try { speechSynthesis.resume(); speechSynthesis.speak(u); } catch (e) { fin(false); } };
+        if (speechSynthesis.speaking || speechSynthesis.pending) { speechSynthesis.cancel(); setTimeout(go, 120); } else setTimeout(go, 60);
+        setTimeout(() => fin(true), 600 + text.length * 120);
       } catch (e) { resolve(false); }
     });
   }
@@ -73,8 +108,8 @@
   // items: clip key | { gap: seconds } | { tts: 'Name', fallback: 'teama' }
   async function say(items) {
     const my = ++gen; stopAll();
-    await load(); if (my !== gen || !ctx) return;
-    if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) {} }
+    await withTimeout(load(), 8000); if (my !== gen) return;
+    await wake(); if (my !== gen || !ctx) return;
     let t = ctx.currentTime + .05;
     for (const it of items) {
       if (my !== gen) return;

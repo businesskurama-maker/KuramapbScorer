@@ -39,7 +39,7 @@
     if (typeof PBLink === 'undefined') return;
     c.link = PBLink.host({
       code: c.code,
-      getState: () => Object.assign(E.publicState(c.state), { liveCourt: true, courtNo: c.i + 1 }),
+      getState: () => Object.assign(E.publicState(c.state), { liveCourt: true, courtNo: c.i + 1, tour1: !!(tour && cfg.n === 1) }),
       onAction: (action, reply) => {
         if (!liveOK()) { reply({ t: 'denied', reason: 'LIVE_ENDED' }); return; }
         if (action && action.a === 'rally' && action.side != null) action = { a: 'rally', team: c.state.swapped ? 1 - action.side : action.side };
@@ -47,10 +47,15 @@
         c.state = E.apply(c.state, action);
         if (action && action.a === 'new') setTimeout(() => courtCall(c, ''), 50);   // announce who plays on this court
         save(); renderCourt(c); pushObs(); tourWatch(c);
-        c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, courtNo: c.i + 1 }));
+        c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, courtNo: c.i + 1, tour1: !!(tour && cfg.n === 1) }));
       },
       onMessage: (msg, reply) => {
         if (msg.t === 'rtt') { reply(msg); return; }
+        if (msg.t === 'tourRestart') {   // 1-court tournament: the only referee can restart it from the remote
+          if (!liveOK()) { reply({ t: 'denied', reason: 'LIVE_ENDED' }); return; }
+          if (!tour || cfg.n !== 1) { reply({ t: 'tourErr', reason: 'Only the organizer can restart this tournament.' }); return; }
+          restartTour(); reply({ t: 'tourOk', what: 'restart' }); return;
+        }
         if (msg.t === 'auth' || msg.t === 'recheck') {   // referees don't sign in: the organizer's LIVE pass covers this court
           if (liveOK()) reply({ t: 'authok', free: true, live: true, silent: true });
           else reply({ t: 'denied', reason: 'LIVE_ENDED' });
@@ -372,7 +377,7 @@
   }
   function courtPush(c) {
     save(); renderCourt(c); pushObs();
-    if (c.link) c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, courtNo: c.i + 1 }));
+    if (c.link) c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, courtNo: c.i + 1, tour1: !!(tour && cfg.n === 1) }));
   }
   function matchSettings(names, players) {
     const r = tour.rules, pl = (players || [[], []]).map((p) => [p[0] || '', p[1] || '']);
@@ -615,7 +620,7 @@
   }
   function endTour() {
     courts.forEach((c) => { clearTimeout(c.tourT); c.tourT = null; c.tm = null; });
-    tour = null; saveTour(); save(); renderTourChip(); courts.forEach(renderCourt); pushObs(); phoneTour();
+    tour = null; saveTour(); save(); renderTourChip(); courts.forEach(courtPush); pushObs(); phoneTour();
     openTour();   // straight to a new tournament: same teams and settings, ready to start again
     toast('NEW TOURNAMENT · SAME TEAMS');
   }

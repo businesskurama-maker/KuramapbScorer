@@ -125,6 +125,7 @@
     heard();
     if (s && s.liveCourt && mode !== 'live') { setMode('live'); setGate(null); store.del('aopb.remoteCode'); history.replaceState(null, '', 'remote.html'); }
     if (s && s.liveAct && mode !== 'act') setMode('act');
+    { const rt = document.getElementById('refTour'); if (rt) rt.classList.toggle('hidden', !(s && s.liveCourt && s.tour1)); }
     touch();
     const prevEv = st && st.lastEvent ? st.lastEvent.t : 0;
     st = s;
@@ -201,6 +202,8 @@
     heard();
     if (leaving) return;
     if (m.t === 'rtt') { rtt = Math.max(1, Date.now() - m.at); if (connected) { $('statusTxt').textContent = 'Live · ' + code + ' · ' + rtt + ' ms'; $('status').classList.toggle('slow', rtt > 400); } return; }
+    if (m.t === 'tourOk' && mode === 'live') { flash('Tournament restarted · match 1 is on court'); buzz([40, 60, 40]); return; }
+    if (m.t === 'tourErr' && mode === 'live') { flash(m.reason || 'Could not restart'); return; }
     if (onClubMsg(m) || onTourMsg(m)) return;
     if (m.t === 'authok' && m.silent) { authed = true; if (mode === 'solo') { clubOK = !AUTH || !!m.brand; renderClub(); } return; }
     if (m.t === 'authok' && mode === 'act') { authRetries = 0; authed = true; setGate(null); showActDone(m); buzz([40, 60, 40]); return; }
@@ -1051,6 +1054,11 @@
     twAsked.add(st.id); openTeamWiz('rename');
   }
   setInterval(maybeAskTeams, 1500);
+  $('refTourRestart').onclick = () => {
+    if (!link || !connected) { flash('Not connected to the court'); return; }
+    if (!confirm('Restart the tournament from the first match?\n\nAll results and standings are cleared. Teams, format and rules stay the same.')) return;
+    link.sendMsg({ t: 'tourRestart' }); buzz([60, 40, 60]); flash('Restarting tournament…'); closeSheet();
+  };
   setMode(mode);
 })();
 
