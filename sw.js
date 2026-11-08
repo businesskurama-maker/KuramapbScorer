@@ -1,15 +1,19 @@
 /* Kurama Pickleball Scorer service worker: app shell offline, CDN libs + fonts cached on first use. */
-const VERSION = 'aopb-v116';
+const VERSION = 'aopb-v117';
 const SHELL = [
   './', './index.html', './display.html', './remote.html',
   './admin.html', './live.html', './obs.html', './js/live.js', './js/strip.js', './js/tour.js', './css/live.css', './css/strip.css', './owner/', './owner/index.html', './css/app.css', './js/config.js', './js/auth.js', './js/admin.js', './js/common.js', './js/engine.js', './js/link.js', './js/display.js', './js/voice.js', './js/remote.js',
   './manifest.webmanifest', './owner/manifest.webmanifest', './icons/admin-192.png', './icons/admin-512.png', './privacy.html', './terms.html',
   './icons/kurama-mark.png', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon.png', './icons/instapay-qr.png', './icons/dinkykong-logo.png', './icons/dk-anim.webm', './icons/dk-anim.webp'
 ];
+const VOICE = Array.from({ length: 31 }, (_, n) => 'n' + n).concat(['g2', 'g3', 'g4', 'g5', 'sideout', 'second', 'game', 'match', 'winsgame', 'winsmatch', 'teama', 'teamb', 'servesfirst', 'pfs', 'wg_a', 'wg_b', 'wm_a', 'wm_b', 'sf_a', 'sf_b', 'timeout', 'timein', 'toss', 'to_a', 'to_b']).map((k) => './sounds/voice/' + k + '.mp3');
+// The PeerJS library (phone link) is kept too, so a scoreboard opened offline can still pair over a local hotspot later
+const LIBS = ['https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js'];
 const RUNTIME_HOSTS = ['cdnjs.cloudflare.com', 'unpkg.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL).then(() => Promise.all(VOICE.concat(LIBS).map((u) => c.add(u).catch(() => {})))))  // voice + libs: best effort
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {

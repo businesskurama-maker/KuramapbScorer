@@ -106,7 +106,7 @@
         const drop = () => { if (conns.delete(conn)) status(peer && peer.open ? 'online' : 'offline'); };
         conn.on('close', drop); conn.on('error', drop);
       });
-      peer.on('disconnected', () => { status('reconnecting'); setTimeout(() => { if (peer && !peer.destroyed) peer.reconnect(); }, 1500); });
+      peer.on('disconnected', () => { if (![...conns].some((c) => c.open)) status('reconnecting'); setTimeout(() => { if (peer && !peer.destroyed) peer.reconnect(); }, 1500); });
       peer.on('error', (err) => {
         const t = err && err.type;
         if (t === 'unavailable-id') {
@@ -117,6 +117,9 @@
           status('connecting', { retry: failures });
           setTimeout(start, 3000);
         } else if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed') {
+          // Internet gone: only the signalling server is lost. Phones already linked over the local wifi/hotspot keep
+          // working peer-to-peer, so keep their connections and just retry the server in the background.
+          if ([...conns].some((c) => c.open)) { setTimeout(() => { if (peer && !peer.destroyed && peer.disconnected) { try { peer.reconnect(); } catch (e) {} } }, 8000); return; }
           status('reconnecting');
           try { peer.destroy(); } catch (e) {}
           setTimeout(start, 4000);
@@ -124,7 +127,7 @@
       });
     }
     start();
-    window.addEventListener('online', () => { if (!peer || peer.destroyed || peer.disconnected) start(); });
+    window.addEventListener('online', () => { if (!peer || peer.destroyed) start(); else if (peer.disconnected) { try { peer.reconnect(); } catch (e) {} } });
 
     return {
       broadcast(state) { sendAll({ t: 'state', s: state }); },
@@ -189,7 +192,7 @@
       retryT = setTimeout(() => { retryT = null; ensurePeer(); }, bcLive ? 15000 : 2000);
     }
     function ensurePeer() {
-      if (destroyed) return;
+      if (destroyed || (conn && conn.open)) return;
       if (typeof Peer === 'undefined') { if (!bcLive) status('nolib'); return; }
       if (peer && peer.open) { connect(); return; }
       if (peer && peer.disconnected && !peer.destroyed) { peer.reconnect(); return; }
@@ -199,6 +202,7 @@
       peer.on('error', (err) => {
         if (err && err.type === 'peer-unavailable') { if (!bcLive) status('nodisplay'); }
         if (err && (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error')) {
+          if (conn && conn.open) return;   // offline but still linked to the scoreboard over local wifi: keep going
           try { peer.destroy(); } catch (e) {} peer = null;
         }
         scheduleRetry();

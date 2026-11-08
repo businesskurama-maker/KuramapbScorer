@@ -477,6 +477,10 @@
     const pairOpen = !$('pairOverlay').classList.contains('hidden');
     if (pairOpen && (k === 'Escape' || k === 'Backspace')) { showPair(false); e.preventDefault(); return; }
     if (pairOpen) return; // let Enter activate focused button
+    // Bluetooth presenter clickers send Page Up / Page Down (and "b" or "." for their third button)
+    if (k === 'PageUp') { act({ a: 'rally', side: 0 }); e.preventDefault(); return; }
+    if (k === 'PageDown') { act({ a: 'rally', side: 1 }); e.preventDefault(); return; }
+    if (k === 'b' || k === 'B' || k === '.') { act({ a: 'undo' }); e.preventDefault(); return; }
     if (k === 'ArrowLeft' || k === 'a' || k === 'A' || k === '1') { act({ a: 'rally', side: 0 }); e.preventDefault(); }
     else if (k === 'ArrowRight' || k === 'l' || k === 'L' || k === '2') { act({ a: 'rally', side: 1 }); e.preventDefault(); }
     else if (k === 'u' || k === 'U' || k === 'z' || k === 'Backspace' || k === 'ArrowDown') { act({ a: 'undo' }); e.preventDefault(); }
@@ -488,6 +492,27 @@
       else if (state.gameOver) act({ a: 'next' });
     }
   });
+
+  // Bluetooth / USB game controller: works with no internet at all
+  //   LB or D-pad left = left team · RB or D-pad right = right team · B = undo · Start/A = next game / new match
+  (function gamepad() {
+    if (!('getGamepads' in navigator)) return;
+    const prev = {}; let on = false;
+    const MAP = { 4: () => act({ a: 'rally', side: 0 }), 14: () => act({ a: 'rally', side: 0 }), 5: () => act({ a: 'rally', side: 1 }), 15: () => act({ a: 'rally', side: 1 }),
+      1: () => act({ a: 'undo' }), 9: () => { if (state.matchOver) act({ a: 'new' }); else if (state.gameOver) act({ a: 'next' }); },
+      0: () => { if (state.matchOver) act({ a: 'new' }); else if (state.gameOver) act({ a: 'next' }); } };
+    function poll() {
+      const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+      pads.forEach((p) => p.buttons.forEach((b, i) => {
+        const key = p.index + ':' + i, down = b.pressed || b.value > .6;
+        if (down && !prev[key] && MAP[i] && $('chooser').classList.contains('hidden') && $('pairOverlay').classList.contains('hidden')) MAP[i]();
+        prev[key] = down;
+      }));
+      if (on) requestAnimationFrame(poll);
+    }
+    window.addEventListener('gamepadconnected', () => { toast('CONTROLLER CONNECTED'); if (!on) { on = true; requestAnimationFrame(poll); } });
+    window.addEventListener('gamepaddisconnected', () => { if (![...navigator.getGamepads()].some(Boolean)) on = false; });
+  })();
 
   // Keep in sync if another tab on this device changes state
   window.addEventListener('storage', (e) => {
