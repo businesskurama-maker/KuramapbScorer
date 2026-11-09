@@ -144,7 +144,7 @@
   }
   function setHash() { const h = new URLSearchParams(); h.set('v', view); if (cur) h.set('m', cur); history.replaceState(null, '', '#' + h); }
   function go(v, noHash) {
-    if ((v === 'monitor' || v === 'summary') && !cur) v = 'matches';
+    if ((v === 'monitor' || v === 'summary') && !cur) { if (v !== view) toast('Pick a match first — tap OBS Monitor on a match card, or create one.'); v = 'matches'; }
     view = v;
     document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
     ['matches', 'setup', 'monitor', 'summary'].forEach((k) => $('v' + k[0].toUpperCase() + k.slice(1)).classList.toggle('hidden', k !== v));
@@ -160,14 +160,14 @@
 
   /* ---------------- matches ---------------- */
   async function loadMatches() {
-    const { data, error } = await sb.from('bb_matches').select('code,title,venue,status,home,away,derived,created_at,starts_at,finalized_at').order('created_at', { ascending: false }).limit(100);
+    const { data, error } = await sb.from('bb_matches').select('code,owner,title,venue,status,home,away,derived,created_at,starts_at,finalized_at').order('created_at', { ascending: false }).limit(100);
     if (error) { $('mlist').innerHTML = '<div class="tiny">' + E(PBB.errText(error)) + '</div>'; return; }
     $('mlist').innerHTML = (data || []).map((m) => {
       const sc = (m.derived && m.derived.score) || { home: 0, away: 0 };
       const when = new Date(m.starts_at || m.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
       return '<div class="mcard"><div class="tt"><span>' + E(m.title || 'Untitled match') + (m.venue ? ' · ' + E(m.venue) : '') + '</span><span class="st ' + m.status + '">' + m.status.toUpperCase() + '</span></div>'
         + '<div class="vs"><span style="color:' + E(m.home.color) + '">' + E(m.home.name) + '</span><b>' + sc.home + ' – ' + sc.away + '</b><span style="color:' + E(m.away.color) + '">' + E(m.away.name) + '</span></div>'
-        + '<div class="tiny">' + when + ' · ID ' + m.code + '</div>'
+        + '<div class="tiny">' + when + ' · ID ' + m.code + (PBAuth.user && m.owner !== PBAuth.user.id ? ' · <span style="color:var(--warn)">another account</span>' : '') + '</div>'
         + '<div class="row" style="flex-wrap:wrap"><button class="btn sm cyan" data-o="monitor" data-c="' + m.code + '">OBS Monitor</button><button class="btn sm" data-o="setup" data-c="' + m.code + '">Setup</button><button class="btn sm" data-o="summary" data-c="' + m.code + '">Stats</button><button class="btn sm ghost" data-del="' + m.code + '">Delete</button></div></div>';
     }).join('') || '<div class="m-empty"><div style="font-size:34px">🏀</div><b>No matches yet</b><span class="tiny">Create a match to set up teams, rosters and the OBS scoreboard.</span></div>';
   }
@@ -231,10 +231,18 @@
   delete DEF.basic;
   delete DEF.label;
 
+  // a match from another account (old link / other sign-in): explain and go back to the list
+  function noAccess(e) {
+    const c = PBB.errCode(e);
+    if (c !== 'NOT_AUTHORIZED' && c !== 'NO_MATCH') { toast(PBB.errText(e), true); return; }
+    const code = cur; cur = null; H = null;
+    toast(c === 'NO_MATCH' ? 'Match ' + code + ' no longer exists.' : 'Match ' + code + ' belongs to another DinkyKong account. Sign in with that account to open it.', true);
+    go('matches');
+  }
   async function openSetup() {
     $('suMsg').textContent = '';
     if (cur) {
-      try { H = await rpc('bb_host', { p_code: cur }); } catch (e) { toast(PBB.errText(e), true); return; }
+      try { H = await rpc('bb_host', { p_code: cur }); } catch (e) { noAccess(e); return; }
       draft = { title: H.title, venue: H.venue, when: H.starts_at, home: Object.assign({}, H.home), away: Object.assign({}, H.away), config: Object.assign({}, H.config), broadcast: Object.assign({}, H.broadcast),
         players: H.players.map((p) => Object.assign({}, p)) };
       $('suTitle').textContent = 'Match setup · ' + cur; $('suSave').textContent = 'Save changes'; $('fCode').value = cur;
@@ -397,7 +405,7 @@
 
   /* ---------------- monitor ---------------- */
   async function openMonitor() {
-    try { H = await rpc('bb_host', { p_code: cur }); } catch (e) { toast(PBB.errText(e), true); go('matches'); return; }
+    try { H = await rpc('bb_host', { p_code: cur }); } catch (e) { noAccess(e); return; }
     const base = location.href.replace(/[^/]*$/, '');
     const obs = base + 'bb-obs.html?m=' + cur + '&k=' + H.view_key;
     $('obsUrl').value = obs; $('moTitle').textContent = (H.title || 'Match') + ' · ' + cur;
@@ -458,7 +466,7 @@
   let sumT = null; function openSummarySoon() { clearTimeout(sumT); sumT = setTimeout(openSummary, 800); }
   let SUM = null;
   async function openSummary() {
-    try { H = await rpc('bb_host', { p_code: cur }); } catch (e) { toast(PBB.errText(e), true); return; }
+    try { H = await rpc('bb_host', { p_code: cur }); } catch (e) { noAccess(e); return; }
     const evs = await PBB.rpc(sb, 'bb_events', { p_code: cur, p_key: H.view_key });
     const { data: audit } = await sb.from('bb_audit').select('actor,action,detail,at').eq('match_id', (await sb.from('bb_matches').select('id').eq('code', cur).single()).data.id).order('at', { ascending: false }).limit(200);
     SUM = { H, evs, audit: audit || [] };
