@@ -49,25 +49,43 @@
     if (done) return;
     const u = PBAuth.user;
     $('who').textContent = u ? 'Signed in on this phone as ' + (u.email || '') : '';
-    $('approve').classList.toggle('hidden', !u); $('deny').classList.toggle('hidden', !u);
+    $('approve').classList.toggle('hidden', !u); $('deny').classList.remove('hidden');
     if (!u) PBAuth.mountGoogleButton($('gis')).then((ok) => $('signIn').classList.toggle('hidden', ok)); else { $('gis').innerHTML = ''; $('signIn').classList.add('hidden'); }
+  }
+  // a fresh, verified access token (renews an old one); null = this phone must sign in again
+  async function freshToken() {
+    const a = PBAuth.client.auth;
+    let { data } = await a.getSession();
+    let ses = data && data.session;
+    if (!ses) return null;
+    if (!ses.expires_at || ses.expires_at * 1000 < Date.now() + 60000) { const r = await a.refreshSession(); ses = r.data && r.data.session; if (!ses) return null; }
+    const u = await a.getUser(ses.access_token);           // checks with the server (catches a session revoked elsewhere)
+    if (u.error || !u.data || !u.data.user) { const r = await a.refreshSession(); return (r.data && r.data.session && r.data.session.access_token) || null; }
+    return ses.access_token;
+  }
+  async function needSignIn() {
+    try { await PBAuth.signOut(); } catch (e) {}
+    $('msg').textContent = 'Your sign-in on this phone expired. Sign in with Google again, then tap Approve.';
+    paint();
   }
   async function send(deny) {
     $('approve').classList.add('busy'); $('deny').classList.add('busy'); $('msg').textContent = deny ? 'Declining…' : 'Signing the screen in…';
     try {
-      const { data } = await PBAuth.client.auth.getSession();
-      const tok = data && data.session && data.session.access_token;
-      const r = await fetch(cfg.supabaseUrl + '/functions/v1/bb-login', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseAnonKey, Authorization: 'Bearer ' + tok }, body: JSON.stringify({ id, deny: !!deny }) });
+      const tok = deny ? null : await freshToken();
+      if (!deny && !tok) { await needSignIn(); return; }
+      const headers = { 'Content-Type': 'application/json', apikey: cfg.supabaseAnonKey, Authorization: 'Bearer ' + (tok || cfg.supabaseAnonKey) };
+      const r = await fetch(cfg.supabaseUrl + '/functions/v1/bb-login', { method: 'POST', headers, body: JSON.stringify({ id, deny: !!deny }) });
       const j = await r.json().catch(() => ({}));
+      if (r.status === 401 || j.error === 'SIGN_IN_REQUIRED') { await needSignIn(); return; }
       if (!j.ok) throw new Error(j.error || 'Could not approve');
-      done = true; $('approve').classList.add('hidden'); $('deny').classList.add('hidden');
+      done = true; $('approve').classList.add('hidden'); $('deny').classList.add('hidden'); $('gis').innerHTML = ''; $('signIn').classList.add('hidden');
       $('lead').textContent = deny ? 'Declined. The screen was not signed in.' : 'Done! The screen is signing in as ' + j.email + '.';
-      $('msg').textContent = deny ? '' : 'Control the screen from here: matches, setup, OBS Monitor and stats stay in sync on both.';
+      $('msg').textContent = deny ? 'You can close this page.' : 'Control the screen from here: matches, setup, OBS Monitor and stats stay in sync on both.';
       if (!deny) { const b = document.createElement('a'); b.className = 'btn cyan'; b.style.cssText = 'width:100%;min-height:56px;font-size:16px'; b.href = 'basketball.html'; b.textContent = 'Open the portal on this phone'; $('msg').after(b); }
       try { navigator.vibrate && navigator.vibrate([30, 50, 30]); } catch (e) {}
     } catch (e) {
       const m = String(e.message || e);
-      $('msg').textContent = /EXPIRED|USED/.test(m) ? 'This QR expired or was used. Scan the new QR on the screen.' : /SIGN_IN/.test(m) ? 'Sign in on this phone first.' : PBB.errText(e);
+      $('msg').textContent = /EXPIRED|USED/.test(m) ? 'This QR expired or was used. Scan the new QR on the screen.' : PBB.errText(e);
     } finally { $('approve').classList.remove('busy'); $('deny').classList.remove('busy'); }
   }
   $('signIn').onclick = () => PBAuth.signIn(location.href);

@@ -26,6 +26,9 @@ Deno.serve(async (req) => {
   if (row.status !== 'pending') return json({ ok: false, error: 'USED' }, 409);
   if (new Date(row.expires_at).getTime() < Date.now()) return json({ ok: false, error: 'EXPIRED' }, 410);
 
+  // declining needs no sign-in: whoever holds the QR link may cancel the request
+  if (body.deny) { await admin.from('bb_logins').update({ status: 'denied' }).eq('id', row.id).eq('status', 'pending'); return json({ ok: true, denied: true }); }
+
   // who approves: the signed-in phone (test rows can only be created directly in the database)
   let email = row.test_email as string | null;
   if (!email) {
@@ -34,8 +37,6 @@ Deno.serve(async (req) => {
     if (uErr || !u?.user?.email) return json({ ok: false, error: 'SIGN_IN_REQUIRED' }, 401);
     email = u.user.email;
   }
-  if (body.deny) { await admin.from('bb_logins').update({ status: 'denied' }).eq('id', row.id).eq('status', 'pending'); return json({ ok: true, denied: true }); }
-
   const { data: link, error: linkErr } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
   if (linkErr || !link?.properties?.hashed_token) return json({ ok: false, error: 'LINK: ' + (linkErr?.message || 'no token') }, 500);
   const pub = createClient(URL, Deno.env.get('SUPABASE_ANON_KEY')!, { auth: { persistSession: false, autoRefreshToken: false } });

@@ -144,7 +144,8 @@
     });
   }
   async function signOut() {
-    if (sb) await sb.auth.signOut();
+    // 'local': sign out THIS device only (the default 'global' would also kill the screen / other phones)
+    if (sb) { try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {} }
     try { window.google && window.google.accounts && window.google.accounts.id.disableAutoSelect(); } catch (e) {}
     user = null; profile = null; emit();
   }
