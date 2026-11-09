@@ -17,6 +17,9 @@ begin
   return new;
 end $function$;
 
+alter table public.packages drop constraint if exists packages_kind_check;
+alter table public.packages add constraint packages_kind_check check (kind in ('solo', 'live', 'bb'));
+
 insert into public.packages (code, label, hours, price_php, sort, kind) values
   ('bb1d', 'Basketball · 1 day', 24, 150, 20, 'bb'),
   ('bb3d', 'Basketball · 3 days', 72, 300, 21, 'bb'),
