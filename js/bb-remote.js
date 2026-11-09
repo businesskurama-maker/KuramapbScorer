@@ -49,21 +49,58 @@
     } catch (e) { $('jMsg').textContent = PBB.errText(e); }
   };
 
+  /* ---------------- layout per role / host duty ---------------- */
+  // host phone keeps its host powers but works ONE job: referee (scoring) or timer operator (clock)
+  function duty() { return role === 'host' ? (dev.duty || 'score') : role === 'clock' ? 'clock' : 'score'; }
+  function applyLayout() {
+    const d = duty(), clockOnly = d === 'clock', isHost = role === 'host';
+    const tabs = clockOnly ? ['clock', 'settings'] : ['score', 'clock', 'players', 'events', 'settings'];
+    document.querySelectorAll('.r-nav button').forEach((b) => b.classList.toggle('hidden', !tabs.includes(b.dataset.v)));
+    document.body.classList.toggle('duty-clock', clockOnly);
+    document.body.classList.toggle('duty-ref', isHost && !clockOnly);
+    // referee host: Clock tab keeps only periods / overtime / end match; the timer runs the clocks
+    $('clkBox').classList.toggle('hidden', isHost && !clockOnly);
+    $('shotBox').classList.toggle('hidden', isHost && !clockOnly);
+    const navClock = document.querySelector('.r-nav [data-v="clock"]');
+    navClock.lastChild.textContent = isHost && !clockOnly ? 'Periods' : 'Clock';
+    $('hReset').classList.toggle('hidden', role === 'clock');
+    $('vSettings').querySelectorAll('.box').forEach((b, i) => b.classList.toggle('hidden', role === 'clock' && i < 3));
+    $('perBox').classList.toggle('hidden', role === 'clock');
+    $('pEnd').classList.toggle('hidden', role === 'clock');
+    $('hRole').textContent = isHost ? (clockOnly ? 'HOST · TIMER' : 'HOST · REFEREE') : role === 'clock' ? 'CLOCK' : 'SCORER';
+    $('hRole').classList.toggle('tap', isHost);
+    $('dutyBtn').classList.toggle('hidden', !isHost);
+    $('devTxt').textContent = (isHost ? 'Host (signed in) · ' + (clockOnly ? 'timer operator' : 'referee') : (dev.name || role) + ' · ' + role) + ' · match ' + code;
+    if (clockOnly && !['clock', 'settings'].includes(view)) go('clock');
+    else if (!clockOnly && view === 'clock' && role === 'host' && dev.duty) go('score');
+    else go(view);
+  }
+  function pickDuty(first) {
+    const cur = dev.duty;
+    modal('<h3 style="margin:0 0 4px">' + (first ? 'What will this phone do?' : 'Switch duty') + '</h3>'
+      + '<p class="tiny" style="margin:0 0 12px">You stay the host either way (end match, lock, overlay controls). Pick one job for this phone.</p>'
+      + '<div class="duty-pick">'
+      + '<button class="duty-o' + (cur === 'score' ? ' on' : '') + '" data-d="score"><span class="di">🏀</span><b>Referee</b><small>Points, fouls, timeouts, players, periods</small></button>'
+      + '<button class="duty-o' + (cur === 'clock' ? ' on' : '') + '" data-d="clock"><span class="di">⏱️</span><b>Timer operator</b><small>Game clock and shot clock</small></button>'
+      + '</div>' + (first ? '' : '<button class="btn ghost" data-close style="width:100%;margin-top:10px">Cancel</button>'),
+    (m, e) => {
+      const b = e.target.closest('[data-d]'); if (!b) return;
+      dev.duty = b.dataset.d; store.set(TK, dev); m.remove(); buzz([30, 40, 30]);
+      view = dev.duty === 'clock' ? 'clock' : 'score'; applyLayout();
+      toast(dev.duty === 'clock' ? 'This phone is the timer' : 'This phone is the referee');
+    }, (m) => { if (first) m.classList.add('locked'); });
+  }
+  $('hRole').onclick = () => { if (role === 'host') pickDuty(false); };
+  $('dutyBtn').onclick = () => pickDuty(false);
+
   /* ---------------- connection ---------------- */
   function start(first) {
     $('join').classList.add('hidden'); $('app').classList.remove('hidden');
     role = dev.role;
     document.body.classList.toggle('is-host', role === 'host');
     document.querySelectorAll('.host-only').forEach((el) => el.classList.toggle('hidden', role !== 'host'));
-    if (role === 'clock') {   // clock operators only see the clock
-      document.querySelectorAll('.r-nav button').forEach((b) => b.classList.toggle('hidden', !['clock', 'settings'].includes(b.dataset.v)));
-      ['hReset'].forEach((id) => $(id).classList.add('hidden'));
-      $('vSettings').querySelectorAll('.box').forEach((b, i) => b.classList.toggle('hidden', i < 3));
-      $('perBox').classList.add('hidden'); $('pEnd').classList.add('hidden');
-      go('clock');
-    }
-    $('hRole').textContent = role === 'host' ? 'HOST' : role === 'clock' ? 'CLOCK' : 'SCORER';
-    $('devTxt').textContent = (role === 'host' ? 'Host (signed in)' : (dev.name || role) + ' · ' + role) + ' · match ' + code;
+    applyLayout();
+    if (role === 'host' && !dev.duty) pickDuty(true);
     conn = PBB.connect({ code, key: dev.view_key, token: dev.token, signedIn: !!dev.host, onSnap, onStatus, onError: (e) => {
       const c = PBB.errCode(e); if (c === 'NOT_PAIRED' || c === 'REVOKED' || c === 'NO_MATCH') { store.del(TK); dev = null; conn && conn.close(); showJoin(PBB.errText(e)); }
     } });
@@ -428,7 +465,7 @@
   /* tiny modal helper */
   function modal(html, onClick, onOpen) {
     const m = document.createElement('div'); m.className = 'modal'; m.innerHTML = '<div class="sheet">' + html + '</div>';
-    m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('[data-close]')) { m.remove(); return; } onClick && onClick(m, e); });
+    m.addEventListener('click', (e) => { if ((e.target === m && !m.classList.contains('locked')) || e.target.closest('[data-close]')) { m.remove(); return; } onClick && onClick(m, e); });
     document.body.appendChild(m); onOpen && onOpen(m); return m;
   }
 
