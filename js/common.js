@@ -160,7 +160,7 @@
     const SKIP = /^(email|password|url|number|tel|date|datetime-local|time|month|week|color|range|file|checkbox|radio|hidden|submit|button)$/i;
     const want = (el) => el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !SKIP.test(el.type || 'text'))) && !el.hasAttribute('data-nocaps') && !el.readOnly;
     const st = document.createElement('style');
-    st.textContent = 'input:not([type]),input[type=text],input[type=search],textarea{text-transform:uppercase}input[data-nocaps],textarea[data-nocaps]{text-transform:none}input::placeholder,textarea::placeholder{text-transform:none}';
+    st.textContent = 'input:not([type]),input[type=text],input[type=search],textarea{text-transform:uppercase}input[data-nocaps],textarea[data-nocaps],input[readonly],textarea[readonly]{text-transform:none}input::placeholder,textarea::placeholder{text-transform:none}';
     (document.head || document.documentElement).appendChild(st);
     document.addEventListener('input', (e) => {
       const el = e.target; if (!want(el) || e.isComposing) return;

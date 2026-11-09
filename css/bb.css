@@ -392,3 +392,36 @@ table.rt td .in { min-height: 32px; }
 .mcard > .row .btn { min-height: 34px; padding: 0 10px; font-size: 12px; }
 .mcard > .row [data-del] { margin-left: auto; color: var(--ink3); border-color: transparent; }
 .mcard > .row [data-del]:hover { color: var(--danger); }
+
+/* ---------- Lower-third designer ---------- */
+.lk-tpl { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.lk-tpl button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px 9px; border-radius: 12px; border: 1px solid var(--line); background: #0b1224; color: var(--ink); font: inherit; cursor: pointer; text-align: center; min-width: 0; }
+.lk-tpl button > b { font-size: 12.5px; }
+.lk-tpl button small { font-size: 10px; color: var(--ink3); line-height: 1.25; }
+.lk-tpl button.on { border-color: var(--brand); background: rgba(57,255,20,.08); box-shadow: 0 0 0 1px var(--brand) inset; }
+.lk-ic { width: 64px; height: 26px; position: relative; display: flex; margin-bottom: 4px; }
+.lk-ic b, .lk-ic s { display: block; text-decoration: none; }
+.lk-split { background: #1b2337; border-radius: 4px; overflow: hidden; } .lk-split b { width: 40%; background: var(--brand); } .lk-split s { flex: 1; margin: 10px 6px; background: #8a94ad; border-radius: 2px; }
+.lk-ribbon { background: var(--brand); clip-path: polygon(7px 0, calc(100% - 7px) 0, 100% 50%, calc(100% - 7px) 100%, 7px 100%, 0 50%); justify-content: center; align-items: center; gap: 4px; } .lk-ribbon b, .lk-ribbon s { width: 18px; height: 4px; background: #04130a; border-radius: 2px; } .lk-ribbon s { opacity: .6; }
+.lk-stack { flex-direction: column; align-items: center; justify-content: center; gap: 3px; background: #1b2337; border-radius: 5px 5px 2px 2px; border-bottom: 2px solid var(--brand); } .lk-stack b { width: 22px; height: 3px; background: var(--brand); border-radius: 2px; } .lk-stack s { width: 44px; height: 6px; background: #dfe5f3; border-radius: 2px; }
+.lk-pill { border: 2px solid var(--brand); border-radius: 99px; padding: 2px; background: #1b2337; width: 54px; margin: 0 5px 4px; } .lk-pill b { width: 45%; background: var(--brand); border-radius: 99px; } .lk-pill s { flex: 1; margin: 6px 5px; background: #8a94ad; border-radius: 2px; }
+.lk-sl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin-top: 14px; }
+.lk-r { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--ink2); }
+.lk-r span { display: flex; justify-content: space-between; gap: 8px; }
+.lk-r em { font-style: normal; color: var(--brand); font-family: var(--digit, monospace); font-size: 11.5px; }
+.lk-r input[type=range] { width: 100%; height: 28px; accent-color: var(--brand); margin: 0; }
+.lk-col { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.lk-c { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 12px; background: #0b1224; position: relative; min-width: 0; cursor: pointer; }
+.lk-c input[type=color] { flex: none; width: 30px; height: 30px; border: 0; padding: 0; background: none; border-radius: 8px; cursor: pointer; }
+.lk-c input[type=color]::-webkit-color-swatch-wrapper { padding: 0; } .lk-c input[type=color]::-webkit-color-swatch { border: 1px solid rgba(255,255,255,.25); border-radius: 8px; }
+.lk-c span { display: flex; flex-direction: column; font-size: 12px; font-weight: 700; min-width: 0; }
+.lk-c small { font-size: 10px; color: var(--ink3); font-weight: 600; letter-spacing: .04em; }
+.lk-x { position: absolute; top: 3px; right: 4px; border: 0; background: none; color: var(--ink3); font-size: 13px; cursor: pointer; padding: 2px; }
+.lk-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.lk-t { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink2); }
+.lk-t input { width: 18px; height: 18px; accent-color: var(--brand); }
+@media (max-width: 560px) {
+  .lk-tpl { grid-template-columns: 1fr 1fr; }
+  .lk-sl { grid-template-columns: 1fr; gap: 4px; }
+  .lk-col { grid-template-columns: 1fr 1fr; }
+}

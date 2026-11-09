@@ -26,8 +26,24 @@
     if (b.show_title || b.theme === 'tournament') root.classList.add('show-title');
     if (b.reduced_motion) root.classList.add('reduced');
     root.style.setProperty('--home', s.home.color); root.style.setProperty('--away', s.away.color);
-    root.style.setProperty('--scale', b.scale || 1); root.style.setProperty('--dsz', b.digit_size || 1); root.style.setProperty('--op', b.opacity == null ? .94 : b.opacity);
-    root.style.setProperty('--glass', 'rgba(10,13,22,' + (b.opacity == null ? .94 : b.opacity) + ')'); root.style.setProperty('--glass2', 'rgba(22,27,40,' + (b.opacity == null ? .94 : b.opacity) + ')');
+    root.style.setProperty('--scale', b.scale || 1); root.style.setProperty('--dsz', b.digit_size || 1);
+    // lower-third designer
+    const nsz = Number(b.name_size) || 1, dsz = Number(b.digit_size) || 1;
+    root.style.setProperty('--nsz', nsz); root.style.setProperty('--lsz', Number(b.label_size) || 1); root.style.setProperty('--rsz', Number(b.rb_size) || 1);
+    root.style.setProperty('--bhs', Math.max(1, nsz * .95, dsz)); root.style.setProperty('--lgs', Number(b.logo_size) || 1);
+    root.classList.add('rb-' + (['split', 'ribbon', 'stack', 'pill'].includes(b.rb_tpl) ? b.rb_tpl : 'split'));
+    if (b.show_logos === false) root.classList.add('no-logos');
+    const hex = (v) => /^#[0-9a-f]{6}$/i.test(v || '') ? v : '';
+    const ink = (h) => { const n = parseInt(h.slice(1), 16), l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)); return l > 150 ? '#05070c' : '#ffffff'; };
+    const rgba = (h, a) => { const n = parseInt(h.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; };
+    ['--rb-bg', '--rnd', '--rnd-ink', '--evt'].forEach((k) => root.style.removeProperty(k));
+    if (hex(b.rb_bg)) root.style.setProperty('--rb-bg', rgba(b.rb_bg, b.opacity == null ? .94 : b.opacity));
+    if (hex(b.rnd_color)) { root.style.setProperty('--rnd', b.rnd_color); root.style.setProperty('--rnd-ink', ink(b.rnd_color)); }
+    if (hex(b.evt_color)) root.style.setProperty('--evt', b.evt_color); root.style.setProperty('--op', b.opacity == null ? .94 : b.opacity);
+    { const op = b.opacity == null ? .94 : b.opacity, bc = /^#[0-9a-f]{6}$/i.test(b.bar_color || '') ? b.bar_color : '';
+      if (bc) { const n = parseInt(bc.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, bl = n & 255, up = (x) => Math.min(255, Math.round(x + 18));
+        root.style.setProperty('--glass', 'rgba(' + r + ',' + g + ',' + bl + ',' + op + ')'); root.style.setProperty('--glass2', 'rgba(' + up(r) + ',' + up(g) + ',' + up(bl) + ',' + op + ')'); root.classList.add('custom-bar'); }
+      else { root.style.setProperty('--glass', 'rgba(10,13,22,' + op + ')'); root.style.setProperty('--glass2', 'rgba(22,27,40,' + op + ')'); } }
     $('wrap').classList.toggle('off', !!(s.overlay && s.overlay.hidden));
     // CATEGORY ROUND - EVENT / SEASON TITLE banner
     const rnd = String(b.round || '').trim(), evt = String(s.title || '').trim();

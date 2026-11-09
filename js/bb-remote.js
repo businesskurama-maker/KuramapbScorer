@@ -64,7 +64,7 @@
     const navClock = document.querySelector('.r-nav [data-v="clock"]');
     navClock.lastChild.textContent = isHost && !clockOnly ? 'Periods' : 'Clock';
     $('hReset').classList.toggle('hidden', role === 'clock');
-    $('vSettings').querySelectorAll('.box').forEach((b, i) => b.classList.toggle('hidden', role === 'clock' && i < 3));
+    $('vSettings').querySelectorAll('.box').forEach((b, i) => b.classList.toggle('hidden', role === 'clock' && i < 4));
     $('perBox').classList.toggle('hidden', role === 'clock');
     $('pEnd').classList.toggle('hidden', role === 'clock');
     $('hRole').textContent = isHost ? (clockOnly ? 'HOST · TIMER' : 'HOST · REFEREE') : role === 'clock' ? 'CLOCK' : 'SCORER';
@@ -431,10 +431,12 @@
           + '<label class="btn sm" style="position:relative;overflow:hidden">' + (T.logo ? 'Change logo' : 'Upload logo') + '<input type="file" accept="image/*" data-tl="' + t + '" style="position:absolute;inset:0;opacity:0"></label>'
           + (T.logo ? '<button class="btn sm ghost" data-tx="' + t + '">Remove logo</button>' : '') + '</div>'; }).join('');
     }
+    look.paint(); $('lookBox').style.opacity = locked ? .5 : 1; $('lookBox').style.pointerEvents = locked ? 'none' : '';
     $('brk').innerHTML = PBB.BREAKS.map(([t, s]) => '<button class="btn" data-brk="' + E(t) + '" data-sub="' + E(s) + '">' + E(t) + '</button>').join('');
     paintingSettings = false;
   }
   const bcast = (data) => act('broadcast', data, { force: true });
+  const look = PBB.lookPanel($('lookPanel'), () => S && S.broadcast, (patch) => bcast({ patch }).then((s) => s && buzz(15)));
   $('theme').onclick = (e) => { const b = e.target.closest('button'); if (b) bcast({ patch: { theme: b.dataset.v, show_title: b.dataset.v === 'tournament' ? true : (S.broadcast.show_title || false) } }); };
   document.querySelectorAll('[data-b]').forEach((el) => el.addEventListener('change', () => { const v = el.value; bcast({ patch: { [el.dataset.b]: isNaN(Number(v)) ? v : Number(v) } }); }));
   document.querySelectorAll('input[data-t]').forEach((el) => el.addEventListener('change', () => bcast({ patch: { [el.dataset.t]: el.checked } })));

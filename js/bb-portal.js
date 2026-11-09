@@ -417,7 +417,7 @@
       + '<div class="mcard" style="background:none;border:0;padding:0"><div class="vs"><span style="color:' + s.home.color + '">' + E(s.home.name) + '</span><b style="font-size:34px">' + d.score.home + ' – ' + d.score.away + '</b><span style="color:' + s.away.color + '">' + E(s.away.name) + '</span></div>'
       + '<div class="tiny">Team fouls ' + d.fouls.home + ' – ' + d.fouls.away + ' · Timeouts left ' + (d.tos.allow - d.tos.home) + ' – ' + (d.tos.allow - d.tos.away) + ' · ' + s.devices + ' paired device' + (s.devices === 1 ? '' : 's') + '</div></div>';
     $('moFinal').textContent = s.status === 'final' ? 'Reopen match' : 'End match';
-    if (H) { H.status = s.status; H.locked = s.locked; } $('moLock').checked = !!s.locked;
+    if (H) { H.status = s.status; H.locked = s.locked; } $('moLock').checked = !!s.locked; look.paint();
     if (view === 'summary') openSummarySoon();
   }
   function paintDevices() {
@@ -441,6 +441,7 @@
   $('devs').onclick = async (e) => { const b = e.target.closest('[data-rv]'); if (!b) return; if (!confirm('Remove this device? It can no longer control the match.')) return; try { H = await rpc('bb_revoke', { p_code: cur, p_device: b.dataset.rv }); paintDevices(); toast('Device removed'); } catch (x) { toast(PBB.errText(x), true); } };
   $('revokeAll').onclick = async () => { if (!confirm('Remove ALL paired phones from this match?')) return; try { H = await rpc('bb_revoke', { p_code: cur, p_device: null }); paintDevices(); toast('All devices removed'); } catch (x) { toast(PBB.errText(x), true); } };
   const hostAct = async (type, data, msg) => { try { await conn.act(type, data); msg && toast(msg); } catch (e) { toast(e.message === 'OFFLINE' ? 'Not connected' : PBB.errText(e), true); } };
+  const look = PBB.lookPanel($('moLook'), () => conn && conn.snap && conn.snap.broadcast, (patch) => hostAct('broadcast', { patch }));
   $('moReset').onclick = () => hostAct('overlay', { op: 'reset' }, 'Overlay reset');
   $('moHide').onclick = () => hostAct('overlay', { op: 'hide' }, 'Overlay hidden');
   $('moShow').onclick = () => hostAct('overlay', { op: 'show' }, 'Overlay visible');
