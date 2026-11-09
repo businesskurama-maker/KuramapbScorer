@@ -1,8 +1,8 @@
 /* Kurama Pickleball Scorer service worker: app shell offline, CDN libs + fonts cached on first use. */
-const VERSION = 'aopb-v118';
+const VERSION = 'aopb-v119';
 const SHELL = [
   './', './index.html', './display.html', './remote.html',
-  './admin.html', './live.html', './obs.html', './js/live.js', './js/strip.js', './js/tour.js', './css/live.css', './css/strip.css', './owner/', './owner/index.html', './css/app.css', './js/config.js', './js/auth.js', './js/admin.js', './js/common.js', './js/engine.js', './js/link.js', './js/display.js', './js/voice.js', './js/remote.js', './basketball.html', './bb-remote.html', './bb-obs.html', './js/bb-core.js', './js/bb-remote.js', './js/bb-obs.js', './js/bb-portal.js', './css/bb.css',
+  './admin.html', './live.html', './obs.html', './js/live.js', './js/strip.js', './js/tour.js', './css/live.css', './css/strip.css', './owner/', './owner/index.html', './css/app.css', './js/config.js', './js/auth.js', './js/admin.js', './js/common.js', './js/engine.js', './js/link.js', './js/display.js', './js/voice.js', './js/remote.js', './basketball.html', './bb-login.html', './bb-remote.html', './bb-obs.html', './js/bb-core.js', './js/bb-remote.js', './js/bb-obs.js', './js/bb-portal.js', './css/bb.css',
   './manifest.webmanifest', './owner/manifest.webmanifest', './icons/admin-192.png', './icons/admin-512.png', './privacy.html', './terms.html',
   './icons/kurama-mark.png', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon.png', './icons/instapay-qr.png', './icons/dinkykong-logo.png', './icons/dk-anim.webm', './icons/dk-anim.webp'
 ];

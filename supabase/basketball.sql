@@ -725,3 +725,56 @@ grant execute on function public.bb_pair(text, text, text, text), public.bb_snap
   public.bb_act(text, text, uuid, text, jsonb) to anon, authenticated;
 revoke all on function public.bb__derive(public.bb_matches), public.bb__snap(public.bb_matches), public.bb__push(public.bb_matches, jsonb),
   public.bb__role(public.bb_matches, text) from public, anon, authenticated;
+
+-- =====================================================================================================
+-- Sign in a screen by phone: the portal shows a QR, a signed-in phone approves it (edge function bb-login),
+-- the screen collects its own new session once with its private secret.
+-- =====================================================================================================
+create table if not exists public.bb_logins (
+  id uuid primary key default gen_random_uuid(),
+  secret_hash text not null,
+  code text not null,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'consumed', 'denied')),
+  email text,
+  session jsonb,
+  test_email text,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default now() + interval '5 minutes',
+  approved_at timestamptz
+);
+alter table public.bb_logins enable row level security;
+revoke all on public.bb_logins from anon, authenticated;
+
+create or replace function public.bb_login_start(p_agent text default '') returns jsonb language plpgsql security definer set search_path = public, extensions as $$
+declare sec text := encode(gen_random_bytes(24), 'hex'); r bb_logins; c text := '';
+begin
+  delete from bb_logins where expires_at < now() - interval '10 minutes';
+  if (select count(*) from bb_logins where created_at > now() - interval '1 minute') > 120 then raise exception 'BUSY'; end if;
+  for i in 1..4 loop c := c || substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', 1 + floor(random() * 31)::int, 1); end loop;
+  insert into bb_logins (secret_hash, code) values (encode(digest(sec, 'sha256'), 'hex'), c) returning * into r;
+  return jsonb_build_object('id', r.id, 'secret', sec, 'code', r.code, 'expires_at', r.expires_at);
+end $$;
+
+create or replace function public.bb_login_poll(p_id uuid, p_secret text) returns jsonb language plpgsql security definer set search_path = public, extensions as $$
+declare r bb_logins;
+begin
+  select * into r from bb_logins where id = p_id and secret_hash = encode(digest(coalesce(p_secret, ''), 'sha256'), 'hex') for update;
+  if r.id is null then return jsonb_build_object('status', 'missing'); end if;
+  if r.status = 'pending' and r.expires_at < now() then return jsonb_build_object('status', 'expired'); end if;
+  if r.status = 'approved' then
+    update bb_logins set status = 'consumed', session = null where id = r.id;
+    return jsonb_build_object('status', 'approved', 'email', r.email, 'session', r.session);
+  end if;
+  return jsonb_build_object('status', r.status);
+end $$;
+
+create or replace function public.bb_login_info(p_id uuid) returns jsonb language plpgsql security definer set search_path = public as $$
+declare r bb_logins;
+begin
+  select * into r from bb_logins where id = p_id;
+  if r.id is null then return jsonb_build_object('status', 'missing'); end if;
+  return jsonb_build_object('status', case when r.status = 'pending' and r.expires_at < now() then 'expired' else r.status end, 'code', r.code, 'expires_at', r.expires_at);
+end $$;
+
+revoke all on function public.bb_login_start(text), public.bb_login_poll(uuid, text), public.bb_login_info(uuid) from public;
+grant execute on function public.bb_login_start(text), public.bb_login_poll(uuid, text), public.bb_login_info(uuid) to anon, authenticated;

@@ -218,3 +218,12 @@ table.rt input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--b
 #rulesT { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); column-gap: 24px; }
 a.btn { text-decoration: none; color: inherit; }
 @media (max-width: 600px) { #who { display: none; } .p-brand b { font-size: 15px; } .p-top { padding-left: 12px; padding-right: 12px; } .p-wrap { padding: 12px; } .p-card { padding: 12px; } }
+/* sign in by phone */
+.gate2 { max-width: 640px; margin: 6vh auto; }
+.ql-card { display: grid; grid-template-columns: 220px 1fr; gap: 18px; align-items: center; width: 100%; padding: 16px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); text-align: left; }
+.ql-qr { width: 220px; height: 220px; border-radius: 14px; background: #fff; display: grid; place-items: center; padding: 10px; }
+.ql-qr svg { width: 100%; height: 100%; }
+.ql-qr.old { opacity: .25; }
+.ql-txt { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ql-txt > b { font-size: 17px; }
+@media (max-width: 560px) { .ql-card { grid-template-columns: 1fr; justify-items: center; text-align: center; } .ql-txt .row { justify-content: center; } }

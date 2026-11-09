@@ -19,10 +19,20 @@
   <div class="row"><span class="tiny" id="who"></span><button class="btn sm ghost hidden" id="outBtn">Sign out</button></div>
 </header>
 
-<div class="gate hidden" id="gate">
-  <img src="icons/dinkykong-logo.png" alt="" style="width:92px">
+<div class="gate gate2 hidden" id="gate">
+  <img src="icons/dinkykong-logo.png" alt="" style="width:84px">
   <h2 style="margin:0">Basketball LIVE OBS</h2>
-  <p class="muted" style="margin:0">Sign in with the DinkyKong account that has your LIVE pass or free trial to create and broadcast basketball matches.</p>
+  <p class="muted" style="margin:0">Sign in with the DinkyKong account that has your LIVE pass or free trial.</p>
+  <div class="ql-card">
+    <div class="ql-qr" id="qlQr"><span class="tiny">Loading…</span></div>
+    <div class="ql-txt">
+      <b>Sign in with your phone</b>
+      <ol class="ol"><li>Scan this QR with your phone camera.</li><li>Sign in with Google on the phone (if you aren’t yet).</li><li>Check the code matches, then tap <b>Approve</b>.</li></ol>
+      <div class="row"><span class="tiny">Code</span><span class="pin" id="qlCode" style="font-size:24px">····</span></div>
+      <div class="tiny" id="qlMsg">This screen signs in by itself as soon as you approve.</div>
+    </div>
+  </div>
+  <div class="row" style="gap:10px;width:100%;max-width:420px"><span style="flex:1;height:1px;background:var(--line)"></span><span class="tiny">or on this device</span><span style="flex:1;height:1px;background:var(--line)"></span></div>
   <div id="gis"></div>
   <button class="btn primary" id="inBtn">Sign in with Google</button>
   <p class="tiny" id="gateMsg"></p>

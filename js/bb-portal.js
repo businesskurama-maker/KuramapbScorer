@@ -20,13 +20,49 @@
     const u = PBAuth.user;
     $('gate').classList.toggle('hidden', !!u); $('tabs').classList.toggle('hidden', !u); $('main').classList.toggle('hidden', !u);
     $('outBtn').classList.toggle('hidden', !u); $('who').textContent = u ? (u.email || '') : '';
-    if (!u) { PBAuth.mountGoogleButton($('gis')).then((ok) => $('inBtn').classList.toggle('hidden', ok)); return; }
+    if (!u) { PBAuth.mountGoogleButton($('gis')).then((ok) => $('inBtn').classList.toggle('hidden', ok)); phoneLogin.start(); return; }
+    phoneLogin.stop();
     const p = PBAuth.profile || {}, now = Date.now();
     const until = Math.max(p.live_until ? Date.parse(p.live_until) : 0, p.trial_until ? Date.parse(p.trial_until) : 0);
     $('passTxt').innerHTML = p.is_admin ? 'Owner account · unlimited matches' : until > now ? 'LIVE access until <b>' + new Date(until).toLocaleString() + '</b>' : '<span style="color:var(--warn)">No active LIVE pass — activate one on the LIVE screen to create new matches. Existing matches stay available.</span>';
     if (shownFor !== u.id) { shownFor = u.id; route(); }
   }
   $('inBtn').onclick = () => PBAuth.signIn(location.href);
+
+  /* Sign in this screen with a phone: QR → phone signs in + approves → this screen receives its own session. */
+  const phoneLogin = (() => {
+    let req = null, pollT = null, on = false, busy = false;
+    async function fresh() {
+      try {
+        const c = await PBB.client(false);
+        req = await PBB.rpc(c, 'bb_login_start', { p_agent: navigator.userAgent.slice(0, 80) });
+        const url = location.href.replace(/[^/]*$/, '') + 'bb-login.html?r=' + req.id;
+        await PBCommon.loadScript(PBCommon.LIBS.qr);
+        const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
+        $('qlQr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 1, scalable: true }); $('qlQr').classList.remove('old');
+        $('qlCode').textContent = req.code; $('qlMsg').textContent = 'This screen signs in by itself as soon as you approve on the phone.';
+      } catch (e) { $('qlMsg').textContent = PBB.errText(e); setTimeout(() => on && fresh(), 8000); }
+    }
+    async function poll() {
+      if (!on || !req || busy) return;
+      busy = true;
+      try {
+        const c = await PBB.client(false);
+        const r = await PBB.rpc(c, 'bb_login_poll', { p_id: req.id, p_secret: req.secret });
+        if (r.status === 'approved' && r.session) {
+          $('qlMsg').textContent = 'Approved by ' + (r.email || 'your phone') + ' · signing in…';
+          stop();
+          const { error } = await PBAuth.client.auth.setSession(r.session);
+          if (error) { $('qlMsg').textContent = PBB.errText(error); start(); }
+        } else if (r.status === 'expired' || r.status === 'missing' || r.status === 'consumed') { $('qlQr').classList.add('old'); await fresh(); }
+        else if (r.status === 'denied') { $('qlMsg').textContent = 'Request declined on the phone. New QR ready.'; await fresh(); }
+      } catch (e) { /* keep polling */ }
+      busy = false;
+    }
+    function start() { if (on) return; on = true; fresh(); clearInterval(pollT); pollT = setInterval(poll, 2000); }
+    function stop() { on = false; clearInterval(pollT); }
+    return { start, stop };
+  })();
   $('outBtn').onclick = () => PBAuth.signOut();
 
   /* ---------------- routing ---------------- */

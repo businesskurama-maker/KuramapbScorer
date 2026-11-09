@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#060a16">
+<title>Sign in a screen · DinkyKong Basketball</title>
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Orbitron:wght@800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/bb.css">
+</head>
+<body class="portal">
+<div class="r-join" id="box">
+  <img src="icons/dinkykong-logo.png" alt="DinkyKong">
+  <h1>🏀 Sign in a <b>screen</b></h1>
+  <p class="muted" id="lead" style="margin:0;font-size:14px">Approve to sign the Basketball LIVE OBS screen in with your account.</p>
+  <div class="p-card" style="width:100%;align-items:center;text-align:center">
+    <span class="tiny">Code on the screen</span>
+    <span class="pin" id="code">····</span>
+  </div>
+  <div id="who" class="tiny" style="min-height:18px"></div>
+  <div id="gis"></div>
+  <button class="btn primary hidden" id="signIn" style="width:100%;min-height:52px">Sign in with Google</button>
+  <button class="btn primary hidden" id="approve" style="width:100%;min-height:56px;font-size:16px">Approve — sign in the screen</button>
+  <button class="btn ghost hidden" id="deny" style="width:100%">Not me — decline</button>
+  <p class="tiny" id="msg" style="min-height:16px;margin:0"></p>
+  <p class="tiny" style="margin:0">Only approve a screen you can see in front of you. It gets full access to your DinkyKong account until you sign out on it.</p>
+</div>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/bb-core.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const id = new URLSearchParams(location.search).get('r') || '';
+  const cfg = window.PB_CONFIG || {};
+  let info = null, done = false;
+  async function load() {
+    if (!/^[0-9a-f-]{36}$/i.test(id)) { $('msg').textContent = 'This link is not valid. Scan the QR on the screen again.'; return; }
+    try { const c = await PBB.client(false); info = await PBB.rpc(c, 'bb_login_info', { p_id: id }); } catch (e) { $('msg').textContent = PBB.errText(e); return; }
+    $('code').textContent = info.code || '····';
+    if (info.status !== 'pending') { $('msg').textContent = info.status === 'expired' ? 'This QR expired. The screen shows a new one — scan it again.' : 'This request was already used. Scan the new QR on the screen.'; return; }
+    await PBAuth.init(); PBAuth.onChange(paint); paint();
+  }
+  function paint() {
+    if (done) return;
+    const u = PBAuth.user;
+    $('who').textContent = u ? 'Signed in on this phone as ' + (u.email || '') : '';
+    $('approve').classList.toggle('hidden', !u); $('deny').classList.toggle('hidden', !u);
+    if (!u) PBAuth.mountGoogleButton($('gis')).then((ok) => $('signIn').classList.toggle('hidden', ok)); else { $('gis').innerHTML = ''; $('signIn').classList.add('hidden'); }
+  }
+  async function send(deny) {
+    $('approve').classList.add('busy'); $('deny').classList.add('busy'); $('msg').textContent = deny ? 'Declining…' : 'Signing the screen in…';
+    try {
+      const { data } = await PBAuth.client.auth.getSession();
+      const tok = data && data.session && data.session.access_token;
+      const r = await fetch(cfg.supabaseUrl + '/functions/v1/bb-login', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseAnonKey, Authorization: 'Bearer ' + tok }, body: JSON.stringify({ id, deny: !!deny }) });
+      const j = await r.json().catch(() => ({}));
+      if (!j.ok) throw new Error(j.error || 'Could not approve');
+      done = true; $('approve').classList.add('hidden'); $('deny').classList.add('hidden');
+      $('lead').textContent = deny ? 'Declined. The screen was not signed in.' : 'Done! The screen is signing in as ' + j.email + '.';
+      $('msg').textContent = deny ? '' : 'You can now use this phone as the scoring remote: scan the Scorekeeper QR on the OBS Monitor.';
+      try { navigator.vibrate && navigator.vibrate([30, 50, 30]); } catch (e) {}
+    } catch (e) {
+      const m = String(e.message || e);
+      $('msg').textContent = /EXPIRED|USED/.test(m) ? 'This QR expired or was used. Scan the new QR on the screen.' : /SIGN_IN/.test(m) ? 'Sign in on this phone first.' : PBB.errText(e);
+    } finally { $('approve').classList.remove('busy'); $('deny').classList.remove('busy'); }
+  }
+  $('signIn').onclick = () => PBAuth.signIn(location.href);
+  $('approve').onclick = () => send(false);
+  $('deny').onclick = () => send(true);
+  load();
+})();
+</script>
+</body>
+</html>
