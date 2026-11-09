@@ -70,12 +70,11 @@
     const p = PBAuth.profile || {}, now = Date.now();
     const until = Math.max(p.live_until ? Date.parse(p.live_until) : 0, p.trial_until ? Date.parse(p.trial_until) : 0);
     const bbu = p.bb_until ? Date.parse(p.bb_until) : 0;
-    $('passTxt').innerHTML = p.is_admin ? '<span class="dot on"></span>Owner account · unlimited matches'
-      : bbu > now ? '<span class="dot on"></span>Basketball pass active until <b>' + new Date(bbu).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) + '</b>'
-      : '<span class="dot" style="background:var(--warn)"></span><span style="color:var(--warn)">Basketball pass ended — donate or enter a pass code to create new matches. Your saved matches stay available.</span>';
+    const left = bbu - now, hrs = Math.floor(left / 3600000), days = Math.floor(hrs / 24);
+    $('passCard').className = 'p-card pass-card ' + (p.is_admin || left > 0 ? 'ok' : 'off');
+    $('passTxt').textContent = p.is_admin ? 'Owner · unlimited' : left > 0 ? (days >= 1 ? days + ' day' + (days > 1 ? 's' : '') + ' ' + (hrs % 24) + ' h left' : hrs >= 1 ? hrs + ' h ' + Math.floor(left / 60000) % 60 + ' min left' : Math.max(1, Math.floor(left / 60000)) + ' min left') : 'Pass ended';
+    $('passSub').textContent = p.is_admin ? 'You can always create matches.' : left > 0 ? 'Active until ' + new Date(bbu).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Redeem a code or donate to create new matches. Saved matches stay available.';
     passOk = !!(p.is_admin || bbu > now || !('bb_until' in p));
-    if (!('bb_until' in p) && !p.is_admin) $('passTxt').innerHTML = '<span class="dot on"></span>Basketball pass';
-    if (false) $('passTxt').innerHTML = p.is_admin ? 'Owner account · unlimited matches' : until > now ? 'LIVE access until <b>' + new Date(until).toLocaleString() + '</b>' : '<span style="color:var(--warn)">No active LIVE pass — activate one on the LIVE screen to create new matches. Existing matches stay available.</span>';
     if (shownFor !== u.id) { shownFor = u.id; link.start(u.id); route(); }
   }
   $('inBtn').onclick = () => PBAuth.signIn(location.href);
@@ -150,7 +149,7 @@
         + '<div class="vs"><span style="color:' + E(m.home.color) + '">' + E(m.home.name) + '</span><b>' + sc.home + ' – ' + sc.away + '</b><span style="color:' + E(m.away.color) + '">' + E(m.away.name) + '</span></div>'
         + '<div class="tiny">' + when + ' · ID ' + m.code + '</div>'
         + '<div class="row" style="flex-wrap:wrap"><button class="btn sm cyan" data-o="monitor" data-c="' + m.code + '">OBS Monitor</button><button class="btn sm" data-o="setup" data-c="' + m.code + '">Setup</button><button class="btn sm" data-o="summary" data-c="' + m.code + '">Stats</button><button class="btn sm ghost" data-del="' + m.code + '">Delete</button></div></div>';
-    }).join('') || '<div class="tiny">No basketball matches yet. Create your first one.</div>';
+    }).join('') || '<div class="m-empty"><div style="font-size:34px">🏀</div><b>No matches yet</b><span class="tiny">Create a match to set up teams, rosters and the OBS scoreboard.</span></div>';
   }
   $('mlist').onclick = async (e) => {
     const b = e.target.closest('button'); if (!b) return;
@@ -159,9 +158,16 @@
   };
   let passOk = true;
   $('newBtn').onclick = () => { if (!passOk) { toast('Your Basketball pass has ended', true); openDonate(); return; } cur = null; H = null; draft = null; go('setup'); };
-  $('codeBtn').onclick = async () => {
-    const c = prompt('Enter your Basketball pass code (e.g. BBK7QX2M9P)'); if (!c) return;
-    try { const u = await rpc('redeem_bb_code', { p_code: c }); await PBAuth.refreshProfile?.(); toast('Pass extended until ' + new Date(u).toLocaleString()); setTimeout(() => location.reload(), 900); } catch (e) { toast(PBB.errText(e), true); }
+  $('codeIn').addEventListener('input', () => { const v = $('codeIn').value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10); $('codeIn').value = v.length > 2 ? v.slice(0, 2) + '-' + v.slice(2, 6) + (v.length > 6 ? '-' + v.slice(6) : '') : v; });
+  $('codeForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const c = $('codeIn').value.replace(/[^A-Za-z0-9]/g, '');
+    if (c.length < 10) { $('codeMsg').innerHTML = '<span style="color:var(--warn)">Enter the full 10-character code.</span>'; return; }
+    $('codeBtn').classList.add('busy'); $('codeMsg').textContent = 'Checking…';
+    try { const u = await rpc('redeem_bb_code', { p_code: c }); $('codeIn').value = ''; $('codeMsg').innerHTML = '<span style="color:var(--brand)">Pass extended until ' + new Date(u).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) + '</span>';
+      if (PBAuth.profile) PBAuth.profile.bb_until = u; shownFor = null; paintAuth(); }
+    catch (x) { $('codeMsg').innerHTML = '<span style="color:var(--danger)">' + E(PBB.errText(x)) + '</span>'; }
+    finally { $('codeBtn').classList.remove('busy'); }
   };
   $('donBtn').onclick = () => openDonate();
   async function openDonate() {

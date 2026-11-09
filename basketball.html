@@ -50,9 +50,24 @@
 <main class="p-wrap hidden" id="main">
   <!-- MATCHES -->
   <section id="vMatches">
+    <div class="pass-grid">
+      <div class="p-card pass-card" id="passCard">
+        <div class="pc-ic">🏀</div>
+        <div class="pc-body"><span class="pc-k">BASKETBALL PASS</span><b class="pc-v" id="passTxt">—</b><span class="tiny" id="passSub"></span></div>
+      </div>
+      <div class="p-card code-card">
+        <span class="pc-k">HAVE A PASS CODE?</span>
+        <form class="code-row" id="codeForm" autocomplete="off"><input class="in code-in" id="codeIn" maxlength="14" placeholder="BB-XXXX-XXXX" spellcheck="false" autocapitalize="characters"><button class="btn primary" id="codeBtn" type="submit">Redeem</button></form>
+        <span class="tiny" id="codeMsg">Codes add 1 day, 3 days or 1 week to your pass.</span>
+      </div>
+      <div class="p-card don-card">
+        <span class="pc-k">SUPPORT DINKYKONG</span>
+        <span class="tiny">Donations keep the app online (storage, database, domain) and extend your pass.</span>
+        <button class="btn cyan" id="donBtn">Donate · extend pass</button>
+      </div>
+    </div>
     <div class="p-card">
-      <h2>Basketball matches <button class="btn primary" id="newBtn">＋ New match</button></h2>
-      <div class="pass-bar" id="passBar"><span class="pass-st" id="passTxt"></span><span class="row"><button class="btn sm" id="codeBtn">Enter pass code</button><button class="btn sm cyan" id="donBtn">Donate · extend pass</button></span></div>
+      <h2>Your matches <button class="btn primary" id="newBtn">＋ New match</button></h2>
       <div class="mlist" id="mlist"></div>
     </div>
   </section>
