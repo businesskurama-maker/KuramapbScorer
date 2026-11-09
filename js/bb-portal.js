@@ -426,11 +426,12 @@
   }
   function liveStatus(s) { const el = $('moLive'); el.className = 'r-live ' + (s === 'live' ? '' : s === 'connecting' ? 'wait' : 'off'); el.querySelector('span').textContent = s === 'live' ? 'LIVE SYNC' : s.toUpperCase(); }
   function paintLive(s) {
-    const d = s.derived;
-    $('moScore').innerHTML = '<h2>' + E(PBB.periodLabel(d.period, s.config.periods, true)) + '<span class="st ' + s.status + '">' + s.status.toUpperCase() + '</span></h2>'
-      + '<div class="mcard" style="background:none;border:0;padding:0"><div class="vs"><span style="color:' + s.home.color + '">' + E(s.home.name) + '</span><b style="font-size:34px">' + d.score.home + ' – ' + d.score.away + '</b><span style="color:' + s.away.color + '">' + E(s.away.name) + '</span></div>'
-      + '<div class="tiny">Team fouls ' + d.fouls.home + ' – ' + d.fouls.away + ' · Timeouts left ' + (d.tos.allow - d.tos.home) + ' – ' + (d.tos.allow - d.tos.away) + ' · ' + s.devices + ' paired device' + (s.devices === 1 ? '' : 's') + '</div></div>';
-    $('moFinal').textContent = s.status === 'final' ? 'Reopen match' : 'End match';
+    const d = s.derived, tl = (t) => Math.max(0, d.tos.allow - d.tos[t]);
+    const side = (t) => '<span class="mbs-t" style="--c:' + s[t].color + '">' + (s[t].logo ? '<img src="' + s[t].logo + '" alt="">' : '<i></i>') + '<span><b>' + E(s[t].short || s[t].name) + '</b><small>F ' + d.fouls[t] + ' · TO ' + tl(t) + '</small></span></span>';
+    $('moScore').innerHTML = side('home') + '<span class="mbs-mid"><span class="mbs-per">' + E(PBB.periodLabel(d.period, s.config.periods, true)) + '</span><b>' + d.score.home + '<em>–</em>' + d.score.away + '</b><span class="st ' + s.status + '">' + s.status.toUpperCase() + '</span></span>' + side('away').replace('class="mbs-t"', 'class="mbs-t r"');
+    $('moFinal').querySelector('b').textContent = s.status === 'final' ? 'Reopen match' : 'End match';
+    $('moFinal').querySelector('small').textContent = s.status === 'final' ? 'Back to live' : 'Save as FINAL';
+    $('moPrev').classList.toggle('at-top', (s.broadcast || {}).pos === 'top');
     if (H) { H.status = s.status; H.locked = s.locked; } $('moLock').checked = !!s.locked; look.paint();
     if (view === 'summary') openSummarySoon();
   }
@@ -439,15 +440,19 @@
     $('devs').innerHTML = list.map((d) => { const on = Date.now() - Date.parse(d.last_seen) < 120000;
       return '<div class="dev"><span><span class="dot' + (on ? ' on' : '') + '"></span><b>' + E(d.name || d.role) + '</b><small>' + E(d.role) + ' · paired ' + new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' · last action ' + new Date(d.last_seen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</small></span><button class="btn sm danger" data-rv="' + d.id + '">Remove</button></div>'; }).join('')
       || '<div class="tiny">No phones paired yet.</div>';
+    $('devCnt').textContent = list.length ? String(list.length) : '';
   }
   async function drawQrs(base) {
     try { await PBCommon.loadScript(PBCommon.LIBS.qr); } catch (e) { $('qrs').innerHTML = '<div class="tiny">QR library could not load.</div>'; return; }
-    $('qrs').innerHTML = [['scorekeeper', 'Scorekeeper'], ['clock', 'Clock operator']].map(([r, l]) => {
+    $('qrs').innerHTML = [['scorekeeper', 'Referee'], ['clock', 'Timekeeper']].map(([r, l]) => {
       const url = base + 'bb-remote.html?m=' + cur + '&r=' + r; const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
       return '<div class="qr">' + qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true }) + '<b>' + l + '</b><a class="tiny" href="' + url + '" target="_blank" rel="noopener" style="color:#3a4466">open link</a></div>';
     }).join('');
   }
   $('bgSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; [...$('bgSeg').children].forEach((x) => x.classList.toggle('on', x === b)); $('moFrame').src = $('obsUrl').value + '&preview=' + b.dataset.v; };
+  $('zoomSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; [...$('zoomSeg').children].forEach((x) => x.classList.toggle('on', x === b)); $('moPrev').classList.toggle('zoom-lt', b.dataset.z === 'lt'); };
+  $('moTabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; [...$('moTabs').children].forEach((x) => x.classList.toggle('on', x === b)); document.querySelectorAll('#vMonitor .mo-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.t !== b.dataset.t)); };
+  $('copyObs2').onclick = () => $('copyObs').click();
   $('copyObs').onclick = async () => { try { await navigator.clipboard.writeText($('obsUrl').value); toast('Browser Source URL copied'); } catch (e) { $('obsUrl').select(); document.execCommand('copy'); toast('Copied'); } };
   $('newPin').onclick = async () => { if (!confirm('Make a new PIN? Phones already paired stay connected; new phones need the new PIN.')) return; try { H = await rpc('bb_update', { p_code: cur, p: { new_pin: true } }); $('pin').textContent = H.pin; toast('New PIN ready'); } catch (e) { toast(PBB.errText(e), true); } };
   $('multi').onchange = async () => { try { H = await rpc('bb_update', { p_code: cur, p: { allow_multi: $('multi').checked } }); } catch (e) { toast(PBB.errText(e), true); } };
@@ -478,26 +483,38 @@
     SUM = { H, evs, audit: audit || [] };
     if (!conn || conn._code !== cur) { conn && conn.close(); conn = PBB.connect({ code: cur, key: H.view_key, signedIn: true, onSnap: paintLive, onStatus: liveStatus }); conn._code = cur; }
     const d = H.derived, c = H.config;
-    $('smTitle').textContent = (H.title || 'Match') + ' · ' + cur;
+    $('smTitle').textContent = H.title || 'Match';
+    $('smKicker').textContent = (H.status === 'final' ? 'FINAL RESULT' : H.status === 'live' ? 'LIVE · IN PROGRESS' : 'MATCH SUMMARY') + ' · ' + cur;
+    $('smMeta').textContent = [H.venue, (H.starts_at || H.created_at) ? new Date(H.starts_at || H.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : ''].filter(Boolean).join(' · ');
     const pers = Object.keys(d.period_scores || {}).map(Number).sort((a, b) => a - b);
-    $('smHead').innerHTML = '<div class="mcard" style="background:none;border:0;padding:0"><div class="tt"><span>' + E(H.venue || '') + ' · ' + (H.starts_at || H.created_at ? new Date(H.starts_at || H.created_at).toLocaleString() : '') + '</span><span class="st ' + H.status + '">' + H.status.toUpperCase() + '</span></div>'
-      + '<div class="vs"><span style="color:' + H.home.color + ';font-size:20px">' + E(H.home.name) + '</span><b style="font-size:40px">' + d.score.home + ' – ' + d.score.away + '</b><span style="color:' + H.away.color + ';font-size:20px">' + E(H.away.name) + '</span></div></div>'
-      + '<div class="tbl-wrap"><table class="box-score"><thead><tr><th>Team</th><th></th>' + pers.map((p) => '<th>' + PBB.periodLabel(p, c.periods) + '</th>').join('') + '<th>T</th></tr></thead><tbody>'
-      + ['home', 'away'].map((t) => '<tr><td>' + E(H[t].short) + '</td><td></td>' + pers.map((p) => '<td>' + d.period_scores[p][t] + '</td>').join('') + '<td><b>' + d.score[t] + '</b></td></tr>').join('') + '</tbody></table></div>';
-    const cols = [['pts', 'PTS'], ['m1', '1PM'], ['m2', '2PM'], ['m3', '3PM'], ['pf', 'PF'], ['tf', 'TF'], ['uf', 'UF'], ['df', 'DF'], ['reb', 'REB'], ['ast', 'AST'], ['stl', 'STL'], ['blk', 'BLK'], ['tov', 'TOV'], ['fta', 'FTA'], ['fga', 'FGA']];
+    const win = H.status === 'final' ? (d.score.home > d.score.away ? 'home' : d.score.away > d.score.home ? 'away' : '') : '';
+    const tm = (t) => '<div class="sh-team ' + t + (win === t ? ' win' : '') + '" style="--c:' + H[t].color + '">'
+      + (H[t].logo ? '<img src="' + H[t].logo + '" alt="">' : '<span class="sh-dot">' + E((H[t].short || H[t].name || '?').slice(0, 3)) + '</span>')
+      + '<span class="sh-nm"><b>' + E(H[t].name) + '</b><small>' + (t === 'home' ? 'HOME' : 'AWAY') + ' · ' + E(H[t].short || '') + (win === t ? ' · WINNER' : '') + '</small></span><span class="sh-pts">' + d.score[t] + '</span></div>';
+    const line = '<table class="ls"><thead><tr><th></th>' + pers.map((p) => '<th>' + PBB.periodLabel(p, c.periods) + '</th>').join('') + '<th>T</th></tr></thead><tbody>'
+      + ['home', 'away'].map((t) => '<tr><td><i style="background:' + H[t].color + '"></i>' + E(H[t].short) + '</td>' + pers.map((p) => '<td>' + d.period_scores[p][t] + '</td>').join('') + '<td><b>' + d.score[t] + '</b></td></tr>').join('') + '</tbody></table>';
+    $('smHead').innerHTML = '<div class="sh-board">' + tm('home') + '<div class="sh-mid"><span class="st ' + H.status + '">' + H.status.toUpperCase() + '</span>' + (pers.length ? line : '<span class="tiny">No points yet</span>') + '</div>' + tm('away') + '</div>';
+    const cols = [['pts', 'PTS'], ['m1', '1PM'], ['m2', '2PM'], ['m3', '3PM'], ['fta', 'FTA'], ['fga', 'FGA'], ['reb', 'REB'], ['ast', 'AST'], ['stl', 'STL'], ['blk', 'BLK'], ['tov', 'TOV'], ['pf', 'PF'], ['tf', 'TF'], ['uf', 'UF'], ['df', 'DF']];
+    $('boxSeg').children[0].textContent = H.home.name; $('boxSeg').children[1].textContent = H.away.name;
     $('smBox').innerHTML = ['home', 'away'].map((t) => {
       const pl = H.players.filter((p) => p.team === t).sort((a, b) => Number(a.number) - Number(b.number));
-      const tot = {}; cols.forEach(([k]) => { tot[k] = pl.reduce((s, p) => s + ((d.players[p.id] || {})[k] || 0), 0); });
-      return '<h3 style="margin:10px 0 6px;color:' + H[t].color + '">' + E(H[t].name) + '</h3><div class="tbl-wrap"><table class="box-score"><thead><tr><th>#</th><th>Player</th>' + cols.map(([, l]) => '<th>' + l + '</th>').join('') + '</tr></thead><tbody>'
-        + pl.map((p) => { const s = d.players[p.id] || {}; return '<tr><td>' + E(p.number) + '</td><td>' + E(PBB.playerName(p)) + (s.out ? ' <span style="color:var(--danger)">' + (s.dq ? 'DQ' : 'FO') + '</span>' : '') + (p.active ? '' : ' <span class="tiny">(inactive)</span>') + '</td>' + cols.map(([k]) => '<td>' + (s[k] || 0) + '</td>').join('') + '</tr>'; }).join('')
-        + '<tr class="tot"><td></td><td>Team' + (d.unassigned[t] ? ' (+' + d.unassigned[t] + ' unassigned)' : '') + '</td>' + cols.map(([k]) => '<td>' + (k === 'pts' ? tot[k] + d.unassigned[t] : tot[k]) + '</td>').join('') + '</tr></tbody></table></div>';
+      const tot = {}; cols.forEach(([k]) => { tot[k] = pl.reduce((s2, p) => s2 + ((d.players[p.id] || {})[k] || 0), 0); });
+      const top = Math.max(0, ...pl.map((p) => (d.players[p.id] || {}).pts || 0));
+      return '<div class="bx' + (t === boxTeam ? '' : ' bx-off') + '" data-team="' + t + '" style="--c:' + H[t].color + '"><div class="bx-name">' + E(H[t].name) + '</div><div class="tbl-wrap"><table class="box-score bx-t"><thead><tr><th>#</th><th class="pl">Player</th>' + cols.map(([k, l]) => '<th' + (k === 'pts' ? ' class="pt"' : '') + '>' + l + '</th>').join('') + '</tr></thead><tbody>'
+        + pl.map((p) => { const st = d.players[p.id] || {}; return '<tr' + (p.active ? '' : ' class="ina"') + '><td class="no">' + E(p.number) + '</td><td class="pl">' + E(PBB.playerName(p)) + (st.out ? ' <span class="tag-out">' + (st.dq ? 'DQ' : 'FO') + '</span>' : '') + (top && st.pts === top ? ' <span class="tag-top">TOP</span>' : '') + '</td>' + cols.map(([k]) => '<td class="' + (k === 'pts' ? 'pt' : '') + ((st[k] || 0) ? '' : ' z') + '">' + (st[k] || 0) + '</td>').join('') + '</tr>'; }).join('')
+        + '</tbody><tfoot><tr><td></td><td class="pl">Team totals' + (d.unassigned[t] ? ' <span class="tiny">(+' + d.unassigned[t] + ' unassigned)</span>' : '') + '</td>' + cols.map(([k]) => '<td class="' + (k === 'pts' ? 'pt' : '') + '">' + (k === 'pts' ? tot[k] + d.unassigned[t] : tot[k]) + '</td>').join('') + '</tr></tfoot></table></div></div>';
     }).join('');
     const P = (id) => H.players.find((p) => p.id === id);
+    const icon = { score: '●', foul: '!', timeout: 'T', period: '◷', final: '⚑', reopen: '↺', undo: '↶', redo: '↷', edit: '✎', clock: '⏱', stat: '+', sub: '⇄', lineup: '☰', possession: '→', overlay: '▣', broadcast: '🎨', lock: '🔒', score_adj: '±' };
     $('smEv').innerHTML = evs.map((e) => { const p = P(e.player_id), T = e.team ? H[e.team] : null, dd = e.data || {};
       const txt = { score: (p ? '#' + p.number + ' ' + PBB.playerName(p, true) : (T ? T.short + ' team' : '')) + ' +' + e.value, foul: (p ? '#' + p.number + ' ' + PBB.playerName(p, true) : (T ? T.short : '')) + ' · ' + PBB.FOUL_SHORT[dd.kind || 'P'] + ' foul', timeout: 'Timeout ' + (T ? T.name : ''), period: 'Period → ' + PBB.periodLabel(dd.to, c.periods), score_adj: (T ? T.short : '') + ' manual ' + e.value, undo: 'Undo ' + (dd.what || ''), redo: 'Redo ' + (dd.what || ''), edit: 'Edited ' + (dd.what || ''), clock: 'Clock ' + (dd.op || ''), final: 'FINAL', reopen: 'Reopened', stat: (p ? '#' + p.number : '') + ' ' + (e.value > 0 ? '+' : '−') + String(dd.key || '').toUpperCase(), sub: (T ? T.short : '') + ' substitution', lineup: (T ? T.short : '') + ' lineup', possession: 'Possession ' + (T ? T.short : '—'), overlay: 'Overlay ' + (dd.op || '') + (dd.text ? ' · ' + dd.text : ''), broadcast: 'Broadcast settings', lock: 'Settings lock' }[e.type] || e.type;
-      return '<div class="ev' + (e.undone ? ' undone' : '') + '"><span class="pp">' + PBB.periodLabel(e.period, c.periods) + '</span><span><b>' + E(txt) + '</b><small>' + new Date(e.at).toLocaleTimeString() + ' · ' + E(e.actor) + ' (' + E(e.role) + ')' + (e.edited ? ' · edited' : '') + (e.undone ? ' · undone' : '') + '</small></span><span></span></div>'; }).join('') || '<div class="tiny">No events yet.</div>';
-    $('smAudit').innerHTML = SUM.audit.map((a) => '<div>' + new Date(a.at).toLocaleString() + ' · <b>' + E(a.actor) + '</b> · ' + E(a.action) + '</div>').join('') || 'No audit entries.';
+      const sys = !T && e.type !== 'final' && e.type !== 'period';
+      return '<div class="pe' + (e.undone ? ' undone' : '') + (sys ? ' sys' : '') + ' k-' + e.type + '" style="--c:' + (T ? T.color : '#5b6684') + '"><span class="pe-per">' + PBB.periodLabel(e.period, c.periods) + '</span><span class="pe-ic">' + (icon[e.type] || '•') + '</span><span class="pe-tx"><b>' + E(txt) + '</b><small>' + E(e.actor) + ' · ' + E(e.role) + (e.edited ? ' · edited' : '') + (e.undone ? ' · undone' : '') + '</small></span><span class="pe-t">' + new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '</span></div>'; }).join('') || '<div class="empty-s">No plays yet.</div>';
+    $('smAudit').innerHTML = SUM.audit.map((a) => '<div class="au"><span class="au-t">' + new Date(a.at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</span><b>' + E(a.actor) + '</b><span class="au-a">' + E(a.action) + '</span></div>').join('') || '<div class="empty-s">No audit entries.</div>';
   }
+  let boxTeam = 'home';
+  $('boxSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; boxTeam = b.dataset.t; [...$('boxSeg').children].forEach((x) => x.classList.toggle('on', x === b)); document.querySelectorAll('#smBox .bx').forEach((x) => x.classList.toggle('bx-off', x.dataset.team !== boxTeam)); };
+  $('sideSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; [...$('sideSeg').children].forEach((x) => x.classList.toggle('on', x === b)); $('smEv').classList.toggle('hidden', b.dataset.s !== 'ev'); $('smAudit').classList.toggle('hidden', b.dataset.s !== 'au'); };
   $('xPrint').onclick = () => window.print();
   $('xCsv').onclick = () => {
     if (!SUM) return; const H2 = SUM.H, d = H2.derived;

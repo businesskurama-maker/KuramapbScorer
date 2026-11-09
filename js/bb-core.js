@@ -338,12 +338,14 @@
   const LOOK_COL = [['rb_bg', 'Banner', '#0a0d16'], ['rnd_color', 'Category', '#39ff14'], ['evt_color', 'Event title', '#f4f6fb'], ['bar_color', 'Scoreboard', '#0a0d16']];
   const LOOK_KEYS = ['rb_tpl', 'show_logos', 'rb_logo'].concat(LOOK_SL.map((x) => x[0]), LOOK_COL.map((x) => x[0]));
   function lookPanel(el, getB, send) {
-    el.innerHTML = '<div class="lk-tpl">' + LOOK_TPL.map(([k, l, d]) => '<button type="button" data-tpl="' + k + '"><i class="lk-ic lk-' + k + '"><b></b><s></s></i><b>' + l + '</b><small>' + d + '</small></button>').join('') + '</div>'
-      + '<div class="lk-sl">' + LOOK_SL.map(([k, l, a, z]) => '<label class="lk-r"><span>' + l + '<em data-v="' + k + '">100%</em></span><input type="range" min="' + a + '" max="' + z + '" step="0.05" data-lk="' + k + '"></label>').join('') + '</div>'
-      + '<div class="lk-col">' + LOOK_COL.map(([k, l, d]) => '<label class="lk-c"><input type="color" data-lc="' + k + '" value="' + d + '"><span>' + l + '<small data-cv="' + k + '">Auto</small></span><button type="button" class="lk-x" data-cx="' + k + '" title="Back to theme colour">↺</button></label>').join('') + '</div>'
-      + '<div class="lk-logo"><span class="lk-lth" data-lth></span><span class="lk-lt"><b>Title banner logo</b><small>Optional · league or event logo, shown on the banner</small></span>'
+    el.innerHTML = '<div class="seg seg-sm lk-tabs"><button type="button" data-lt="tpl" class="on">Template</button><button type="button" data-lt="size">Size</button><button type="button" data-lt="col">Colour</button><button type="button" data-lt="logo">Logo</button></div>'
+      + '<div class="lk-pane" data-lp="tpl"><div class="lk-tpl">' + LOOK_TPL.map(([k, l, d]) => '<button type="button" data-tpl="' + k + '"><i class="lk-ic lk-' + k + '"><b></b><s></s></i><b>' + l + '</b><small>' + d + '</small></button>').join('') + '</div></div>'
+      + '<div class="lk-pane hidden" data-lp="size"><div class="lk-sl">' + LOOK_SL.map(([k, l, a, z]) => '<label class="lk-r"><span>' + l + '<em data-v="' + k + '">100%</em></span><input type="range" min="' + a + '" max="' + z + '" step="0.05" data-lk="' + k + '"></label>').join('') + '</div></div>'
+      + '<div class="lk-pane hidden" data-lp="col"><div class="lk-col">' + LOOK_COL.map(([k, l, d]) => '<label class="lk-c"><input type="color" data-lc="' + k + '" value="' + d + '"><span>' + l + '<small data-cv="' + k + '">Auto</small></span><button type="button" class="lk-x" data-cx="' + k + '" title="Back to theme colour">↺</button></label>').join('') + '</div></div>'
+      + '<div class="lk-pane hidden" data-lp="logo"><div class="lk-logo"><span class="lk-lth" data-lth></span><span class="lk-lt"><b>Title banner logo</b><small>Optional · league or event logo, shown on the banner</small></span>'
       + '<label class="btn sm">Upload<input type="file" accept="image/*" hidden data-rblogo></label><button type="button" class="btn sm ghost" data-rbx>Remove</button></div>'
-      + '<div class="lk-foot"><label class="lk-t"><input type="checkbox" data-lg> Show team logos beside names</label><button type="button" class="btn sm ghost" data-lreset>Reset look</button></div>';
+      + '<label class="lk-t lk-tl"><input type="checkbox" data-lg> Show team logos beside team names</label><p class="tiny" style="margin:6px 0 0">Team logos are uploaded in Match setup → Teams &amp; rosters.</p></div>'
+      + '<div class="lk-foot"><span class="tiny">Saved when you let go of a slider or pick a colour.</span><button type="button" class="btn sm ghost" data-lreset>Reset look</button></div>';
     const pct = (v) => Math.round(v * 100) + '%';
     function paint() {
       const b = getB() || {};
@@ -356,6 +358,7 @@
       el.querySelector('[data-rbx]').classList.toggle('hidden', !lg);
     }
     el.addEventListener('click', (e) => {
+      const tb = e.target.closest('[data-lt]'); if (tb) { el.querySelectorAll('[data-lt]').forEach((x) => x.classList.toggle('on', x === tb)); el.querySelectorAll('[data-lp]').forEach((x) => x.classList.toggle('hidden', x.dataset.lp !== tb.dataset.lt)); return; }
       const t = e.target.closest('[data-tpl]'); if (t) { send({ rb_tpl: t.dataset.tpl }); return; }
       const x = e.target.closest('[data-cx]'); if (x) { e.preventDefault(); send({ [x.dataset.cx]: null }); return; }
       if (e.target.closest('[data-rbx]')) { send({ rb_logo: null }); return; }

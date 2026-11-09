@@ -102,66 +102,83 @@
 
   <!-- MONITOR -->
   <section id="vMonitor" class="hidden">
-    <div class="mon">
-      <div class="mo-left">
-        <div class="p-card mo-prev">
-          <h2><span id="moTitle">OBS Monitor</span><span class="row"><span class="r-live wait" id="moLive"><i></i><span>CONNECTING</span></span></span></h2>
-          <div class="prev"><iframe id="moFrame" title="Overlay preview"></iframe></div>
-          <div class="row" style="flex-wrap:wrap"><span class="tiny grow">Preview of the exact Browser Source output (transparent areas shown as a pattern).</span>
-            <div class="seg" id="bgSeg" style="width:auto"><button data-v="1" class="on">Pattern</button><button data-v="photo">Court</button></div></div>
+    <div class="p-card mo-bar">
+      <div class="mb-id"><span class="pc-k">OBS MONITOR</span><b id="moTitle">Match</b></div>
+      <div class="mb-score" id="moScore"></div>
+      <div class="mb-right"><span class="r-live wait" id="moLive"><i></i><span>CONNECTING</span></span>
+        <button class="btn cyan sm" id="copyObs" title="Copy the OBS Browser Source link">⧉ Copy OBS link</button></div>
+    </div>
+    <div class="mo-grid">
+      <div class="mo-main">
+        <div class="p-card mo-stage">
+          <div class="ms-head"><span class="pc-k">PROGRAM PREVIEW</span>
+            <div class="row" style="gap:8px"><div class="seg seg-sm" id="zoomSeg"><button data-z="lt" class="on">Lower third</button><button data-z="full">Full frame</button></div>
+            <div class="seg seg-sm" id="bgSeg"><button data-v="1" class="on">Pattern</button><button data-v="photo">Court</button></div></div></div>
+          <div class="prev zoom-lt" id="moPrev"><iframe id="moFrame" title="Overlay preview"></iframe></div>
         </div>
         <div class="p-card mo-look">
-          <h2>Lower-third designer <span class="tiny">updates the preview and OBS live</span></h2>
+          <div class="ms-head"><span class="pc-k">LOWER-THIRD DESIGNER</span><span class="tiny">Changes go live on OBS</span></div>
           <div id="moLook"></div>
         </div>
       </div>
-      <div class="mo-right"><div class="mo-c2">
-        <div class="p-card" id="moScore"></div>
-        <div class="p-card">
-          <h3>OBS Browser Source</h3>
-          <div class="urlbox"><input class="in" id="obsUrl" readonly><button class="btn cyan" id="copyObs">Copy</button></div>
-          <ol class="ol">
-            <li>In OBS: <b>Sources → + → Browser</b>, paste the URL.</li>
-            <li>Width <b>1920</b>, height <b>1080</b> (720p works too — the graphics scale). Leave “Custom CSS” empty.</li>
-            <li>Tick <b>“Refresh browser when scene becomes active”</b> off; tick <b>“Control audio via OBS”</b> for the buzzer.</li>
-            <li>Keep this URL private: it shows the graphics but can never change the score.</li>
-          </ol>
+      <aside class="p-card mo-side">
+        <div class="seg mo-tabs" id="moTabs"><button data-t="control" class="on">Controls</button><button data-t="phones">Phones <span class="cnt" id="devCnt"></span></button><button data-t="obs">OBS setup</button></div>
+        <div class="mo-pane" data-t="control">
+          <span class="pc-k">BROADCAST EMERGENCY</span>
+          <div class="ctl-grid">
+            <button class="ctl red" id="moReset"><i>⟲</i><b>Reset overlay</b><small>Reload graphics</small></button>
+            <button class="ctl" id="moHide"><i>◌</i><b>Hide overlay</b><small>Clean feed</small></button>
+            <button class="ctl" id="moShow"><i>◉</i><b>Show overlay</b><small>Back on air</small></button>
+            <button class="ctl warn" id="moPause"><i>⏸</i><b>Pause clock</b><small>Emergency stop</small></button>
+            <button class="ctl" id="moClear"><i>✕</i><b>Clear banner</b><small>Remove announcement</small></button>
+            <button class="ctl gold" id="moFinal"><i>⚑</i><b>End match</b><small>Save as FINAL</small></button>
+          </div>
+          <div class="toggle"><span><b>Lock broadcast look</b><br><span class="tiny">Scorekeepers can’t change the design</span></span><input type="checkbox" id="moLock"></div>
         </div>
-        <div class="p-card">
-          <h3>Broadcast emergency</h3>
-          <div class="g3"><button class="btn big-red" id="moReset">RESET OVERLAY</button><button class="btn" id="moHide">Hide overlay</button><button class="btn" id="moShow">Show overlay</button></div>
-          <div class="g3"><button class="btn danger" id="moPause">Emergency clock pause</button><button class="btn" id="moClear">Clear announcement</button><button class="btn warn" id="moFinal">End match</button></div>
-          <div class="toggle"><span>Lock broadcast settings (scorekeepers can’t change the look)</span><input type="checkbox" id="moLock"></div>
-        </div>
-      </div><div class="mo-c3">
-        <div class="p-card">
-          <h2>Pair phones <button class="btn sm" id="newPin">New PIN</button></h2>
-          <div class="row"><span class="tiny grow">Scan, then enter the PIN. Each phone gets its own scoped token.</span><span class="pin" id="pin">——————</span></div>
+        <div class="mo-pane hidden" data-t="phones">
+          <div class="pin-row"><span><span class="pc-k">PAIRING PIN</span><span class="pin" id="pin">——————</span></span><button class="btn sm" id="newPin">New PIN</button></div>
           <div class="qr-row" id="qrs"></div>
           <div class="toggle"><span>Allow more than one scorekeeper</span><input type="checkbox" id="multi"></div>
           <div class="toggle"><span>Scorekeepers can also run the clock</span><input type="checkbox" id="skClock"></div>
-          <a class="btn" id="hostRemote" target="_blank" rel="noopener">Open remote as host (this account)</a>
+          <a class="btn" id="hostRemote" target="_blank" rel="noopener">Open remote as host</a>
+          <div class="dev-head"><span class="pc-k">PAIRED DEVICES</span><button class="btn sm danger" id="revokeAll">Remove all</button></div>
+          <div id="devs" class="dev-list"></div>
         </div>
-        <div class="p-card">
-          <h2>Devices <button class="btn sm danger" id="revokeAll">Remove all</button></h2>
-          <div id="devs" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div class="mo-pane hidden" data-t="obs">
+          <span class="pc-k">BROWSER SOURCE LINK</span>
+          <div class="urlbox"><input class="in" id="obsUrl" readonly><button class="btn cyan" id="copyObs2">Copy</button></div>
+          <ol class="ol steps">
+            <li>In OBS: <b>Sources → + → Browser</b>, paste the link.</li>
+            <li>Width <b>1920</b>, height <b>1080</b>. Leave “Custom CSS” empty.</li>
+            <li>Turn <b>off</b> “Refresh browser when scene becomes active”.</li>
+            <li>Turn <b>on</b> “Control audio via OBS” for the buzzer.</li>
+            <li>Keep this link private — it shows the graphics but can never change the score.</li>
+          </ol>
         </div>
-      </div></div>
+      </aside>
     </div>
   </section>
 
   <!-- SUMMARY -->
-  <section id="vSummary" class="hidden" style="display:flex;flex-direction:column;gap:14px">
-    <div class="p-card">
-      <h2><span id="smTitle">Match summary</span><span class="row no-print"><button class="btn sm" id="xPrint">Print / PDF</button><button class="btn sm" id="xCsv">CSV</button><button class="btn sm" id="xImg">Result image</button></span></h2>
+  <section id="vSummary" class="hidden">
+    <div class="p-card sm-hero">
+      <div class="sh-top">
+        <div class="sh-id"><span class="pc-k" id="smKicker">MATCH SUMMARY</span><h2 id="smTitle">Match summary</h2><span class="tiny" id="smMeta"></span></div>
+        <div class="row no-print sh-act"><button class="btn sm" id="xPrint">⎙ Print / PDF</button><button class="btn sm" id="xCsv">⤓ CSV</button><button class="btn sm cyan" id="xImg">▣ Result image</button></div>
+      </div>
       <div id="smHead"></div>
     </div>
     <div class="sm-body">
-    <div class="p-card sm-box"><h3>Box score</h3><div id="smBox"></div></div>
-    <div class="sm-side">
-    <div class="p-card sm-ev"><h3>Event history</h3><div id="smEv" style="display:flex;flex-direction:column;gap:6px;max-height:560px;overflow:auto"></div></div>
-    <div class="p-card no-print sm-au"><h3>Audit trail</h3><div id="smAudit" class="tiny" style="display:flex;flex-direction:column;gap:4px"></div></div>
-    </div></div>
+      <div class="p-card sm-box">
+        <div class="ms-head"><span class="pc-k">BOX SCORE</span><div class="seg seg-sm no-print" id="boxSeg"><button data-t="home" class="on">Home</button><button data-t="away">Away</button></div></div>
+        <div id="smBox"></div>
+      </div>
+      <div class="p-card sm-side">
+        <div class="seg seg-sm no-print" id="sideSeg"><button data-s="ev" class="on">Play-by-play</button><button data-s="au">Audit trail</button></div>
+        <div id="smEv" class="ev-list"></div>
+        <div id="smAudit" class="au-list hidden"></div>
+      </div>
+    </div>
   </section>
 </main>
 <div class="toast" id="toast"></div>
