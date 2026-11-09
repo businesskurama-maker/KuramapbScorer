@@ -77,13 +77,14 @@
     <div class="seg su-tabs" id="suTabs"><button data-s="match" class="on">Match</button><button data-s="teams">Teams &amp; rosters</button><button data-s="rules">Rules</button></div>
     <div class="p-card" data-s="match">
       <h2><span id="suTitle">New match</span><span class="row"><span class="st" id="suStatus"></span></span></h2>
-      <div class="fgrid">
-        <label class="f">Event / season title<input class="in" id="fTitle" maxlength="60" placeholder="Inter-Barangay Cup Season 3"></label>
-        <label class="f">Category / round<input class="in" id="fRound" maxlength="40" placeholder="Men's Open · Semifinals"></label>
-        <label class="f">Venue / court<input class="in" id="fVenue" maxlength="80" placeholder="Covered Court A"></label>
+      <div class="fgrid su-grid">
+        <label class="f su-wide">Event / season title<input class="in" id="fTitle" maxlength="60" placeholder="e.g. SBAL Season 6"></label>
+        <label class="f su-wide">Category / round<input class="in" id="fRound" maxlength="40" placeholder="e.g. Men's Open · Finals"></label>
+        <label class="f">Venue / court<input class="in" id="fVenue" maxlength="80" placeholder="e.g. Covered Court A"></label>
         <label class="f">Date &amp; time<input class="in" id="fWhen" type="datetime-local"></label>
         <label class="f">Match ID<input class="in" id="fCode" disabled placeholder="Generated on create"></label>
       </div>
+      <div class="bn-prev"><span class="tiny">OBS banner</span><div class="bn-bar" id="bnPrev"><b id="bnR"></b><span id="bnE"></span></div></div>
     </div>
     <div class="p-card nm-card hidden" data-s="teams"><div class="row" style="flex-wrap:wrap;gap:10px"><span class="grow"><b>Team names on the scoreboard</b><br><span class="tiny">Full names show up to 15 characters.</span></span><div class="seg" id="nameMode" style="width:auto"><button data-v="short">Initials</button><button data-v="full">Full name</button></div></div></div>
     <div class="teams2 hidden" id="teamCards" data-s="teams"></div>
@@ -102,8 +103,8 @@
   <!-- MONITOR -->
   <section id="vMonitor" class="hidden">
     <div class="mon">
-      <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
-        <div class="p-card">
+      <div class="mo-left">
+        <div class="p-card mo-prev">
           <h2><span id="moTitle">OBS Monitor</span><span class="row"><span class="r-live wait" id="moLive"><i></i><span>CONNECTING</span></span></span></h2>
           <div class="prev"><iframe id="moFrame" title="Overlay preview"></iframe></div>
           <div class="row" style="flex-wrap:wrap"><span class="tiny grow">Preview of the exact Browser Source output (transparent areas shown as a pattern).</span>
@@ -113,6 +114,9 @@
           <h2>Lower-third designer <span class="tiny">updates the preview and OBS live</span></h2>
           <div id="moLook"></div>
         </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div class="p-card" id="moScore"></div>
         <div class="p-card">
           <h3>OBS Browser Source</h3>
           <div class="urlbox"><input class="in" id="obsUrl" readonly><button class="btn cyan" id="copyObs">Copy</button></div>
@@ -129,9 +133,6 @@
           <div class="g3"><button class="btn danger" id="moPause">Emergency clock pause</button><button class="btn" id="moClear">Clear announcement</button><button class="btn warn" id="moFinal">End match</button></div>
           <div class="toggle"><span>Lock broadcast settings (scorekeepers can’t change the look)</span><input type="checkbox" id="moLock"></div>
         </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
-        <div class="p-card" id="moScore"></div>
         <div class="p-card">
           <h2>Pair phones <button class="btn sm" id="newPin">New PIN</button></h2>
           <div class="row"><span class="tiny grow">Scan, then enter the PIN. Each phone gets its own scoped token.</span><span class="pin" id="pin">——————</span></div>

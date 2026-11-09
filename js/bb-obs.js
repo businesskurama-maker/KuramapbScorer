@@ -47,7 +47,7 @@
     $('wrap').classList.toggle('off', !!(s.overlay && s.overlay.hidden));
     // CATEGORY ROUND - EVENT / SEASON TITLE banner
     const rnd = String(b.round || '').trim(), evt = String(s.title || '').trim();
-    const rb = $('rbn'), rbOn = b.show_round !== false && !!rnd;
+    const rb = $('rbn'), rbOn = b.show_round !== false && !!(rnd || evt);
     root.classList.toggle('show-round', !!rbOn);
     rb.classList.toggle('solo-r', !evt); rb.classList.toggle('solo-e', !rnd);
     const rbTxt = rnd + '|' + evt;

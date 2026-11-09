@@ -70,7 +70,7 @@
     const d = JSON.parse(JSON.stringify(draft)); let size = JSON.stringify(d).length;
     if (size > 180000) { ['home', 'away'].forEach((t) => { if (d[t].logo) d[t].logo = ''; }); d.players.forEach((p) => { delete p.photo; }); }
     link.send('draft', { code: cur, draft: d }); }, 350); }
-  function mirrorDraft() { $('fTitle').value = draft.title || ''; $('fRound').value = (draft.broadcast || {}).round || ''; $('fVenue').value = draft.venue || ''; paintTeams(); paintRules(); }
+  function mirrorDraft() { $('fTitle').value = draft.title || ''; $('fRound').value = (draft.broadcast || {}).round || ''; setTimeout(bnPrev); $('fVenue').value = draft.venue || ''; paintTeams(); paintRules(); }
 
   /* ---------------- auth gate ---------------- */
   async function boot() {
@@ -252,7 +252,7 @@
       draft = { title: '', venue: '', when: '', home: { name: '', short: '', color: '#00e5ff', logo: '' }, away: { name: '', short: '', color: '#ff2e4d', logo: '' }, config: Object.assign({}, DEF), broadcast: { theme: 'electric', names: 'short', anim_ms: 3000 }, players: [] };
       $('suTitle').textContent = 'New match'; $('suSave').textContent = 'Create match'; $('fCode').value = ''; $('suStatus').textContent = ''; $('suStatus').className = 'st';
     }
-    $('fTitle').value = draft.title || ''; $('fVenue').value = draft.venue || ''; $('fRound').value = draft.broadcast.round || '';
+    $('fTitle').value = draft.title || ''; $('fVenue').value = draft.venue || ''; $('fRound').value = draft.broadcast.round || ''; setTimeout(bnPrev);
     $('fWhen').value = draft.when ? new Date(new Date(draft.when).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
     $('preset').innerHTML = '<option value="">Change rules…</option>' + Object.entries(PBB.PRESETS).map(([k, v]) => '<option value="' + k + '">' + v.label + '</option>').join('');
     paintTeams(); paintRules();
@@ -266,7 +266,7 @@
       const rows = draft.players.filter((p) => p.team === t).sort((a, b) => Number(a.number) - Number(b.number));
       return '<div class="p-card tcard" style="--c:' + E(T.color) + '" data-team="' + t + '">'
         + '<h2>' + (t === 'home' ? 'Home team' : 'Away team') + '<span class="tiny">' + rows.filter((p) => p.active !== false).length + ' players</span></h2>'
-        + '<div class="g2"><label class="f">Full team name <span class="tiny">(max 15)</span><input class="in" data-k="name" maxlength="15" value="' + E(T.name) + '" placeholder="' + (t === 'home' ? 'Team DinkyKong' : 'Red Bulls') + '"></label>'
+        + '<div class="g2"><label class="f">Full team name<input class="in" data-k="name" maxlength="15" placeholder="Max 15 letters" value="' + E(T.name) + '" placeholder="' + (t === 'home' ? 'Team DinkyKong' : 'Red Bulls') + '"></label>'
         + '<label class="f">Initials (3–5)<input class="in" data-k="short" maxlength="5" value="' + E(T.short) + '" placeholder="' + (t === 'home' ? 'DKG' : 'RBL') + '" style="text-transform:uppercase"></label></div>'
         + '<div class="row" style="flex-wrap:wrap;gap:12px"><div class="sw-row">' + PBB.ELECTRIC.map((c) => '<button data-col="' + c + '" style="--c:' + c + '" class="' + (c === T.color ? 'on' : '') + (PBB.colorDist(c, other.color) < PBB.MIN_DIST ? ' blocked' : '') + '" title="' + c + '"></button>').join('')
         + '</div><input type="color" data-k="color" value="' + E(T.color) + '" style="width:40px;height:32px;border:0;background:none"></div>'
@@ -302,7 +302,13 @@
     if (el.dataset.tfk) { const k = el.dataset.tfk, set = new Set(draft.config.tf_kinds || ['P', 'T', 'U', 'D']); const ks = k === 'U' ? ['U', 'D'] : [k]; ks.forEach((x) => (el.checked ? set.add(x) : set.delete(x))); draft.config.tf_kinds = [...set]; } });
   ['input', 'change', 'click'].forEach((ev) => $('vSetup').addEventListener(ev, () => setTimeout(sendDraft, 0)));
   $('nameMode').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; draft.broadcast.names = b.dataset.v; paintTeams(); };
-  $('fRound').addEventListener('input', () => { draft.broadcast.round = $('fRound').value.trim(); });
+  function bnPrev() {
+    const r = $('fRound').value.trim(), e = $('fTitle').value.trim();
+    $('bnR').textContent = r; $('bnE').textContent = e || (r ? '' : 'Type an event title or category to show the banner');
+    $('bnPrev').classList.toggle('empty', !r && !e); $('bnR').classList.toggle('hidden', !r);
+  }
+  $('fRound').addEventListener('input', () => { draft.broadcast.round = $('fRound').value.trim(); bnPrev(); });
+  $('fTitle').addEventListener('input', bnPrev);
   ['fTitle', 'fVenue', 'fWhen'].forEach((id) => $(id).addEventListener('input', () => { draft.title = $('fTitle').value; draft.venue = $('fVenue').value; draft.when = $('fWhen').value ? new Date($('fWhen').value).toISOString() : ''; }));
 
   const findP = (id) => draft.players.find((p) => (p.id || p._tmp) === id);
