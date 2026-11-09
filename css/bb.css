@@ -425,3 +425,8 @@ table.rt td .in { min-height: 32px; }
   .lk-sl { grid-template-columns: 1fr; gap: 4px; }
   .lk-col { grid-template-columns: 1fr 1fr; }
 }
+
+.j-acct { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: #0b1224; }
+.j-acct .tiny { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r-join.wrong-acct .j-acct { border-color: var(--warn); background: rgba(255,181,71,.08); }
+.r-join.wrong-acct #jSwitch { background: var(--warn); color: #1b1200; border: 0; }

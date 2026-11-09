@@ -22,11 +22,13 @@
   <h1>🏀 Basketball <b>LIVE OBS</b></h1>
   <div class="code" id="jCode">——————</div>
   <p class="muted" id="jMatch" style="margin:0;font-size:14px"></p>
-  <div class="seg" id="jRole" style="width:100%"><button data-v="scorekeeper" class="on">Scorekeeper</button><button data-v="clock">Clock operator</button></div>
+  <div class="seg" id="jRole" style="width:100%"><button data-v="scorekeeper" class="on">Referee (score)</button><button data-v="clock">Timekeeper</button></div>
   <input class="in" id="jName" maxlength="30" placeholder="Your name (shown in the event log)" autocomplete="name">
   <input class="in pin-in" id="jPin" inputmode="numeric" maxlength="6" placeholder="PIN" autocomplete="one-time-code">
   <button class="btn primary" id="jGo" style="width:100%;min-height:52px">Pair this phone</button>
   <button class="btn ghost hidden" id="jHost" style="width:100%">I'm the host — continue with my account</button>
+  <div class="j-acct hidden" id="jAcct"><span class="tiny">Signed in as <b id="jWho"></b></span><button class="btn sm" id="jSwitch" type="button">Change account</button></div>
+  <button class="btn ghost hidden" id="jSignIn" style="width:100%">Host? Sign in with Google</button>
   <p class="tiny" id="jMsg" style="min-height:16px;margin:0"></p>
   <p class="tiny" style="margin:0">Ask the host for the 6-digit PIN shown on the OBS Monitor. Internet connection required.</p>
 </section>
@@ -155,6 +157,7 @@
         <h4>This device</h4>
         <div class="tiny" id="devTxt"></div>
         <button class="btn hidden" id="dutyBtn">Switch duty (referee / timer)</button>
+        <button class="btn host-only hidden" id="acctBtn">Change Google account</button>
         <div class="g2"><button class="btn" id="instBtn">Install app</button><button class="btn danger" id="leaveBtn">Leave match</button></div>
       </div>
     </section>

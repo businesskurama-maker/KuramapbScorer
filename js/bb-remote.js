@@ -17,13 +17,17 @@
   if (!code) { document.body.innerHTML = '<div class="r-join"><h1>🏀 Basketball <b>LIVE OBS</b></h1><p class="muted">Scan the QR code on the OBS Monitor to open the remote.</p><a class="btn" href="basketball.html">Open the Basketball portal</a></div>'; return; }
 
   /* ---------------- pairing ---------------- */
-  function showJoin(msg) {
+  function showJoin(msg, wrongAcct) {
     $('app').classList.add('hidden'); $('join').classList.remove('hidden');
     $('jCode').textContent = code.split('').join(' ');
-    $('jMsg').textContent = msg || '';
+    $('jMsg').textContent = msg || ''; $('join').classList.toggle('wrong-acct', !!wrongAcct);
     const r = q.get('r'); if (r === 'clock' || r === 'scorekeeper') setRoleSeg(r);
     $('jName').value = store.get('dk.bb.name', '');
-    if (window.PBAuth && PBAuth.enabled) PBAuth.init().then(() => { if (PBAuth.user) $('jHost').classList.remove('hidden'); }).catch(() => {});
+    $('jAcct').classList.add('hidden'); $('jSignIn').classList.add('hidden');
+    if (window.PBAuth && PBAuth.enabled) PBAuth.init().then(() => {
+      if (PBAuth.user) { $('jHost').classList.remove('hidden'); $('jAcct').classList.remove('hidden'); $('jWho').textContent = PBAuth.user.email || 'Google account'; }
+      else $('jSignIn').classList.remove('hidden');
+    }).catch(() => {});
   }
   function setRoleSeg(v) { [...$('jRole').children].forEach((b) => b.classList.toggle('on', b.dataset.v === v)); }
   $('jRole').onclick = (e) => { const b = e.target.closest('button'); if (b) setRoleSeg(b.dataset.v); };
@@ -46,7 +50,11 @@
     try {
       await PBAuth.init(); const h = await PBB.rpc(PBAuth.client, 'bb_host', { p_code: code });
       dev = { token: null, role: 'host', view_key: h.view_key, name: 'Host', host: true }; store.set(TK, dev); start(h);
-    } catch (e) { $('jMsg').textContent = PBB.errText(e); }
+    } catch (e) {
+      const c = PBB.errCode(e);
+      $('jMsg').textContent = c === 'NOT_AUTHORIZED' ? (PBAuth.user ? PBAuth.user.email + ' does not own this match. Tap Change account, or pair with the PIN.' : 'Sign in with the Google account that created this match.') : PBB.errText(e);
+      if (c === 'NOT_AUTHORIZED') $('join').classList.add('wrong-acct');
+    }
   };
 
   /* ---------------- layout per role / host duty ---------------- */
@@ -93,6 +101,29 @@
   $('hRole').onclick = () => { if (role === 'host') pickDuty(false); };
   $('dutyBtn').onclick = () => pickDuty(false);
 
+  /* ---------------- lost access: re-pair or switch account ---------------- */
+  let takeover = false;
+  function authFail(e) {
+    const c = PBB.errCode(e);
+    if (!['NOT_PAIRED', 'REVOKED', 'NO_MATCH', 'NOT_AUTHORIZED'].includes(c)) return false;
+    if (c === 'NOT_AUTHORIZED' && !(dev && dev.host)) return false;
+    const wasHost = dev && dev.host;
+    store.del(TK); dev = null; try { conn && conn.close(); } catch (x) {} conn = null;
+    showJoin(c === 'NOT_AUTHORIZED' ? 'This Google account does not own match ' + code + '. Change account, or pair with the PIN.'
+      : c === 'REVOKED' && takeover ? 'Another phone took over scoring with the PIN. Enter the PIN to take it back.'
+      : PBB.errText(e), wasHost && c === 'NOT_AUTHORIZED');
+    return true;
+  }
+  async function changeAccount() {
+    try { await PBAuth.init(); await PBAuth.signOut(); } catch (x) {}
+    store.del(TK);
+    const back = location.pathname + '?m=' + code + '&host=1';
+    try { await PBAuth.init(); await PBAuth.signIn(back); } catch (x) { $('jMsg').textContent = 'Could not open Google sign-in. Check the internet.'; }
+  }
+  $('jSwitch').onclick = changeAccount;
+  $('jSignIn').onclick = changeAccount;
+  $('acctBtn').onclick = () => { if (confirm('Sign out of this Google account and sign in with another one?')) changeAccount(); };
+
   /* ---------------- connection ---------------- */
   function start(first) {
     $('join').classList.add('hidden'); $('app').classList.remove('hidden');
@@ -101,16 +132,16 @@
     document.querySelectorAll('.host-only').forEach((el) => el.classList.toggle('hidden', role !== 'host'));
     applyLayout();
     if (role === 'host' && !dev.duty) pickDuty(true);
-    conn = PBB.connect({ code, key: dev.view_key, token: dev.token, signedIn: !!dev.host, autoReload: true, onSnap, onStatus, onError: (e) => {
-      const c = PBB.errCode(e); if (c === 'NOT_PAIRED' || c === 'REVOKED' || c === 'NO_MATCH') { store.del(TK); dev = null; conn && conn.close(); showJoin(PBB.errText(e)); }
-    } });
+    conn = PBB.connect({ code, key: dev.view_key, token: dev.token, signedIn: !!dev.host, autoReload: true, onSnap, onStatus, onError: authFail });
     if (first) conn.apply(first);
+    // host phone: confirm this Google account still owns the match (catches a switched / wrong account early)
+    if (dev.host && !first) PBAuth.init().then(() => { if (!PBAuth.user) throw new Error('NOT_AUTHORIZED'); return PBB.rpc(PBAuth.client, 'bb_host', { p_code: code }); }).catch((e) => authFail(e));
     PBCommon.keepAwake && PBCommon.keepAwake();
   }
   let wasOff = false, rcT = null;
   $('offBar').onclick = () => {   // manual reconnect; reload if it still can't connect
     if (!conn) return; $('offTxt').textContent = 'Reconnecting…'; conn.kick(true);
-    clearTimeout(rcT); rcT = setTimeout(() => { if (conn.status !== 'live') location.reload(); }, 6000);
+    clearTimeout(rcT); rcT = setTimeout(() => { if (conn && conn.status !== 'live') location.reload(); }, 6000);
   };
   function onStatus(st) {
     if (st === 'live' || st === 'connecting') { clearTimeout(rcT); $('offTxt').textContent = 'Connection lost — reconnecting automatically…'; }
@@ -125,7 +156,7 @@
   /* ---------------- actions ---------------- */
   let busy = false;
   async function act(type, data, opts) {
-    if (!conn || conn.status !== 'live') { toast('Not connected — action not sent', true); return null; }
+    if (!conn) { toast('Not connected — action not sent', true); return null; }
     if (busy && !(opts && opts.force)) return null;
     busy = true; const id = PBB.uuid();
     try {
@@ -133,7 +164,7 @@
       try { s = await conn.act(type, data, id); }
       catch (e) { if (/timeout|fetch|network/i.test(String(e.message))) s = await conn.act(type, data, id); else throw e; }   // retry with the SAME id: never double-counted
       return s;
-    } catch (e) { buzz([80, 40, 80]); toast(PBB.errText(e), true); return null; }
+    } catch (e) { buzz([80, 40, 80]); if (!authFail(e)) toast(e.message === 'OFFLINE' ? 'Not connected — reconnecting, try again' : PBB.errText(e), true); return null; }
     finally { busy = false; }
   }
 
@@ -156,6 +187,7 @@
     $('possTxt').textContent = d.poss ? '→ ' + team(d.poss).short : 'POSS';
     $('redoBtn').disabled = !s.can_redo;
     if (last && last.type === 'revoke' && dev && last.device === dev.device) { store.del(TK); conn.close(); showJoin('The host removed this device.'); return; }
+    if (last && last.type === 'revoke' && last.takeover && dev && dev.role === last.role && dev.token) { takeover = true; conn.refresh(); }
     if (last) describeLast(last);
     renderScore(); renderClockStatic(); renderPlayers(); renderSettings();
     if (view === 'events') loadEventsSoon();
