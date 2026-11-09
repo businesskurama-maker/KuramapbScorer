@@ -333,7 +333,7 @@
   /* ---------- Lower-third designer (shared by the phone remote and the portal's OBS Monitor) ----------
    * el: container; getB(): current broadcast settings; send(patch): saves a broadcast patch. */
   const LOOK_TPL = [['split', 'Split', 'Category tab + title'], ['ribbon', 'Ribbon', 'One coloured ribbon'], ['stack', 'Stacked', 'Small category, big title'], ['pill', 'Pill', 'Compact floating pill']];
-  const LOOK_SL = [['scale', 'Overall size', 0.6, 1.5], ['rb_size', 'Category / title banner', 0.6, 1.8], ['name_size', 'Team names', 0.7, 1.5],
+  const LOOK_SL = [['scale', 'Overall size', 0.6, 1.5], ['bar_h', 'Scoreboard height', 0.7, 1.4], ['edge', 'Distance from screen edge', 0, 2.5], ['rb_size', 'Category / title banner', 0.6, 1.8], ['name_size', 'Team names', 0.7, 1.5],
     ['label_size', 'Labels (fouls, period, tabs)', 0.7, 1.6], ['digit_size', 'Numbers (score, clock)', 0.7, 1.4], ['per_size', 'Quarter / period status', 0.7, 2], ['logo_size', 'Team logos', 0.6, 1.3]];
   const LOOK_COL = [['rb_bg', 'Banner', '#0a0d16'], ['rnd_color', 'Category', '#39ff14'], ['evt_color', 'Event title', '#f4f6fb'], ['bar_color', 'Scoreboard', '#0a0d16']];
   const LOOK_KEYS = ['rb_tpl', 'show_logos', 'rb_logo'].concat(LOOK_SL.map((x) => x[0]), LOOK_COL.map((x) => x[0]));
@@ -350,7 +350,7 @@
     function paint() {
       const b = getB() || {};
       el.querySelectorAll('[data-tpl]').forEach((x) => x.classList.toggle('on', x.dataset.tpl === (b.rb_tpl || 'split')));
-      el.querySelectorAll('[data-lk]').forEach((x) => { if (document.activeElement === x && x._drag) return; const v = Number(b[x.dataset.lk]) || 1; x.value = v; el.querySelector('[data-v="' + x.dataset.lk + '"]').textContent = pct(v); });
+      el.querySelectorAll('[data-lk]').forEach((x) => { if (document.activeElement === x && x._drag) return; const v = b[x.dataset.lk] == null || b[x.dataset.lk] === '' ? 1 : Number(b[x.dataset.lk]); x.value = v; el.querySelector('[data-v="' + x.dataset.lk + '"]').textContent = pct(v); });
       LOOK_COL.forEach(([k, , d]) => { const v = /^#[0-9a-f]{6}$/i.test(b[k] || '') ? b[k] : ''; const inp = el.querySelector('[data-lc="' + k + '"]'); if (document.activeElement !== inp) inp.value = v || d; el.querySelector('[data-cv="' + k + '"]').textContent = v ? v.toUpperCase() : 'Theme'; el.querySelector('[data-cx="' + k + '"]').classList.toggle('hidden', !v); });
       el.querySelector('[data-lg]').checked = b.show_logos !== false;
       const lg = /^data:image\//.test(b.rb_logo || '') ? b.rb_logo : '';

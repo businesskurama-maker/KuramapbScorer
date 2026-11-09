@@ -18,10 +18,10 @@
   body.preview.photo { background: radial-gradient(ellipse at 50% 30%, #8a5a2b 0, #4b2f16 45%, #1b120a 100%); }
   #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; font-family: var(--ui); color: var(--ink); }
   .hidden { display: none !important; }
-  .wrap { position: absolute; left: 50%; bottom: 54px; transform: translateX(-50%) scale(var(--scale, 1)); transform-origin: 50% 100%; display: flex; flex-direction: column; align-items: center; gap: 0; transition: opacity .35s ease, transform .35s ease; }
-  .pos-top .wrap { bottom: auto; top: 54px; transform-origin: 50% 0; flex-direction: column-reverse; }
-  .pos-bottom-left .wrap { left: 64px; transform: scale(var(--scale, 1)); transform-origin: 0 100%; align-items: flex-start; }
-  .pos-bottom-right .wrap { left: auto; right: 64px; transform: scale(var(--scale, 1)); transform-origin: 100% 100%; align-items: flex-end; }
+  .wrap { position: absolute; left: 50%; bottom: calc(54px * var(--edge, 1)); transform: translateX(-50%) scale(var(--scale, 1)); transform-origin: 50% 100%; display: flex; flex-direction: column; align-items: center; gap: 0; transition: opacity .35s ease, transform .35s ease; }
+  .pos-top .wrap { bottom: auto; top: calc(54px * var(--edge, 1)); transform-origin: 50% 0; flex-direction: column-reverse; }
+  .pos-bottom-left .wrap { left: calc(64px * var(--edge, 1)); transform: scale(var(--scale, 1)); transform-origin: 0 100%; align-items: flex-start; }
+  .pos-bottom-right .wrap { left: auto; right: calc(64px * var(--edge, 1)); transform: scale(var(--scale, 1)); transform-origin: 100% 100%; align-items: flex-end; }
   .wrap.off { opacity: 0; }
 
   /* ---------- main bar ---------- */
