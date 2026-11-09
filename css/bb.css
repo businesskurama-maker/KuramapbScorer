@@ -82,9 +82,10 @@ body.remote { height: 100dvh; overflow: hidden; overscroll-behavior: none; }
 .r-team .mt { font-size: 10.5px; color: var(--ink3); font-weight: 600; letter-spacing: .06em; white-space: nowrap; }
 .r-team .mt .pen { color: var(--warn); }
 .r-vs { font-size: 11px; color: var(--ink3); font-weight: 700; }
-.r-off { flex: none; margin: 0 12px 6px; padding: 8px 12px; border-radius: 10px; background: rgba(255,90,106,.14); border: 1px solid rgba(255,90,106,.5); color: #ffb3bb; font-size: 12.5px; font-weight: 600; text-align: center; }
+.r-off { flex: none; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; width: calc(100% - 24px); font-family: inherit; cursor: pointer; margin: 0 12px 6px; padding: 8px 12px; border-radius: 10px; background: rgba(255,90,106,.14); border: 1px solid rgba(255,90,106,.5); color: #ffb3bb; font-size: 12.5px; font-weight: 600; text-align: center; }
 .r-main { flex: 1; min-height: 0; overflow: hidden; display: flex; }
 .view { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.r-off b { padding: 4px 10px; border-radius: 999px; background: #ff5a6a; color: #fff; font-size: 12px; white-space: nowrap; }
 .r-app.offline .needs-live { opacity: .35; pointer-events: none; }
 .r-nav { flex: none; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); background: #050912; border-top: 1px solid var(--line); }
 .r-nav button { border: 0; background: none; color: var(--ink3); display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; letter-spacing: .06em; padding: 5px 0; border-radius: 12px; }

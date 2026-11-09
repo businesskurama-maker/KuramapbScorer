@@ -101,17 +101,25 @@
     document.querySelectorAll('.host-only').forEach((el) => el.classList.toggle('hidden', role !== 'host'));
     applyLayout();
     if (role === 'host' && !dev.duty) pickDuty(true);
-    conn = PBB.connect({ code, key: dev.view_key, token: dev.token, signedIn: !!dev.host, onSnap, onStatus, onError: (e) => {
+    conn = PBB.connect({ code, key: dev.view_key, token: dev.token, signedIn: !!dev.host, autoReload: true, onSnap, onStatus, onError: (e) => {
       const c = PBB.errCode(e); if (c === 'NOT_PAIRED' || c === 'REVOKED' || c === 'NO_MATCH') { store.del(TK); dev = null; conn && conn.close(); showJoin(PBB.errText(e)); }
     } });
     if (first) conn.apply(first);
     PBCommon.keepAwake && PBCommon.keepAwake();
   }
+  let wasOff = false, rcT = null;
+  $('offBar').onclick = () => {   // manual reconnect; reload if it still can't connect
+    if (!conn) return; $('offTxt').textContent = 'Reconnecting…'; conn.kick(true);
+    clearTimeout(rcT); rcT = setTimeout(() => { if (conn.status !== 'live') location.reload(); }, 6000);
+  };
   function onStatus(st) {
+    if (st === 'live' || st === 'connecting') { clearTimeout(rcT); $('offTxt').textContent = 'Connection lost — reconnecting automatically…'; }
     const live = st === 'live', el = $('hLive');
     el.className = 'r-live ' + (live ? '' : st === 'connecting' ? 'wait' : 'off');
     el.querySelector('span').textContent = live ? 'LIVE' : st === 'connecting' ? 'CONNECTING' : st === 'denied' ? 'NOT PAIRED' : 'OFFLINE';
     $('app').classList.toggle('offline', !live); $('offBar').classList.toggle('hidden', live || st === 'connecting');
+    if (live && wasOff) { buzz([20, 40, 20]); toast('Back online · synced'); }
+    wasOff = !live && st !== 'connecting';
   }
 
   /* ---------------- actions ---------------- */

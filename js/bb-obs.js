@@ -12,7 +12,7 @@
   if (!code || !key) { $('msg').textContent = 'Basketball overlay: open this from the DinkyKong OBS Monitor (missing match code / key).'; return; }
 
   let S = null, prevScore = null, prevPer = null, prevEnded = false, resetSeq = null, bannerId = null, shown = null, queue = [], qT = null, buzzed = null;
-  const conn = PBB.connect({ code, key, onSnap, onStatus: (s) => { $('msg').textContent = s === 'denied' ? 'Overlay link is not valid for this match.' : ''; } });
+  const conn = PBB.connect({ code, key, autoReload: true, onSnap, onStatus: (s) => { $('msg').textContent = s === 'denied' ? 'Overlay link is not valid for this match.' : ''; } });
 
   /* ---------- static render ---------- */
   function teamOf(t) { return t === 'home' ? S.home : S.away; }

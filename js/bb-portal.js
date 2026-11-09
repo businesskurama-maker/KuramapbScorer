@@ -14,12 +14,32 @@
   const link = (() => {
     let ch = null, others = [], applying = false;
     const follow = () => { try { return localStorage.getItem('dk.bb.follow') === '1'; } catch (e) { return false; } };
+    let lUid = null, lOk = false, lAt = 0, lRetry = null, lHid = 0;
     function start(uid) {
-      if (ch || !sb) return;
-      ch = sb.channel('bbu:' + uid, { config: { broadcast: { self: false }, presence: { key: DEV_ID } } });
-      ch.on('broadcast', { event: 'm' }, (e) => onMsg(e.payload || {}));
-      ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); others = Object.keys(st).filter((k) => k !== DEV_ID).map((k) => st[k][0] || {}); paintLink(); });
-      ch.subscribe((st) => { if (st === 'SUBSCRIBED') ch.track({ kind: IS_PHONE ? 'phone' : 'screen', at: Date.now() }); });
+      if (!sb || !uid) return;
+      if (ch && lUid === uid) return;
+      lUid = uid; join();
+      if (!start.wired) {   // rejoin after sleep / network change
+        start.wired = true;
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { lHid = Date.now(); return; } const away = lHid ? Date.now() - lHid : 0; lHid = 0; if (!lOk || away > 15000) join(); });
+        addEventListener('online', join);
+        setInterval(() => { if (document.visibilityState === 'visible' && !lOk && Date.now() - lAt > 10000) join(); }, 4000);
+      }
+    }
+    function join() {
+      if (!sb || !lUid) return;
+      clearTimeout(lRetry);
+      if (ch) { const old = ch; ch = null; try { sb.removeChannel(old); } catch (e) {} }
+      lOk = false; lAt = Date.now();
+      const me = sb.channel('bbu:' + lUid, { config: { broadcast: { self: false }, presence: { key: DEV_ID } } });
+      ch = me;
+      me.on('broadcast', { event: 'm' }, (e) => onMsg(e.payload || {}));
+      me.on('presence', { event: 'sync' }, () => { if (ch !== me) return; const st = me.presenceState(); others = Object.keys(st).filter((k) => k !== DEV_ID).map((k) => st[k][0] || {}); paintLink(); });
+      me.subscribe((st) => {
+        if (ch !== me) return;
+        if (st === 'SUBSCRIBED') { lOk = true; me.track({ kind: IS_PHONE ? 'phone' : 'screen', at: Date.now() }); }
+        else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') { lOk = false; lRetry = setTimeout(join, 3000); }
+      });
     }
     function send(t, data) { if (ch && !applying) { try { ch.send({ type: 'broadcast', event: 'm', payload: Object.assign({ t, from: DEV_ID }, data) }); } catch (e) {} } }
     function onMsg(m) {

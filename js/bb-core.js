@@ -55,9 +55,24 @@
 
   /* ---------- live match connection ----------
    * opts: { code, key (view key), token, signedIn, onSnap(snap, last), onStatus('live'|'connecting'|'offline') } */
+  /* Self-healing live connection.
+   * - Realtime push is the fast path; the HTTP snapshot is the fallback. If realtime dies (phone slept,
+   *   Wi-Fi ⇄ data switch) the remote keeps working over HTTP polling while realtime reconnects.
+   * - Every return to the page (unlock, tab switch, back online) re-checks and re-syncs immediately.
+   * - opts.autoReload: if nothing works for ~45 s while the device says it's online, reload the page
+   *   (pairing is stored, so the remote resumes by itself). */
   function connect(opts) {
     let c = null, ch = null, snap = null, offset = 0, status = 'connecting', closed = false, retryT = null, key = opts.key;
+    let rtLive = false, httpOkAt = 0, denied = false, subAt = 0, hiddenAt = 0, badSince = Date.now(), creating = false, inflight = null;
+    const POLL_OK = 7000;
     const setStatus = (s) => { if (s !== status) { status = s; opts.onStatus && opts.onStatus(s); } };
+    function recompute() {
+      if (closed) return;
+      if (denied) { setStatus('denied'); return; }
+      const ok = rtLive || (Date.now() - httpOkAt < POLL_OK);
+      if (ok) badSince = 0; else if (!badSince) badSince = Date.now();
+      setStatus(ok ? 'live' : (status === 'connecting' && Date.now() - (badSince || 0) < 8000 ? 'connecting' : 'offline'));
+    }
     function apply(s, last) {
       if (!s || !s.code) return false;
       if (snap && s.version < snap.version) return false;          // stale push
@@ -67,51 +82,102 @@
       if (fresh || last) opts.onSnap && opts.onSnap(s, last || null);
       return true;
     }
-    async function refresh() {
-      if (!c) return;
-      try {
-        const s = await rpc(c, 'bb_snapshot', { p_code: opts.code, p_key: key || null, p_token: opts.token || null });
-        apply(s, null); if (ch && ch._live) setStatus('live');
-      } catch (e) { opts.onError && opts.onError(e); if (/NOT_PAIRED|REVOKED|NO_MATCH/.test(String(e.message))) setStatus('denied'); }
+    async function ensureClient() {
+      if (c || creating) return !!c;
+      creating = true;
+      try { c = await client(!!opts.signedIn); } catch (e) { opts.onError && opts.onError(e); } finally { creating = false; }
+      return !!c;
+    }
+    function refresh() {                       // one snapshot at a time
+      if (inflight) return inflight;
+      inflight = (async () => {
+        if (!(await ensureClient())) { recompute(); return false; }
+        try {
+          const s = await rpc(c, 'bb_snapshot', { p_code: opts.code, p_key: key || null, p_token: opts.token || null });
+          httpOkAt = Date.now(); denied = false; apply(s, null); recompute(); return true;
+        } catch (e) {
+          if (/NOT_PAIRED|REVOKED|NO_MATCH/.test(String(e.message))) denied = true;
+          opts.onError && opts.onError(e); recompute(); return false;
+        }
+      })().finally(() => { inflight = null; });
+      return inflight;
     }
     function subscribe() {
-      if (!key || closed) return;
-      if (ch) { try { c.removeChannel(ch); } catch (e) {} ch = null; }
-      ch = c.channel('bb:' + key, { config: { broadcast: { self: false, ack: false } } });
-      ch.on('broadcast', { event: 'state' }, (e) => {
+      if (!key || closed || !c) return;
+      clearTimeout(retryT);
+      if (ch) { const old = ch; ch = null; try { c.removeChannel(old); } catch (e) {} }
+      rtLive = false; subAt = Date.now();
+      try { const st = c.realtime && c.realtime.connectionState && c.realtime.connectionState(); if (st === 'closed' || st === 'closing') c.realtime.connect(); } catch (e) {}
+      const me = c.channel('bb:' + key, { config: { broadcast: { self: false, ack: false } } });   // fresh channel object every time
+      ch = me;
+      me.on('broadcast', { event: 'state' }, (e) => {
         const p = e.payload || {}; const last = p.last || null; delete p.last;
-        apply(p, last);
+        rtLive = true; apply(p, last); recompute();
       });
-      ch.subscribe((st) => {
-        if (st === 'SUBSCRIBED') { ch._live = true; setStatus('live'); refresh(); }   // re-sync after every (re)connect
+      me.subscribe((st) => {
+        if (ch !== me) return;                 // replaced
+        if (st === 'SUBSCRIBED') { rtLive = true; recompute(); refresh(); }   // re-sync after every (re)connect
         else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') {
-          ch && (ch._live = false); setStatus('offline');
+          rtLive = false; recompute(); refresh();
           clearTimeout(retryT); retryT = setTimeout(() => { if (!closed) subscribe(); }, 3000);
         }
       });
     }
-    (async () => {
-      c = await client(!!opts.signedIn);
-      if (!key) { try { const s = await rpc(c, 'bb_snapshot', { p_code: opts.code, p_key: null, p_token: opts.token || null }); apply(s); } catch (e) { setStatus('denied'); opts.onError && opts.onError(e); return; } }
-      subscribe();
-    })().catch((e) => { setStatus('offline'); opts.onError && opts.onError(e); });
-    window.addEventListener('online', () => { if (!closed) subscribe(); });
-    window.addEventListener('offline', () => setStatus('offline'));
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !closed) refresh(); });
-    setInterval(() => { if (!closed && status === 'live' && document.visibilityState === 'visible') refresh(); }, 30000);   // safety net
+    // come back from sleep / background / network change: check right away
+    function kick(force) {
+      if (closed) return;
+      refresh().then(() => {
+        const sock = c && c.realtime && c.realtime.connectionState ? c.realtime.connectionState() : 'open';
+        if (force || !rtLive || sock !== 'open') subscribe();
+      });
+    }
+    (async () => { await ensureClient(); if (!key) await refresh(); subscribe(); if (key) refresh(); })().catch((e) => { recompute(); opts.onError && opts.onError(e); });
+
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+      const away = hiddenAt ? Date.now() - hiddenAt : 0; hiddenAt = 0;
+      kick(away > 15000);                      // long sleep: sockets are usually dead, rebuild the channel
+    };
+    const onOnline = () => kick(true), onOffline = () => { rtLive = false; httpOkAt = 0; recompute(); };
+    const onShow = (e) => kick(!!(e && e.persisted)), onFocus = () => { if (status !== 'live') kick(false); };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('online', onOnline); window.addEventListener('offline', onOffline);
+    window.addEventListener('pageshow', onShow); window.addEventListener('focus', onFocus);
+    // watchdog: poll while realtime is down, re-subscribe if stuck, reload as a last resort
+    let tick = 0;
+    const wd = setInterval(() => {
+      if (closed || document.visibilityState !== 'visible') return;
+      tick++;
+      if (!c) { ensureClient().then((ok) => ok && subscribe()); return; }
+      if (!rtLive) {
+        refresh();                                            // HTTP keeps the remote usable
+        if (Date.now() - subAt > 10000) subscribe();          // channel never came up: rebuild it
+      } else if (tick % 5 === 0) refresh();                   // live: light re-sync every ~10 s
+      recompute();
+      if (opts.autoReload && status === 'offline' && badSince && Date.now() - badSince > 45000 && navigator.onLine !== false) {
+        let lastR = 0; try { lastR = Number(sessionStorage.getItem('dk.bb.reload') || 0); } catch (e) {}
+        if (Date.now() - lastR > 120000) { try { sessionStorage.setItem('dk.bb.reload', String(Date.now())); } catch (e) {} location.reload(); }
+      }
+    }, 2000);
 
     return {
       get snap() { return snap; }, get status() { return status; }, get offset() { return offset; },
       serverNow: () => Date.now() + offset,
       setKey(k) { if (k && k !== key) { key = k; subscribe(); } },
-      refresh, apply,
+      refresh, apply, kick,
       async act(type, data, id) {
-        if (status !== 'live') throw new Error('OFFLINE');
+        if (status !== 'live') { await refresh(); if (status !== 'live') { kick(true); throw new Error('OFFLINE'); } }
         const s = await rpc(c, 'bb_act', { p_code: opts.code, p_token: opts.token || null, p_id: id || uuid(), p_type: type, p_data: data || {} });
-        const last = s.last; delete s.last; apply(s, last); return s;
+        httpOkAt = Date.now(); const last = s.last; delete s.last; apply(s, last); recompute(); return s;
       },
       async events() { return rpc(c, 'bb_events', { p_code: opts.code, p_key: key || null, p_token: opts.token || null }); },
-      close() { closed = true; try { ch && c.removeChannel(ch); } catch (e) {} }
+      close() {
+        closed = true; clearInterval(wd); clearTimeout(retryT);
+        document.removeEventListener('visibilitychange', onVis);
+        window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline);
+        window.removeEventListener('pageshow', onShow); window.removeEventListener('focus', onFocus);
+        try { ch && c.removeChannel(ch); } catch (e) {}
+      }
     };
   }
 
