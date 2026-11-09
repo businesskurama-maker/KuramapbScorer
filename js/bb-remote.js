@@ -412,11 +412,12 @@
     $('theme').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.v === (b.theme || 'electric')));
     document.querySelectorAll('[data-b]').forEach((el) => { if (document.activeElement !== el) el.value = String(b[el.dataset.b] != null ? b[el.dataset.b] : el.value); });
     document.querySelectorAll('[data-t]').forEach((el) => { if (el.type === 'checkbox') el.checked = b[el.dataset.t] !== false && !(el.dataset.t === 'show_title' && !b.show_title) && !(el.dataset.t === 'reduced_motion' && !b.reduced_motion); });
+    if (document.activeElement !== $('bRound')) $('bRound').value = b.round || '';
     $('timerMode').value = S.config.timer_mode || 'digital';
     $('lockT').checked = !!S.locked;
     if (!document.activeElement || !$('teamEd').contains(document.activeElement)) {
       $('teamEd').innerHTML = ['home', 'away'].map((t) => { const T = team(t), other = team(t === 'home' ? 'away' : 'home');
-        return '<div class="box" style="padding:10px;--c:' + T.color + '"><label class="f">' + t.toUpperCase() + ' name<input class="in" data-tn="' + t + '" maxlength="40" value="' + E(T.name) + '"></label>'
+        return '<div class="box" style="padding:10px;--c:' + T.color + '"><label class="f">' + t.toUpperCase() + ' name<input class="in" data-tn="' + t + '" maxlength="15" value="' + E(T.name) + '"></label>'
           + '<label class="f">Initials<input class="in" data-ts="' + t + '" maxlength="5" value="' + E(T.short) + '" style="text-transform:uppercase"></label>'
           + '<div class="sw-row">' + PBB.ELECTRIC.map((c) => '<button data-tc="' + t + '" data-c="' + c + '" style="--c:' + c + '" class="' + (c === T.color ? 'on' : '') + (PBB.colorDist(c, other.color) < PBB.MIN_DIST ? ' blocked' : '') + '"></button>').join('') + '</div>'
           + '<label class="btn sm" style="position:relative;overflow:hidden">' + (T.logo ? 'Change logo' : 'Upload logo') + '<input type="file" accept="image/*" data-tl="' + t + '" style="position:absolute;inset:0;opacity:0"></label>'
@@ -429,11 +430,12 @@
   $('theme').onclick = (e) => { const b = e.target.closest('button'); if (b) bcast({ patch: { theme: b.dataset.v, show_title: b.dataset.v === 'tournament' ? true : (S.broadcast.show_title || false) } }); };
   document.querySelectorAll('[data-b]').forEach((el) => el.addEventListener('change', () => { const v = el.value; bcast({ patch: { [el.dataset.b]: isNaN(Number(v)) ? v : Number(v) } }); }));
   document.querySelectorAll('input[data-t]').forEach((el) => el.addEventListener('change', () => bcast({ patch: { [el.dataset.t]: el.checked } })));
+  $('bRound').onchange = () => bcast({ patch: { round: $('bRound').value.trim() } }).then((s) => s && toast($('bRound').value.trim() ? 'Round banner updated' : 'Round cleared'));
   $('timerMode').onchange = () => bcast({ timer_mode: $('timerMode').value });
   $('lockT').onchange = () => act('lock', { on: $('lockT').checked }, { force: true });
   $('teamEd').addEventListener('change', async (e) => {
     const el = e.target;
-    if (el.dataset.tn) bcast({ [el.dataset.tn]: { name: el.value.trim() || team(el.dataset.tn).name } });
+    if (el.dataset.tn) bcast({ [el.dataset.tn]: { name: el.value.trim().slice(0, 15) || team(el.dataset.tn).name } });
     if (el.dataset.ts) bcast({ [el.dataset.ts]: { short: el.value.trim().toUpperCase() } });
     if (el.dataset.tl && el.files[0]) { const f = el.files[0]; el.value = ''; try { const logo = await PBB.cropLogo(f); bcast({ [el.dataset.tl]: { logo } }); } catch (x) { if (x.message !== 'CANCELLED') toast(x.message || 'Could not read that image', true); } }
   });

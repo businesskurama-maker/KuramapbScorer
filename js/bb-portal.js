@@ -50,7 +50,7 @@
     const d = JSON.parse(JSON.stringify(draft)); let size = JSON.stringify(d).length;
     if (size > 180000) { ['home', 'away'].forEach((t) => { if (d[t].logo) d[t].logo = ''; }); d.players.forEach((p) => { delete p.photo; }); }
     link.send('draft', { code: cur, draft: d }); }, 350); }
-  function mirrorDraft() { $('fTitle').value = draft.title || ''; $('fVenue').value = draft.venue || ''; paintTeams(); paintRules(); }
+  function mirrorDraft() { $('fTitle').value = draft.title || ''; $('fRound').value = (draft.broadcast || {}).round || ''; $('fVenue').value = draft.venue || ''; paintTeams(); paintRules(); }
 
   /* ---------------- auth gate ---------------- */
   async function boot() {
@@ -206,7 +206,7 @@
     ['timer_mode', 'Game timer', 'sel', [['digital', 'DinkyKong digital clock'], ['external', 'Court timer (window)']]], ['format', 'Format', 'sel', [['5v5', 'Standard 5v5'], ['3x3', '3x3'], ['custom', 'Custom rules']]]
   ];
   const TOGGLES = [['shot_on', 'Shot clock on'], ['tenths', 'Tenths in the last minute'], ['buzzer', 'Buzzer sound at 0:00'], ['fiba_dq', 'FIBA disqualification (2 U/T fouls)'], ['tf_ot_continues', 'Overtime fouls continue last period'], ['player_scoring', 'Player-based scoring'], ['sk_clock', 'Scorekeepers can run the clock']];
-  const BCAST = [['theme', 'Broadcast theme', [['electric', 'Electric DinkyKong'], ['classic', 'Classic Sports'], ['minimal', 'Minimal Broadcast'], ['tournament', 'Tournament Pro']]], ['names', 'Team display', [['short', 'Initials'], ['full', 'Full names']]], ['anim_ms', 'Pop-up duration', [[2000, '2 s'], [3000, '3 s'], [4000, '4 s'], [5000, '5 s']]]];
+  const BCAST = [['theme', 'Broadcast theme', [['electric', 'Electric DinkyKong'], ['classic', 'Classic Sports'], ['minimal', 'Minimal Broadcast'], ['tournament', 'Tournament Pro']]], ['anim_ms', 'Pop-up duration', [[2000, '2 s'], [3000, '3 s'], [4000, '4 s'], [5000, '5 s']]]];
   const DEF = Object.assign({ format: '5v5', timer_mode: 'digital', tenths: true, buzzer: true, player_scoring: true, sk_clock: true, to_game: 9, to_period: 1, preset: 'basic' }, PBB.PRESETS.basic);
   delete DEF.basic;
   delete DEF.label;
@@ -224,7 +224,7 @@
       draft = { title: '', venue: '', when: '', home: { name: '', short: '', color: '#00e5ff', logo: '' }, away: { name: '', short: '', color: '#ff2e4d', logo: '' }, config: Object.assign({}, DEF), broadcast: { theme: 'electric', names: 'short', anim_ms: 3000 }, players: [] };
       $('suTitle').textContent = 'New match'; $('suSave').textContent = 'Create match'; $('fCode').value = ''; $('suStatus').textContent = ''; $('suStatus').className = 'st';
     }
-    $('fTitle').value = draft.title || ''; $('fVenue').value = draft.venue || '';
+    $('fTitle').value = draft.title || ''; $('fVenue').value = draft.venue || ''; $('fRound').value = draft.broadcast.round || '';
     $('fWhen').value = draft.when ? new Date(new Date(draft.when).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
     $('preset').innerHTML = '<option value="">Change rules…</option>' + Object.entries(PBB.PRESETS).map(([k, v]) => '<option value="' + k + '">' + v.label + '</option>').join('');
     paintTeams(); paintRules();
@@ -232,12 +232,13 @@
   function suTab(k) { document.querySelectorAll('#suTabs button').forEach((b) => b.classList.toggle('on', b.dataset.s === k)); document.querySelectorAll('#vSetup > [data-s]').forEach((el) => el.classList.toggle('hidden', el.dataset.s !== k)); $('main').scrollTop = 0; }
   $('suTabs').onclick = (e) => { const b = e.target.closest('button'); if (b) suTab(b.dataset.s); };
   function paintTeams() {
+    $('nameMode').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === (draft.broadcast.names === 'full' ? 'full' : 'short')));
     $('teamCards').innerHTML = ['home', 'away'].map((t) => {
       const T = draft[t], other = draft[t === 'home' ? 'away' : 'home'];
       const rows = draft.players.filter((p) => p.team === t).sort((a, b) => Number(a.number) - Number(b.number));
       return '<div class="p-card tcard" style="--c:' + E(T.color) + '" data-team="' + t + '">'
         + '<h2>' + (t === 'home' ? 'Home team' : 'Away team') + '<span class="tiny">' + rows.filter((p) => p.active !== false).length + ' players</span></h2>'
-        + '<div class="g2"><label class="f">Full team name<input class="in" data-k="name" maxlength="40" value="' + E(T.name) + '" placeholder="' + (t === 'home' ? 'Team DinkyKong' : 'Red Bulls') + '"></label>'
+        + '<div class="g2"><label class="f">Full team name <span class="tiny">(max 15)</span><input class="in" data-k="name" maxlength="15" value="' + E(T.name) + '" placeholder="' + (t === 'home' ? 'Team DinkyKong' : 'Red Bulls') + '"></label>'
         + '<label class="f">Initials (3–5)<input class="in" data-k="short" maxlength="5" value="' + E(T.short) + '" placeholder="' + (t === 'home' ? 'DKG' : 'RBL') + '" style="text-transform:uppercase"></label></div>'
         + '<div class="row" style="flex-wrap:wrap;gap:12px"><div class="sw-row">' + PBB.ELECTRIC.map((c) => '<button data-col="' + c + '" style="--c:' + c + '" class="' + (c === T.color ? 'on' : '') + (PBB.colorDist(c, other.color) < PBB.MIN_DIST ? ' blocked' : '') + '" title="' + c + '"></button>').join('')
         + '</div><input type="color" data-k="color" value="' + E(T.color) + '" style="width:40px;height:32px;border:0;background:none"></div>'
@@ -272,6 +273,8 @@
   $('rulesT').addEventListener('change', (e) => { const el = e.target; if (el.dataset.r) draft.config[el.dataset.r] = el.checked; if (el.dataset.r === 'shot_on') setTimeout(paintRules, 0);
     if (el.dataset.tfk) { const k = el.dataset.tfk, set = new Set(draft.config.tf_kinds || ['P', 'T', 'U', 'D']); const ks = k === 'U' ? ['U', 'D'] : [k]; ks.forEach((x) => (el.checked ? set.add(x) : set.delete(x))); draft.config.tf_kinds = [...set]; } });
   ['input', 'change', 'click'].forEach((ev) => $('vSetup').addEventListener(ev, () => setTimeout(sendDraft, 0)));
+  $('nameMode').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; draft.broadcast.names = b.dataset.v; paintTeams(); };
+  $('fRound').addEventListener('input', () => { draft.broadcast.round = $('fRound').value.trim(); });
   ['fTitle', 'fVenue', 'fWhen'].forEach((id) => $(id).addEventListener('input', () => { draft.title = $('fTitle').value; draft.venue = $('fVenue').value; draft.when = $('fWhen').value ? new Date($('fWhen').value).toISOString() : ''; }));
 
   const findP = (id) => draft.players.find((p) => (p.id || p._tmp) === id);
@@ -354,7 +357,7 @@
   $('suSave').onclick = async () => {
     const d = draft;
     d.title = $('fTitle').value.trim(); d.venue = $('fVenue').value.trim();
-    for (const t of ['home', 'away']) { if (!d[t].name.trim()) { toast('Enter both team names', true); return; } if (!d[t].short.trim()) d[t].short = d[t].name.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase(); }
+    for (const t of ['home', 'away']) { d[t].name = String(d[t].name || '').trim().slice(0, 15); if (!d[t].name) { toast('Enter both team names', true); return; } if (!d[t].short.trim()) d[t].short = d[t].name.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase(); }
     if (PBB.colorDist(d.home.color, d.away.color) < PBB.MIN_DIST) { toast(PBB.errText('COLORS_TOO_CLOSE'), true); return; }
     for (const t of ['home', 'away']) { const nums = d.players.filter((p) => p.team === t).map((p) => p.number); if (new Set(nums).size !== nums.length) { toast('Duplicate jersey number on the ' + t + ' team', true); return; } if (nums.some((n) => !/^\d{1,2}$/.test(n))) { toast('Jersey numbers are 0–99', true); return; } }
     $('suSave').classList.add('busy'); $('suMsg').textContent = 'Saving…';

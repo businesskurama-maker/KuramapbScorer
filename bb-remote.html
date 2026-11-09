@@ -127,9 +127,10 @@
       <div class="box needs-live" id="bcBox">
         <h4>Broadcast settings <span class="tiny" id="lockedTxt"></span></h4>
         <div class="seg" id="theme"><button data-v="classic">Classic</button><button data-v="electric">Electric</button><button data-v="minimal">Minimal</button><button data-v="tournament">Tourn. Pro</button></div>
+        <div class="g2"><label class="f">Category / round<input class="in" id="bRound" maxlength="40" placeholder="Men's Open · Semifinals"></label>
+          <label class="f">Team names<select class="in" data-b="names"><option value="short">Initials</option><option value="full">Full name (max 15)</option></select></label></div>
         <div class="g2" id="teamEd"></div>
         <div class="g2">
-          <label class="f">Names<select class="in" data-b="names"><option value="short">Initials</option><option value="full">Full names</option></select></label>
           <label class="f">Score font<select class="in" data-b="font"><option value="digital">Digital</option><option value="poppins">Poppins</option><option value="bebas">Condensed</option></select></label>
           <label class="f">Digit size<select class="in" data-b="digit_size"><option value="0.85">Small</option><option value="1">Normal</option><option value="1.15">Large</option></select></label>
           <label class="f">Overlay scale<select class="in" data-b="scale"><option value="0.8">80%</option><option value="0.9">90%</option><option value="1">100%</option><option value="1.1">110%</option><option value="1.25">125%</option></select></label>
@@ -144,6 +145,7 @@
         <div class="toggle"><span>Timeout indicators</span><input type="checkbox" data-t="show_tos"></div>
         <div class="toggle"><span>Possession arrow</span><input type="checkbox" data-t="show_poss"></div>
         <div class="toggle"><span>Player scoring announcements</span><input type="checkbox" data-t="show_player"></div>
+        <div class="toggle"><span>Round · event banner</span><input type="checkbox" data-t="show_round"></div>
         <div class="toggle"><span>Tournament title tab</span><input type="checkbox" data-t="show_title"></div>
         <div class="toggle"><span>Reduced motion</span><input type="checkbox" data-t="reduced_motion"></div>
       </div>

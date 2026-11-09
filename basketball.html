@@ -78,12 +78,14 @@
     <div class="p-card" data-s="match">
       <h2><span id="suTitle">New match</span><span class="row"><span class="st" id="suStatus"></span></span></h2>
       <div class="fgrid">
-        <label class="f">Match title / tournament<input class="in" id="fTitle" maxlength="80" placeholder="Inter-Barangay Cup · Game 3"></label>
+        <label class="f">Event / season title<input class="in" id="fTitle" maxlength="60" placeholder="Inter-Barangay Cup Season 3"></label>
+        <label class="f">Category / round<input class="in" id="fRound" maxlength="40" placeholder="Men's Open · Semifinals"></label>
         <label class="f">Venue / court<input class="in" id="fVenue" maxlength="80" placeholder="Covered Court A"></label>
         <label class="f">Date &amp; time<input class="in" id="fWhen" type="datetime-local"></label>
         <label class="f">Match ID<input class="in" id="fCode" disabled placeholder="Generated on create"></label>
       </div>
     </div>
+    <div class="p-card nm-card hidden" data-s="teams"><div class="row" style="flex-wrap:wrap;gap:10px"><span class="grow"><b>Team names on the scoreboard</b><br><span class="tiny">Full names show up to 15 characters.</span></span><div class="seg" id="nameMode" style="width:auto"><button data-v="short">Initials</button><button data-v="full">Full name</button></div></div></div>
     <div class="teams2 hidden" id="teamCards" data-s="teams"></div>
     <div class="p-card hidden" data-s="rules">
       <h2><span>Rules · <span id="presetLbl" style="color:var(--brand)">Basic OBS</span></span><span class="row"><select class="in" id="preset" style="width:auto;min-height:36px"><option value="">Change rules…</option></select></span></h2>

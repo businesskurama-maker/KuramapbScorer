@@ -135,6 +135,23 @@
   .theme-minimal .mid { background: #000; }
   .theme-minimal .per { color: #fff; }
   .theme-tournament .ttl { display: block; }
+  /* category-round · event banner (sits on top of the lower third) */
+  .rbn { align-self: stretch; display: none; align-items: stretch; height: 40px; margin-bottom: 6px; border-radius: 12px; overflow: hidden; background: var(--glass); filter: drop-shadow(0 8px 18px rgba(0,0,0,.4)); }
+  .show-round .rbn { display: flex; }
+  .show-round .ttl { display: none !important; }
+  .rbn .rr { flex: none; display: flex; align-items: center; padding: 0 20px; background: var(--brand); color: #04130a; font-weight: 900; font-size: 17px; letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; position: relative; }
+  .rbn .rr::after { content: ''; position: absolute; right: -14px; top: 0; bottom: 0; width: 28px; background: inherit; transform: skewX(-20deg); }
+  .rbn .re { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 0 22px 0 30px; font-weight: 800; font-size: 17px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rbn.solo-r .re, .rbn.solo-e .rr { display: none; }
+  .rbn.solo-r .rr { flex: 1; justify-content: center; }
+  .rbn.solo-r .rr::after { display: none; }
+  .rbn.in { animation: rbnIn .6s cubic-bezier(.2,.9,.3,1) both; }
+  @keyframes rbnIn { from { clip-path: inset(0 50% 0 50%); opacity: .2; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+  .pos-top .rbn { margin: 6px 0 0; }
+  .theme-classic .rbn .rr { background: var(--home); color: #071018; }
+  .theme-minimal .rbn { background: rgba(0,0,0,.9); border-radius: 6px; height: 34px; }
+  .theme-minimal .rbn .rr { background: #fff; color: #000; font-size: 15px; }
+  .theme-minimal .rbn .re { font-size: 15px; }
   .theme-tournament .bar { height: 92px; }
   .theme-electric .side { background: linear-gradient(180deg, rgba(26,31,46,var(--op)), rgba(8,10,18,var(--op))); }
   .reduced * { animation: none !important; transition-duration: .01s !important; }
@@ -144,6 +161,7 @@
 <div id="stage">
   <div class="wrap" id="wrap">
     <div class="pop" id="pop"></div>
+    <div class="rbn" id="rbn"><span class="rr" id="rbnR"></span><span class="re" id="rbnE"></span></div>
     <div class="ttl" id="ttl"></div>
     <div class="bar" id="bar">
       <div class="side home" id="sH" style="--c:var(--home)">

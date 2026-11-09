@@ -29,10 +29,17 @@
     root.style.setProperty('--scale', b.scale || 1); root.style.setProperty('--dsz', b.digit_size || 1); root.style.setProperty('--op', b.opacity == null ? .94 : b.opacity);
     root.style.setProperty('--glass', 'rgba(10,13,22,' + (b.opacity == null ? .94 : b.opacity) + ')'); root.style.setProperty('--glass2', 'rgba(22,27,40,' + (b.opacity == null ? .94 : b.opacity) + ')');
     $('wrap').classList.toggle('off', !!(s.overlay && s.overlay.hidden));
+    // CATEGORY ROUND - EVENT / SEASON TITLE banner
+    const rnd = String(b.round || '').trim(), evt = String(s.title || '').trim();
+    const rb = $('rbn'), rbOn = b.show_round !== false && !!rnd;
+    root.classList.toggle('show-round', !!rbOn);
+    rb.classList.toggle('solo-r', !evt); rb.classList.toggle('solo-e', !rnd);
+    const rbTxt = rnd + '|' + evt;
+    if (rbOn && rb.dataset.t !== rbTxt) { $('rbnR').textContent = rnd; $('rbnE').textContent = evt; rb.classList.remove('in'); void rb.offsetWidth; rb.classList.add('in'); rb.dataset.t = rbTxt; }
     $('ttl').innerHTML = s.title ? '<b>' + PBB.esc(s.title) + '</b>' + (s.venue ? ' · ' + PBB.esc(s.venue) : '') : 'DINKYKONG <b>LIVE</b>';
     ['home', 'away'].forEach((t) => {
       const T = teamOf(t), k = t === 'home' ? 'H' : 'A';
-      $('n' + k).textContent = b.names === 'full' ? T.name : (T.short || T.name);
+      $('n' + k).textContent = b.names === 'full' ? String(T.name || '').slice(0, 15) : (T.short || T.name);
       const lg = $('l' + k); lg.classList.toggle('none', !T.logo); if (T.logo) lg.querySelector('img').src = T.logo;
       $('f' + k).innerHTML = 'FOULS<i>' + ((d.fouls || {})[t] || 0) + '</i>'; $('f' + k).classList.toggle('hidden', b.show_fouls === false);
       $('p' + k).classList.toggle('on', !!(d.penalty || {})[t] && b.show_fouls !== false); $('p' + k).textContent = 'PENALTY';
