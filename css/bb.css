@@ -673,3 +673,6 @@ table.rt td .in { min-height: 32px; }
   #smAudit { display: none !important; } #smEv { display: flex !important; }
   .sm-body { display: block !important; }
 }
+
+.lk-nm { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #0b1224; }
+.lk-nm > span { display: flex; flex-direction: column; font-size: 12.5px; } .lk-nm small { font-size: 10.5px; color: var(--ink3); }

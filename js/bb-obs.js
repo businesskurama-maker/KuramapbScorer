@@ -8,6 +8,9 @@
   if (q.get('preview') === 'photo') document.body.classList.add('photo');
   const stage = $('stage');
   const BOARD = document.body.classList.contains('board');   // venue scoreboard (bb-board.html) reuses this engine
+  // venue scoreboard: classic seven-segment LED digits (same as the DinkyKong pickleball board)
+  const segNum = (str, pad) => (window.PBCommon && PBCommon.seg) ? PBCommon.seg(String(str).replace(/[^0-9 -]/g, ''), pad) : PBB.esc(str);
+  const segClock = (t) => String(t).split(/([:.])/).map((x) => x === ':' ? '<i class="sg-col"></i>' : x === '.' ? '<i class="sg-dot"></i>' : x ? segNum(x) : '').join('');
   function fit() { const k = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = 'scale(' + k + ')'; stage.style.left = ((innerWidth - 1920 * k) / 2) + 'px'; stage.style.top = ((innerHeight - 1080 * k) / 2) + 'px'; }
   addEventListener('resize', fit); fit();
   if (!code || !key) { $('msg').textContent = 'Basketball overlay: open this from the DinkyKong OBS Monitor (missing match code / key).'; return; }
@@ -58,7 +61,7 @@
     $('ttl').innerHTML = s.title ? '<b>' + PBB.esc(s.title) + '</b>' + (s.venue ? ' · ' + PBB.esc(s.venue) : '') : 'DINKYKONG <b>LIVE</b>';
     ['home', 'away'].forEach((t) => {
       const T = teamOf(t), k = t === 'home' ? 'H' : 'A';
-      $('n' + k).textContent = BOARD ? (T.name || T.short) : b.names === 'full' ? String(T.name || '').slice(0, 15) : (T.short || T.name);
+      $('n' + k).textContent = b.names === 'full' ? String(T.name || '').slice(0, BOARD ? 30 : 15) : (T.short || T.name);
       const lg = $('l' + k); lg.classList.toggle('none', !T.logo); if (T.logo) lg.querySelector('img').src = T.logo;
       $('f' + k).innerHTML = 'FOULS<i>' + ((d.fouls || {})[t] || 0) + '</i>'; $('f' + k).classList.toggle('hidden', b.show_fouls === false);
       $('p' + k).classList.toggle('on', !!(d.penalty || {})[t] && b.show_fouls !== false); $('p' + k).textContent = 'PENALTY';
@@ -66,8 +69,9 @@
       $('t' + k).innerHTML = b.show_tos === false ? '' : Array.from({ length: Math.min(allow, 8) }, (_, i) => '<i class="' + (i < allow - used ? '' : 'used') + '"></i>').join('');
       $('s' + k).classList.toggle('has-poss', b.show_poss !== false && d.poss === t);
       const sc = (d.score || {})[t] || 0, el = $('sc' + k);
-      if (el.textContent !== String(sc)) {
-        el.textContent = sc;
+      if (el.dataset.v !== String(sc)) {
+        el.dataset.v = String(sc);
+        if (BOARD) el.innerHTML = segNum(String(sc), 2); else el.textContent = sc;
         if (!first && prevScore && sc > prevScore[t]) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); const sd = $('s' + k); sd.classList.remove('flash'); void sd.offsetWidth; sd.classList.add('flash'); setTimeout(() => sd.classList.remove('flash'), 1000); }
       }
     });
@@ -76,7 +80,8 @@
     const ext = c.timer_mode === 'external', mid = $('mid');
     mid.className = 'mid' + (ext ? ' ext ext-' + (b.timer_win === 'cutout' ? 'cutout' : 'black') : '') + (s.status === 'final' ? ' fin' : '');
     if (ext && !BOARD) { mid.style.width = (b.timer_w || 232) + 'px'; } else mid.style.width = '';
-    $('bar').style.height = ext && b.timer_h && !BOARD ? Math.max(70, b.timer_h) + 'px' : '';
+    // external timer window: bar matches the timer height, still scaled by the Scoreboard height slider
+    $('bar').style.height = ext && b.timer_h && !BOARD ? Math.round(Math.max(70, b.timer_h) * (Number(b.bar_h) || 1)) + 'px' : '';
     $('per').textContent = s.status === 'final' ? 'FINAL' : PBB.periodLabel(d.period || 1, c.periods);
     // period start banner
     if (!first && prevPer != null && d.period !== prevPer && !(last && last.type === 'undo')) push({ kind: 'break', text: 'START OF ' + PBB.periodLabel(d.period, c.periods, true), hold: 3200, prio: 2 });
@@ -104,7 +109,7 @@
     const now = conn.serverNow(), ck = S.clock || {}, c = S.config || {};
     const left = PBB.clockLeft(ck, now);
     const t = PBB.fmtClock(left, c.tenths !== false);
-    const el = $('clk'); if (el.textContent !== t) el.textContent = t;
+    const el = $('clk'); if (el.dataset.v !== t) { el.dataset.v = t; if (BOARD) el.innerHTML = segClock(t); else el.textContent = t; }
     el.classList.toggle('low', left < 60000 && left > 0);
     const ended = left === 0 && (ck.running || ck.ended);
     $('mid').classList.toggle('ended', ended);
@@ -114,8 +119,8 @@
     }
     prevEnded = ended;
     const sh = ck.shot || {}, sEl = $('shot');
-    if (c.shot_on === false || sh.hidden || c.timer_mode === 'external') { if (sEl.textContent) sEl.textContent = ''; }
-    else { const sl = PBB.clockLeft(sh, now); const st = PBB.fmtShot(sl); if (sEl.textContent !== st) sEl.textContent = st; sEl.classList.toggle('exp', sl === 0 && (sh.running || sh.expired)); }
+    if (c.shot_on === false || sh.hidden || c.timer_mode === 'external') { if (sEl.dataset.v !== '') { sEl.dataset.v = ''; sEl.textContent = ''; } }
+    else { const sl = PBB.clockLeft(sh, now); const st = PBB.fmtShot(sl); if (sEl.dataset.v !== st) { sEl.dataset.v = st; if (BOARD) sEl.innerHTML = segNum(st, 2); else sEl.textContent = st; } sEl.classList.toggle('exp', sl === 0 && (sh.running || sh.expired)); }
     // banner countdown
     const cnt = document.querySelector('.card.in .cnt');
     if (cnt && shown && shown.until) { const s2 = Math.max(0, Math.ceil((shown.until - now) / 1000)); cnt.textContent = s2; if (s2 === 0 && shown.persistent) { shown.until = null; } }

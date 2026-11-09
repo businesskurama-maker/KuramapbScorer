@@ -55,12 +55,16 @@
   .tname b { grid-area: name; font-size: 48px; font-weight: 900; letter-spacing: 0; line-height: 1.05; text-transform: uppercase; color: var(--c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .side.away .tname b { text-align: right; }
   .score { grid-area: score; display: grid; place-items: center; min-height: 0; position: relative; }
-  .score b { font-family: var(--digit); font-weight: 900; font-size: 360px; line-height: .9; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em;
-    text-shadow: 0 0 60px color-mix(in srgb, var(--c) 45%, transparent), 0 10px 0 rgba(0,0,0,.25); }
-  .font-bebas .score b { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 470px; }
-  .font-poppins .score b { font-family: 'Poppins', sans-serif; font-weight: 900; font-size: 380px; }
+  /* classic seven-segment LED digits, electric neon (same style as the DinkyKong pickleball board) */
+  .score b { display: flex; align-items: center; justify-content: center; color: var(--c); line-height: 0; }
+  .score b .seg7 { height: 330px; width: auto; max-width: 100%; }
+  .seg7 { display: block; overflow: visible; }
+  .seg7 .on { fill: currentColor; }
+  .seg7 .off { fill: currentColor; opacity: .07; }
+  .score .seg7 .on { filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 30px color-mix(in srgb, currentColor 60%, transparent)); }
+  .clk .seg7 .on, .shot .seg7 .on { filter: drop-shadow(0 0 6px currentColor) drop-shadow(0 0 22px color-mix(in srgb, currentColor 50%, transparent)); }
   .score b.bump { animation: bigBump .9s cubic-bezier(.2,.9,.3,1.2); }
-  @keyframes bigBump { 0% { transform: scale(.6) translateY(18%); opacity: 0; filter: blur(6px); } 55% { transform: scale(1.12); opacity: 1; filter: none; color: var(--c); } 100% { transform: none; } }
+  @keyframes bigBump { 0% { transform: scale(1); filter: brightness(1); } 30% { transform: scale(1.08); filter: brightness(1.9); } 100% { transform: scale(1); filter: brightness(1); } }
   .side.flash::after { content: ''; position: absolute; inset: 0; background: radial-gradient(60% 60% at 50% 55%, color-mix(in srgb, var(--c) 45%, transparent), transparent 70%); animation: glow 1s ease-out forwards; pointer-events: none; }
   @keyframes glow { from { opacity: 1; } to { opacity: 0; } }
   .meta { grid-area: meta; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 18px; min-height: 58px; padding-top: 18px; border-top: 1px solid var(--line); }
@@ -84,16 +88,23 @@
   /* ---------- centre: period · clock · shot clock ---------- */
   .mid { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; border-radius: 40px; background: #02040a; border: 1px solid var(--line); padding: 30px 20px; position: relative; overflow: hidden; }
   .per { font-size: calc(64px * var(--psz, 1)); font-weight: 900; letter-spacing: .2em; color: var(--brand); padding-left: .2em; line-height: 1; text-transform: uppercase; }
-  .clk { font-family: var(--digit); font-weight: 900; font-size: 150px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
-  .font-bebas .clk { font-family: 'Bebas Neue'; font-weight: 400; font-size: 200px; }
-  .clk.low { color: var(--danger); text-shadow: 0 0 40px rgba(255,77,94,.5); }
-  .shot { font-family: var(--digit); font-weight: 900; font-size: 120px; line-height: 1; color: #ffd84a; min-width: 230px; text-align: center; padding: 14px 20px 10px; border-radius: 26px; background: rgba(255,216,74,.08); border: 3px solid rgba(255,216,74,.4); }
+  .clk { display: flex; align-items: center; gap: 14px; color: #eaf7ff; line-height: 0; }
+  .clk .seg7 { height: 132px; width: auto; }
+  .sg-col, .sg-dot { position: relative; width: 22px; height: 132px; flex: none; }
+  .sg-col::before, .sg-col::after, .sg-dot::after { content: ''; position: absolute; left: 3px; width: 16px; height: 16px; border-radius: 3px; background: currentColor; box-shadow: 0 0 10px currentColor; }
+  .sg-col::before { top: 34px; } .sg-col::after { bottom: 34px; } .sg-dot::after { bottom: 4px; }
+  .clk.low { color: var(--danger); }
+  .shot { display: flex; flex-direction: column; align-items: center; line-height: 0; color: #FFE600; min-width: 230px; padding: 14px 24px 18px; border-radius: 26px; background: rgba(255,216,74,.08); border: 3px solid rgba(255,216,74,.4); }
   .shot:empty { display: none; }
   .shot.exp { color: var(--danger); border-color: var(--danger); background: rgba(255,77,94,.12); animation: pulse .6s ease-in-out infinite; }
-  .shot::before { content: 'SHOT'; display: block; font-family: var(--ui); font-size: 18px; letter-spacing: .4em; color: var(--ink3); margin-bottom: 4px; padding-left: .4em; }
+  .shot .seg7 { height: 104px; width: auto; }
+  .shot::before { content: 'SHOT'; display: block; font-family: var(--ui); font-size: 18px; line-height: 1; letter-spacing: .4em; color: var(--ink3); margin-bottom: 10px; padding-left: .4em; }
   .mid.ended .clk { color: var(--danger); }
   .mid.fin .per { font-size: 90px; }
   .mid.fin .clk, .mid.fin .shot { display: none; }
+  /* external (physical) timer: the court timer runs the clock, the board shows the quarter big */
+  .mid.ext .clk, .mid.ext .shot { display: none; }
+  .mid.ext .per { font-size: calc(110px * var(--psz, 1)); }
 
   /* ---------- pop-ups (same engine as OBS, bigger) ---------- */
   .pop { position: absolute; left: 0; right: 0; bottom: 150px; height: 0; z-index: 5; }

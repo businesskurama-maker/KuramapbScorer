@@ -38,6 +38,7 @@
   .side.away .tname { align-items: flex-end; text-align: right; }
   .tname b { font-weight: 800; font-size: calc(34px * var(--nsz, 1)); letter-spacing: .06em; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 340px; text-transform: uppercase; }
   .full .tname b { font-size: calc(28px * var(--nsz, 1)); letter-spacing: .02em; }
+  .full .tname { max-width: none; } .full .tname b { max-width: calc(26ch + 10px); }
   .meta { display: flex; gap: 10px; align-items: center; margin-top: 8px; height: 16px; }
   .side.away .meta { flex-direction: row-reverse; }
   .fouls { font-size: calc(12.5px * var(--lsz, 1)); font-weight: 700; letter-spacing: .14em; color: var(--ink2); white-space: nowrap; }
@@ -47,7 +48,7 @@
   .tos { display: flex; gap: 4px; }
   .tos i { width: 13px; height: 5px; border-radius: 3px; background: var(--c); }
   .tos i.used { background: rgba(255,255,255,.16); }
-  .score { width: 132px; flex: none; display: grid; place-items: center; position: relative; background: rgba(0,0,0,.28); }
+  .score { width: calc(132px * var(--dsz, 1)); flex: none; display: grid; place-items: center; position: relative; background: rgba(0,0,0,.28); }
   .score b { font-family: var(--digit); font-weight: 800; font-size: calc(54px * var(--dsz, 1)); color: var(--c); line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; text-shadow: 0 0 14px color-mix(in srgb, var(--c) 35%, transparent); }
   .font-bebas .score b { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: calc(70px * var(--dsz, 1)); padding-top: 6px; }
   .font-poppins .score b { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: calc(54px * var(--dsz, 1)); }
@@ -72,10 +73,10 @@
   @keyframes blink { 50% { opacity: .2; } }
   .mid.ended .clk { color: #ff4d5e; }
   .mid.fin .clk, .mid.fin .shot { display: none; }
-  .mid.fin .per { font-size: 30px; letter-spacing: .3em; }
+  .mid.fin .per { font-size: calc(30px * var(--psz, 1)); letter-spacing: .3em; }
   .fin .l { opacity: .7 !important; }
   /* external court timer window */
-  .mid.ext .per { position: absolute; top: 6px; font-size: 11px; }
+  .mid.ext .per { position: absolute; top: 6px; font-size: calc(14px * var(--psz, 1)); }
   .mid.ext .clk, .mid.ext .shot { display: none; }
   .mid.ext-black { background: #000; }
   .mid.ext-cutout { background: transparent; border-color: transparent; box-shadow: inset 0 0 0 2px rgba(255,255,255,.18); }
