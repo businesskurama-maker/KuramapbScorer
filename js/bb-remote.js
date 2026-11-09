@@ -105,7 +105,7 @@
       const k = t === 'home' ? 'H' : 'A', T = team(t);
       $('n' + k).textContent = T.name; $('sc' + k).textContent = (d.score || {})[t] || 0;
       const tl = (d.tos.allow || 0) - (d.tos[t] || 0);
-      $('m' + k).innerHTML = 'F ' + ((d.fouls || {})[t] || 0) + ((d.penalty || {})[t] ? ' <span class="pen">PEN</span>' : '') + ' · TO ' + tl + (d.poss === t ? ' · ◆' : '');
+      $('m' + k).innerHTML = 'F ' + ((d.fouls || {})[t] || 0) + ((d.penalty || {})[t] ? ' <span class="pen">PEN</span>' : '') + (s.config.preset === 'basic' ? '' : ' · TO ' + tl) + (d.poss === t ? ' · ◆' : '');
     });
     document.querySelectorAll('.tsw button').forEach((bt) => { bt.textContent = team(bt.dataset.t).short || team(bt.dataset.t).name; });
     $('possTxt').textContent = d.poss ? '→ ' + team(d.poss).short : 'POSS';
@@ -398,7 +398,7 @@
     const el = e.target;
     if (el.dataset.tn) bcast({ [el.dataset.tn]: { name: el.value.trim() || team(el.dataset.tn).name } });
     if (el.dataset.ts) bcast({ [el.dataset.ts]: { short: el.value.trim().toUpperCase() } });
-    if (el.dataset.tl && el.files[0]) { try { const logo = await PBB.imageToData(el.files[0], 160); bcast({ [el.dataset.tl]: { logo } }); } catch (x) { toast('Could not read that image', true); } }
+    if (el.dataset.tl && el.files[0]) { const f = el.files[0]; el.value = ''; try { const logo = await PBB.cropLogo(f); bcast({ [el.dataset.tl]: { logo } }); } catch (x) { if (x.message !== 'CANCELLED') toast(x.message || 'Could not read that image', true); } }
   });
   $('teamEd').addEventListener('click', (e) => {
     const c = e.target.closest('[data-tc]'); if (c) { const t = c.dataset.tc, other = team(t === 'home' ? 'away' : 'home'); if (PBB.colorDist(c.dataset.c, other.color) < PBB.MIN_DIST) { toast(PBB.errText('COLORS_TOO_CLOSE'), true); return; } bcast({ [t]: { color: c.dataset.c } }); }

@@ -27,7 +27,7 @@
     BAD_PLAYER: 'That player is not on this team.', NEGATIVE_SCORE: 'A score cannot go below zero.', NEGATIVE_STAT: 'That stat is already 0.',
     NO_TIMEOUTS_LEFT: 'No timeouts left in this period.', NOTHING_TO_UNDO: 'Nothing to undo.', NOTHING_TO_REDO: 'Nothing to redo.',
     CLOCK_AT_ZERO: 'The clock is at 0:00. Set the time or go to the next period.', COLORS_TOO_CLOSE: 'The two score colours are too similar. Pick clearly different colours.',
-    DUPLICATE_JERSEY: 'That jersey number is already used on this team.', LIVE_PASS_REQUIRED: 'An active LIVE pass or free trial is needed to create basketball matches.',
+    DUPLICATE_JERSEY: 'That jersey number is already used on this team.', LIVE_PASS_REQUIRED: 'Your Basketball pass has ended. Donate or enter a pass code to create matches.', BAD_CODE: 'That pass code is not valid.', USED_CODE: 'That pass code was already used.', EXPIRED_CODE: 'That pass code expired.', BAD_REFERENCE: 'Enter the last 6 digits of the reference number.', DUPLICATE_REFERENCE: 'That reference number was already sent.', TOO_MANY_PENDING: 'You already have 3 donations waiting for confirmation.',
     SIGN_IN_REQUIRED: 'Sign in first.', NO_MATCH: 'Match not found.', PIN_LOCKED: 'Too many wrong PINs. Wait 10 minutes.',
     SCOREKEEPER_TAKEN: 'A scorekeeper is already connected. The host can allow more devices.', TEAM_NAME_REQUIRED: 'Both teams need a name.',
     TEXT_REQUIRED: 'Type the announcement first.', BAD_PERIOD: 'Invalid period.'
@@ -150,6 +150,7 @@
     ['END OF 3RD QUARTER', ''], ['END OF REGULATION', ''], ['OVERTIME', ''], ['OFFICIAL REVIEW', 'Play is under review'], ['GAME PAUSED', 'Play will resume shortly'], ['FINAL SCORE', '']
   ];
   const PRESETS = {
+    basic: { label: 'Basic OBS', basic: true, periods: 4, period_min: 10, ot_min: 5, shot_on: false, shot_full: 24, shot_short: 14, pf_limit: 5, fiba_dq: true, tf_limit: 4, tf_reset: 'period', tf_ot_continues: true, to_mode: 'game', to_game: 9, to_ot: 3, to_secs: 60 },
     fiba: { label: 'FIBA', periods: 4, period_min: 10, ot_min: 5, shot_on: true, shot_full: 24, shot_short: 14, pf_limit: 5, fiba_dq: true, tf_limit: 4, tf_reset: 'period', tf_ot_continues: true, to_mode: 'halves', to_h1: 2, to_h2: 3, to_ot: 1, to_secs: 60 },
     nba: { label: 'NBA style', periods: 4, period_min: 12, ot_min: 5, shot_on: true, shot_full: 24, shot_short: 14, pf_limit: 6, fiba_dq: false, tf_limit: 5, tf_reset: 'period', tf_ot_continues: false, to_mode: 'game', to_game: 7, to_ot: 2, to_secs: 75 },
     ncaa: { label: 'College halves', periods: 2, period_min: 20, ot_min: 5, shot_on: true, shot_full: 30, shot_short: 20, pf_limit: 5, fiba_dq: false, tf_limit: 7, tf_reset: 'half', tf_ot_continues: true, to_mode: 'game', to_game: 4, to_ot: 1, to_secs: 60 },
@@ -170,6 +171,98 @@
     });
   }
 
+  /* ---------- logo cropper: zoom / move / fit into a rounded square → WebP ≤ 50 KB ---------- */
+  function cropLogo(file, opts) {
+    opts = opts || {};
+    const MAXB = opts.maxBytes || 50 * 1024;
+    return new Promise((resolve, reject) => {
+      const rd = new FileReader();
+      rd.onerror = () => reject(new Error('Could not read that image'));
+      rd.onload = () => {
+        const im = new Image();
+        im.onerror = () => reject(new Error('That file is not an image'));
+        im.onload = () => openUI(im);
+        im.src = rd.result;
+      };
+      rd.readAsDataURL(file);
+      function openUI(im) {
+        const V = 280;   // editor viewport (css px)
+        const m = document.createElement('div'); m.className = 'modal crop-modal';
+        m.innerHTML = '<div class="sheet crop-sheet"><h3>Adjust logo</h3><div class="tiny">Drag to move · pinch, scroll or use the slider to zoom. The logo is saved as a rounded square.</div>'
+          + '<div class="crop-stage"><canvas width="' + V * 2 + '" height="' + V * 2 + '"></canvas><div class="crop-mask"></div></div>'
+          + '<input type="range" class="crop-zoom" min="0" max="1" step="0.001" value="0">'
+          + '<div class="crop-row"><button class="btn sm" data-a="fit">Fit</button><button class="btn sm" data-a="fill">Fill</button><button class="btn sm" data-a="center">Center</button><button class="btn sm" data-a="rot">Rotate</button></div>'
+          + '<div class="crop-row"><span class="tiny">Background</span><button class="crop-bg on" data-bg="" title="Transparent"></button><button class="crop-bg" data-bg="#ffffff" style="background:#fff"></button><button class="crop-bg" data-bg="#0b1026" style="background:#0b1026"></button><button class="crop-bg" data-bg="#000000" style="background:#000"></button></div>'
+          + '<div class="g2"><button class="btn" data-a="cancel">Cancel</button><button class="btn primary" data-a="ok">Use logo</button></div><div class="tiny crop-info"></div></div>';
+        document.body.appendChild(m);
+        const cv = m.querySelector('canvas'), g = cv.getContext('2d'), zoomEl = m.querySelector('.crop-zoom');
+        let rot = 0, bg = '', x = 0, y = 0, sc = 1;
+        const dims = () => (rot % 180 ? [im.height, im.width] : [im.width, im.height]);
+        const fitS = () => { const [w, h] = dims(); return V / Math.max(w, h); }, fillS = () => { const [w, h] = dims(); return V / Math.min(w, h); };
+        const minS = () => fitS() * 0.5, maxS = () => fillS() * 4;
+        const setZoomFromScale = () => { zoomEl.value = Math.log(sc / minS()) / Math.log(maxS() / minS()); };
+        const setScale = (s2, cx, cy) => { s2 = Math.max(minS(), Math.min(maxS(), s2)); cx = cx == null ? V / 2 : cx; cy = cy == null ? V / 2 : cy; x = cx - (cx - x) * (s2 / sc); y = cy - (cy - y) * (s2 / sc); sc = s2; setZoomFromScale(); draw(); };
+        function reset(mode) { const [w, h] = dims(); sc = mode === 'fill' ? fillS() : fitS(); x = (V - w * sc) / 2; y = (V - h * sc) / 2; setZoomFromScale(); draw(); }
+        function paint(ctx, size) {
+          const k = size / V; ctx.clearRect(0, 0, size, size);
+          ctx.save();
+          const r = size * 0.22; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(0, 0, size, size, r); else ctx.rect(0, 0, size, size); ctx.clip();
+          if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, size, size); }
+          const [w, h] = dims();
+          ctx.translate((x + w * sc / 2) * k, (y + h * sc / 2) * k); ctx.rotate(rot * Math.PI / 180);
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(im, -im.width * sc * k / 2, -im.height * sc * k / 2, im.width * sc * k, im.height * sc * k);
+          ctx.restore();
+        }
+        function draw() { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
+          // faint full image outside the crop for orientation
+          g.save(); g.globalAlpha = .25; const [w, h] = dims(); g.translate((x + w * sc / 2) * 2, (y + h * sc / 2) * 2); g.rotate(rot * Math.PI / 180); g.drawImage(im, -im.width * sc, -im.height * sc, im.width * sc * 2, im.height * sc * 2); g.restore();
+          const tmp = document.createElement('canvas'); tmp.width = tmp.height = V * 2; paint(tmp.getContext('2d'), V * 2); g.drawImage(tmp, 0, 0); }
+        zoomEl.oninput = () => { const t = Number(zoomEl.value); const s2 = minS() * Math.pow(maxS() / minS(), t); const ns = sc; sc = ns; setScale(s2); };
+        // drag / pinch
+        const pts = new Map(); let last = null, pinch = null;
+        const pos = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * V / r.width, (e.clientY - r.top) * V / r.height]; };
+        cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, pos(e)); last = pos(e); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), s: sc }; } });
+        cv.addEventListener('pointermove', (e) => {
+          if (!pts.has(e.pointerId)) return; const p = pos(e); pts.set(e.pointerId, p);
+          if (pts.size === 2 && pinch) { const [a, b] = [...pts.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); setScale(pinch.s * d / pinch.d, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+          else if (last) { x += p[0] - last[0]; y += p[1] - last[1]; last = p; draw(); }
+        });
+        const up = (e) => { pts.delete(e.pointerId); pinch = null; last = pts.size ? [...pts.values()][0] : null; };
+        cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+        cv.addEventListener('wheel', (e) => { e.preventDefault(); const p = pos(e); setScale(sc * Math.exp(-e.deltaY * 0.0015), p[0], p[1]); }, { passive: false });
+        m.addEventListener('click', async (e) => {
+          const b = e.target.closest('[data-a],[data-bg]'); if (!b) return;
+          if (b.dataset.bg != null) { bg = b.dataset.bg; m.querySelectorAll('.crop-bg').forEach((x2) => x2.classList.toggle('on', x2 === b)); draw(); return; }
+          const a = b.dataset.a;
+          if (a === 'fit') reset('fit'); if (a === 'fill') reset('fill');
+          if (a === 'center') { const [w, h] = dims(); x = (V - w * sc) / 2; y = (V - h * sc) / 2; draw(); }
+          if (a === 'rot') { rot = (rot + 90) % 360; reset('fit'); }
+          if (a === 'cancel') { m.remove(); reject(new Error('CANCELLED')); }
+          if (a === 'ok') {
+            const out = await encode(); if (!out) { m.querySelector('.crop-info').textContent = 'Could not make the logo small enough. Try zooming in or a simpler image.'; return; }
+            m.remove(); resolve(out);
+          }
+        });
+        async function encode() {
+          const kb = (d) => Math.round(d.length * 0.75 / 1024);
+          for (const size of [256, 224, 192, 160, 128]) {
+            const c = document.createElement('canvas'); c.width = c.height = size; paint(c.getContext('2d'), size);
+            for (const q of [0.92, 0.85, 0.78, 0.7, 0.6, 0.5, 0.4]) {
+              let d = c.toDataURL('image/webp', q);
+              if (!d.startsWith('data:image/webp')) {   // Safari can't encode WebP: PNG keeps transparency, JPEG as last resort
+                d = c.toDataURL('image/png'); if (d.length * 0.75 > MAXB) { const j = document.createElement('canvas'); j.width = j.height = size; const jg = j.getContext('2d'); jg.fillStyle = bg || '#0b1026'; jg.fillRect(0, 0, size, size); jg.drawImage(c, 0, 0); d = j.toDataURL('image/jpeg', q); }
+              }
+              if (d.length * 0.75 <= MAXB) { m.querySelector('.crop-info').textContent = size + '×' + size + ' · ' + kb(d) + ' KB'; return d; }
+            }
+          }
+          return null;
+        }
+        reset('fit');
+      }
+    });
+  }
+
   window.PBB = { client, rpc, connect, uuid, errText, errCode, clockLeft, fmtClock, fmtShot, periodLabel, colorDist, MIN_DIST, ELECTRIC,
-    playerName, FOUL, FOUL_SHORT, BREAKS, PRESETS, esc, imageToData, enabled: !!(cfg.supabaseUrl && cfg.supabaseAnonKey) };
+    playerName, FOUL, FOUL_SHORT, BREAKS, PRESETS, esc, imageToData, cropLogo, enabled: !!(cfg.supabaseUrl && cfg.supabaseAnonKey) };
 })();

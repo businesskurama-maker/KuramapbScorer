@@ -69,7 +69,13 @@
     phoneLogin.stop();
     const p = PBAuth.profile || {}, now = Date.now();
     const until = Math.max(p.live_until ? Date.parse(p.live_until) : 0, p.trial_until ? Date.parse(p.trial_until) : 0);
-    $('passTxt').innerHTML = p.is_admin ? 'Owner account · unlimited matches' : until > now ? 'LIVE access until <b>' + new Date(until).toLocaleString() + '</b>' : '<span style="color:var(--warn)">No active LIVE pass — activate one on the LIVE screen to create new matches. Existing matches stay available.</span>';
+    const bbu = p.bb_until ? Date.parse(p.bb_until) : 0;
+    $('passTxt').innerHTML = p.is_admin ? '<span class="dot on"></span>Owner account · unlimited matches'
+      : bbu > now ? '<span class="dot on"></span>Basketball pass active until <b>' + new Date(bbu).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) + '</b>'
+      : '<span class="dot" style="background:var(--warn)"></span><span style="color:var(--warn)">Basketball pass ended — donate or enter a pass code to create new matches. Your saved matches stay available.</span>';
+    passOk = !!(p.is_admin || bbu > now || !('bb_until' in p));
+    if (!('bb_until' in p) && !p.is_admin) $('passTxt').innerHTML = '<span class="dot on"></span>Basketball pass';
+    if (false) $('passTxt').innerHTML = p.is_admin ? 'Owner account · unlimited matches' : until > now ? 'LIVE access until <b>' + new Date(until).toLocaleString() + '</b>' : '<span style="color:var(--warn)">No active LIVE pass — activate one on the LIVE screen to create new matches. Existing matches stay available.</span>';
     if (shownFor !== u.id) { shownFor = u.id; link.start(u.id); route(); }
   }
   $('inBtn').onclick = () => PBAuth.signIn(location.href);
@@ -151,7 +157,38 @@
     if (b.dataset.del) { if (!confirm('Delete match ' + b.dataset.del + ' and all its events? This cannot be undone.')) return; try { await rpc('bb_delete', { p_code: b.dataset.del }); toast('Deleted'); loadMatches(); } catch (x) { toast(PBB.errText(x), true); } return; }
     cur = b.dataset.c; H = null; go(b.dataset.o);
   };
-  $('newBtn').onclick = () => { cur = null; H = null; draft = null; go('setup'); };
+  let passOk = true;
+  $('newBtn').onclick = () => { if (!passOk) { toast('Your Basketball pass has ended', true); openDonate(); return; } cur = null; H = null; draft = null; go('setup'); };
+  $('codeBtn').onclick = async () => {
+    const c = prompt('Enter your Basketball pass code (e.g. BBK7QX2M9P)'); if (!c) return;
+    try { const u = await rpc('redeem_bb_code', { p_code: c }); await PBAuth.refreshProfile?.(); toast('Pass extended until ' + new Date(u).toLocaleString()); setTimeout(() => location.reload(), 900); } catch (e) { toast(PBB.errText(e), true); }
+  };
+  $('donBtn').onclick = () => openDonate();
+  async function openDonate() {
+    let pk = [];
+    try { const { data } = await sb.from('packages').select('code,label,hours,price_php').eq('kind', 'bb').order('sort'); pk = data || []; } catch (e) {}
+    if (!pk.length) pk = [{ code: 'bb1d', label: 'Basketball · 1 day', hours: 24, price_php: 150 }, { code: 'bb3d', label: 'Basketball · 3 days', hours: 72, price_php: 300 }, { code: 'bb1w', label: 'Basketball · 1 week', hours: 168, price_php: 500 }];
+    const m = document.createElement('div'); m.className = 'modal';
+    m.innerHTML = '<div class="sheet don"><h3>Support DinkyKong · Basketball pass</h3>'
+      + '<p class="tiny" style="margin:0">DinkyKong is built and run by one independent developer. Your donation goes to the support fund for the app’s <b>storage, database and domain</b> bills. As a thank-you it extends your Basketball LIVE OBS pass.</p>'
+      + '<div class="don-pk">' + pk.map((x, i) => '<button class="don-b' + (i === 0 ? ' on' : '') + '" data-c="' + x.code + '" data-p="' + x.price_php + '" data-l="' + E(x.label) + '"><b>' + E(String(x.label || x.code).replace(/^Basketball · /, '')) + '</b><span>PHP ' + x.price_php + '</span></button>').join('') + '</div>'
+      + '<div class="don-pay"><img src="icons/instapay-qr.png" alt="InstaPay QR"><ol class="ol"><li>Scan the <b>InstaPay QR</b> with GCash, Maya or any bank app.</li><li>Donate exactly <b id="donAmt">PHP ' + pk[0].price_php + '</b>.</li><li>Type the <b>last 6 digits</b> of the reference number.</li></ol></div>'
+      + '<input class="in pin-in" id="donRef" inputmode="numeric" maxlength="6" placeholder="••••••" style="font-family:var(--digit);text-align:center;letter-spacing:.3em">'
+      + '<p class="tiny" style="margin:0">Donations are confirmed by hand daily 8:00 AM – 10:00 PM (PH time), usually within 5 minutes to 2 hours. Questions: dinkykongsupport@gmail.com</p>'
+      + '<div class="g2"><button class="btn" data-x>Close</button><button class="btn primary" id="donGo">Send reference</button></div></div>';
+    document.body.appendChild(m);
+    let sel = pk[0].code;
+    m.onclick = async (e) => {
+      if (e.target === m || e.target.closest('[data-x]')) { m.remove(); return; }
+      const b = e.target.closest('.don-b'); if (b) { sel = b.dataset.c; m.querySelectorAll('.don-b').forEach((x) => x.classList.toggle('on', x === b)); m.querySelector('#donAmt').textContent = 'PHP ' + b.dataset.p; return; }
+      if (e.target.id === 'donGo') {
+        const ref = m.querySelector('#donRef').value.replace(/\D/g, '');
+        if (ref.length !== 6) { toast('Enter the last 6 digits of the reference number', true); return; }
+        try { await rpc('request_purchase', { p_package: sel, p_reference: ref }); m.querySelector('.sheet').innerHTML = '<h3>Thank you for your support! 💛</h3><p class="muted" style="margin:0">Your pass is extended as soon as the developer confirms the donation (usually 5 minutes to 2 hours, 8 AM – 10 PM PH time). Reload this page later to see it.</p><button class="btn primary" data-x>Done</button>'; }
+        catch (x) { toast(PBB.errText(x), true); }
+      }
+    };
+  }
 
   /* ---------------- setup ---------------- */
   const RULES = [
@@ -164,7 +201,8 @@
   ];
   const TOGGLES = [['shot_on', 'Shot clock on'], ['tenths', 'Tenths in the last minute'], ['buzzer', 'Buzzer sound at 0:00'], ['fiba_dq', 'FIBA disqualification (2 U/T fouls)'], ['tf_ot_continues', 'Overtime fouls continue last period'], ['player_scoring', 'Player-based scoring'], ['sk_clock', 'Scorekeepers can run the clock']];
   const BCAST = [['theme', 'Broadcast theme', [['electric', 'Electric DinkyKong'], ['classic', 'Classic Sports'], ['minimal', 'Minimal Broadcast'], ['tournament', 'Tournament Pro']]], ['names', 'Team display', [['short', 'Initials'], ['full', 'Full names']]], ['anim_ms', 'Pop-up duration', [[2000, '2 s'], [3000, '3 s'], [4000, '4 s'], [5000, '5 s']]]];
-  const DEF = Object.assign({ format: '5v5', timer_mode: 'digital', tenths: true, buzzer: true, player_scoring: true, sk_clock: true, to_game: 5, to_period: 1 }, PBB.PRESETS.fiba);
+  const DEF = Object.assign({ format: '5v5', timer_mode: 'digital', tenths: true, buzzer: true, player_scoring: true, sk_clock: true, to_game: 9, to_period: 1, preset: 'basic' }, PBB.PRESETS.basic);
+  delete DEF.basic;
   delete DEF.label;
 
   async function openSetup() {
@@ -176,14 +214,17 @@
       $('suTitle').textContent = 'Match setup · ' + cur; $('suSave').textContent = 'Save changes'; $('fCode').value = cur;
       $('suStatus').className = 'st ' + H.status; $('suStatus').textContent = H.status.toUpperCase();
     } else if (!draft) {
+      suTab('match');
       draft = { title: '', venue: '', when: '', home: { name: '', short: '', color: '#00e5ff', logo: '' }, away: { name: '', short: '', color: '#ff2e4d', logo: '' }, config: Object.assign({}, DEF), broadcast: { theme: 'electric', names: 'short', anim_ms: 3000 }, players: [] };
       $('suTitle').textContent = 'New match'; $('suSave').textContent = 'Create match'; $('fCode').value = ''; $('suStatus').textContent = ''; $('suStatus').className = 'st';
     }
     $('fTitle').value = draft.title || ''; $('fVenue').value = draft.venue || '';
     $('fWhen').value = draft.when ? new Date(new Date(draft.when).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
-    $('preset').innerHTML = '<option value="">Load preset…</option>' + Object.entries(PBB.PRESETS).map(([k, v]) => '<option value="' + k + '">' + v.label + '</option>').join('');
+    $('preset').innerHTML = '<option value="">Change rules…</option>' + Object.entries(PBB.PRESETS).map(([k, v]) => '<option value="' + k + '">' + v.label + '</option>').join('');
     paintTeams(); paintRules();
   }
+  function suTab(k) { document.querySelectorAll('#suTabs button').forEach((b) => b.classList.toggle('on', b.dataset.s === k)); document.querySelectorAll('#vSetup > [data-s]').forEach((el) => el.classList.toggle('hidden', el.dataset.s !== k)); $('main').scrollTop = 0; }
+  $('suTabs').onclick = (e) => { const b = e.target.closest('button'); if (b) suTab(b.dataset.s); };
   function paintTeams() {
     $('teamCards').innerHTML = ['home', 'away'].map((t) => {
       const T = draft[t], other = draft[t === 'home' ? 'away' : 'home'];
@@ -205,7 +246,12 @@
   }
   function paintRules() {
     const c = draft.config;
-    $('rules').innerHTML = RULES.map(([k, l, ty, a, b]) => '<label class="f">' + l + (ty === 'sel'
+    const basic = c.preset === 'basic';
+    const BASIC_HIDE = ['ot_min', 'shot_full', 'shot_short', 'to_mode', 'to_h1', 'to_h2', 'to_game', 'to_period', 'to_ot', 'to_secs'];
+    const toHide = { halves: ['to_game', 'to_period'], game: ['to_h1', 'to_h2', 'to_period'], period: ['to_h1', 'to_h2', 'to_game'] }[c.to_mode || 'halves'] || [];
+    const shown = RULES.filter(([k]) => !(basic && BASIC_HIDE.includes(k)) && !toHide.includes(k) && !(c.shot_on === false && (k === 'shot_full' || k === 'shot_short')));
+    $('presetLbl').textContent = basic ? 'Basic OBS' : ((PBB.PRESETS[c.preset] || {}).label || 'Custom rules');
+    $('rules').innerHTML = shown.map(([k, l, ty, a, b]) => '<label class="f">' + l + (ty === 'sel'
       ? '<select class="in" data-r="' + k + '">' + a.map(([v, t]) => '<option value="' + v + '"' + (String(c[k]) === String(v) ? ' selected' : '') + '>' + t + '</option>').join('') + '</select>'
       : '<input class="in" type="number" data-r="' + k + '" min="' + a + '" max="' + b + '" step="' + (k.endsWith('_min') ? '0.5' : '1') + '" value="' + E(c[k]) + '">') + '</label>').join('')
       + BCAST.map(([k, l, o]) => '<label class="f">' + l + '<select class="in" data-bc="' + k + '">' + o.map(([v, t]) => '<option value="' + v + '"' + (String(draft.broadcast[k] || '') === String(v) ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label>').join('');
@@ -214,9 +260,10 @@
       + '<div class="toggle"><span>Technical fouls count as team fouls</span><input type="checkbox" data-tfk="T"' + ((c.tf_kinds || ['P', 'T', 'U', 'D']).includes('T') ? ' checked' : '') + '></div>'
       + '<div class="toggle"><span>Unsportsmanlike / disqualifying count</span><input type="checkbox" data-tfk="U"' + ((c.tf_kinds || ['P', 'T', 'U', 'D']).includes('U') ? ' checked' : '') + '></div>';
   }
-  $('preset').onchange = () => { const p = PBB.PRESETS[$('preset').value]; if (!p) return; const x = Object.assign({}, p); delete x.label; Object.assign(draft.config, x, { preset: $('preset').value }); paintRules(); $('preset').value = ''; toast('Preset loaded: ' + p.label); };
-  $('rules').addEventListener('change', (e) => { const el = e.target; if (el.dataset.r) draft.config[el.dataset.r] = el.type === 'number' ? Number(el.value) : (/^\d+$/.test(el.value) ? Number(el.value) : el.value); if (el.dataset.bc) draft.broadcast[el.dataset.bc] = /^\d+$/.test(el.value) ? Number(el.value) : el.value; });
-  $('rulesT').addEventListener('change', (e) => { const el = e.target; if (el.dataset.r) draft.config[el.dataset.r] = el.checked;
+  $('preset').onchange = () => { const k = $('preset').value; const p = PBB.PRESETS[k]; if (!p) return; const x = Object.assign({}, p); delete x.label; delete x.basic;
+    Object.assign(draft.config, x, { preset: k }); draft.broadcast.show_tos = k !== 'basic'; paintRules(); $('preset').value = ''; toast('Rules: ' + p.label); sendDraft(); };
+  $('rules').addEventListener('change', (e) => { const el = e.target; if (el.dataset.r && el.dataset.r === 'to_mode') setTimeout(paintRules, 0); if (el.dataset.r) draft.config[el.dataset.r] = el.type === 'number' ? Number(el.value) : (/^\d+$/.test(el.value) ? Number(el.value) : el.value); if (el.dataset.bc) draft.broadcast[el.dataset.bc] = /^\d+$/.test(el.value) ? Number(el.value) : el.value; });
+  $('rulesT').addEventListener('change', (e) => { const el = e.target; if (el.dataset.r) draft.config[el.dataset.r] = el.checked; if (el.dataset.r === 'shot_on') setTimeout(paintRules, 0);
     if (el.dataset.tfk) { const k = el.dataset.tfk, set = new Set(draft.config.tf_kinds || ['P', 'T', 'U', 'D']); const ks = k === 'U' ? ['U', 'D'] : [k]; ks.forEach((x) => (el.checked ? set.add(x) : set.delete(x))); draft.config.tf_kinds = [...set]; } });
   ['input', 'change', 'click'].forEach((ev) => $('vSetup').addEventListener(ev, () => setTimeout(sendDraft, 0)));
   ['fTitle', 'fVenue', 'fWhen'].forEach((id) => $(id).addEventListener('input', () => { draft.title = $('fTitle').value; draft.venue = $('fVenue').value; draft.when = $('fWhen').value ? new Date($('fWhen').value).toISOString() : ''; }));
@@ -230,7 +277,7 @@
   $('teamCards').addEventListener('change', async (e) => {
     const card = e.target.closest('[data-team]'); if (!card) return; const t = card.dataset.team, el = e.target;
     if (el.dataset.k === 'color') return setColor(t, el.value);
-    if (el.dataset.logo && el.files[0]) { try { draft[t].logo = await PBB.imageToData(el.files[0], 256); paintTeams(); } catch (x) { toast('Could not read that image', true); } return; }
+    if (el.dataset.logo && el.files[0]) { const f = el.files[0]; el.value = ''; try { draft[t].logo = await PBB.cropLogo(f); paintTeams(); sendDraft(); } catch (x) { if (x.message !== 'CANCELLED') toast(x.message || 'Could not read that image', true); } return; }
     const tr = el.closest('tr'); if (tr && el.dataset.f) {
       const p = findP(tr.dataset.pid);
       if (el.type === 'checkbox') p[el.dataset.f] = el.checked;

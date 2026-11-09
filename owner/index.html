@@ -159,7 +159,7 @@
   .alert-card .big-btn { padding: 8px 14px; font-size: 11px; min-height: 0; height: 36px; }
   .alert-card.on .alert-txt span { display: none; }
   /* tabs */
-  .o-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; border-radius: 14px; background: var(--navy-800); border: 1px solid var(--line); position: sticky; top: calc(57px + env(safe-area-inset-top)); z-index: 15; }
+  .o-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 4px; border-radius: 14px; background: var(--navy-800); border: 1px solid var(--line); position: sticky; top: calc(57px + env(safe-area-inset-top)); z-index: 15; }
   .o-tabs button { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; height: 42px; border: 0; border-radius: 10px; background: transparent; color: var(--ink-2); font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
   .o-tabs button svg { width: 18px; height: 18px; flex: none; }
   .o-tabs button.on { background: var(--ball); color: #071006; }
@@ -201,7 +201,7 @@
     .owner-title img { width: 30px; height: 30px; }
     .install-owner span { display: none; }
     .o-who { max-width: 44vw; padding: 0 10px; }
-    .o-tabs { position: fixed; top: auto; left: 0; right: 0; bottom: 0; grid-template-columns: repeat(4, 1fr); gap: 0; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); border-radius: 0; border-width: 1px 0 0; background: rgba(9,14,32,.97); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    .o-tabs { position: fixed; top: auto; left: 0; right: 0; bottom: 0; grid-template-columns: repeat(5, 1fr); gap: 0; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); border-radius: 0; border-width: 1px 0 0; background: rgba(9,14,32,.97); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     .o-tabs button { flex-direction: column; gap: 3px; height: 54px; font-size: 9.5px; letter-spacing: .08em; border-radius: 12px; }
     .o-tabs button svg { width: 22px; height: 22px; }
     .o-tabs button.on { background: rgba(57,255,20,.12); color: var(--ball); }
@@ -259,6 +259,9 @@
     .o-tabs { position: fixed; }
     .o-view .v-head { margin: 0 -12px 10px; padding: 12px 12px 8px; }
   }
+  .bb-gen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .bb-gen .big-btn { min-height: 0; height: 44px; padding: 0 8px; }
+  @media (max-width: 720px) { .o-tabs button span { font-size: 8.5px; } }
 </style>
 </head>
 <body>
@@ -318,6 +321,7 @@
       <button role="tab" data-view="users"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c1.9.7 3.1 2.5 3.5 5.4"/></svg><span>Users</span></button>
       <button role="tab" data-view="act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Activity</span></button>
       <button role="tab" data-view="trial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7V5h8v2M3 12h18"/></svg><span>LIVE codes</span></button>
+      <button role="tab" data-view="bb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3.5 3.5 3.5 9.3 0 12.8M18.4 5.6c-3.5 3.5-3.5 9.3 0 12.8"/></svg><span>Basketball</span></button>
     </nav>
 
     <section class="card o-view" data-view="don">
@@ -376,12 +380,68 @@
         <tbody id="trials"></tbody>
       </table></div>
     </section>
+
+    <section class="card o-view hidden" data-view="bb">
+      <div class="v-head"><h2>Basketball pass codes</h2><span class="live-tag" style="background:#ff7a00">🏀</span></div>
+      <details class="how"><summary>How pass codes work</summary><p class="note">New users get a <b>1-day free</b> Basketball LIVE OBS pass. After that, give a code to extend someone’s pass. They tap <b>Enter pass code</b> on the Basketball page while signed in. Each code works <b>once</b> and must be used within 30 days.</p></details>
+      <input class="text-in" id="bbNote" maxlength="40" placeholder="Who is it for? (optional)" style="text-transform:none;margin-bottom:8px">
+      <div class="bb-gen"><button class="big-btn" data-days="1">1 day</button><button class="big-btn" data-days="3">3 days</button><button class="big-btn" data-days="7">1 week</button></div>
+      <div class="trial-new hidden" id="bbNew">
+        <div><span class="eyebrow" id="bbNewLbl">New code</span><b id="bbCode"></b><small id="bbFor"></small></div>
+        <div class="trial-btns"><button class="btn primary" id="bbCopy">Copy code</button><button class="btn" id="bbShare">Copy message</button></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Code</th><th>Pass</th><th>For</th><th>Created</th><th>Status</th><th></th></tr></thead>
+        <tbody id="bbCodes"></tbody>
+      </table></div>
+    </section>
   </div>
 </main>
 <script src="js/config.js"></script>
 <script src="js/common.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/admin.js"></script>
+<script>
+/* Basketball pass codes (admin) */
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const esc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmt = (d) => new Date(d).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const fmtC = (c) => c.replace(/^(..)(....)(....)$/, '$1-$2-$3');
+  const label = (d) => d === 7 ? '1 week' : d + ' day' + (d === 1 ? '' : 's');
+  let last = null;
+  async function load() {
+    if (!window.PBAuth || !PBAuth.client || !PBAuth.user) return;
+    const { data } = await PBAuth.client.from('bb_codes').select('*').order('created_at', { ascending: false }).limit(100);
+    const now = Date.now();
+    $('bbCodes').innerHTML = (data || []).map((t) => {
+      const [cls, txt] = t.revoked ? ['off', 'Cancelled'] : t.redeemed_at ? ['done', 'Used by ' + (t.redeemed_email || 'user') + ' · ' + fmt(t.redeemed_at)] : new Date(t.expires_at).getTime() < now ? ['done', 'Expired unused'] : ['unused', 'Not used yet'];
+      return '<tr><td class="tcode">' + esc(fmtC(t.code)) + '</td><td>' + label(t.days) + '</td><td>' + esc(t.note || '—') + '</td><td>' + fmt(t.created_at) + '</td><td><span class="tst ' + cls + '">' + esc(txt) + '</span></td><td>' + (cls === 'unused' ? '<button class="mini-btn" data-x="' + esc(t.code) + '">Cancel</button>' : '') + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="color:var(--ink-3)">No basketball codes yet.</td></tr>';
+    const heads = [...document.querySelectorAll('#bbCodes')[0].closest('table').querySelectorAll('thead th')].map((x) => x.textContent);
+    $('bbCodes').querySelectorAll('tr').forEach((tr) => [...tr.children].forEach((td, i) => td.setAttribute('data-label', heads[i] || '')));
+  }
+  document.querySelector('.bb-gen').onclick = async (e) => {
+    const b = e.target.closest('[data-days]'); if (!b) return;
+    b.disabled = true;
+    try {
+      const note = $('bbNote').value.trim(), days = Number(b.dataset.days);
+      const { data, error } = await PBAuth.client.rpc('admin_create_bb_code', { p_days: days, p_note: note });
+      if (error) throw new Error(error.message);
+      last = { code: fmtC(data), note, days };
+      $('bbNewLbl').textContent = 'New code · ' + label(days) + ' Basketball pass'; $('bbCode').textContent = last.code; $('bbFor').textContent = note ? 'For ' + note : '';
+      $('bbNew').classList.remove('hidden'); $('bbNote').value = ''; load();
+    } catch (x) { alert('Could not generate a code: ' + x.message); }
+    finally { b.disabled = false; }
+  };
+  $('bbCodes').onclick = async (e) => { const b = e.target.closest('[data-x]'); if (!b) return; if (!confirm('Cancel code ' + fmtC(b.dataset.x) + '?')) return; const { error } = await PBAuth.client.rpc('admin_revoke_bb_code', { p_code: b.dataset.x }); if (error) alert(error.message); load(); };
+  const copy = async (t, btn) => { try { await navigator.clipboard.writeText(t); const o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => (btn.textContent = o), 1500); } catch (x) { prompt('Copy this:', t); } };
+  $('bbCopy').onclick = () => last && copy(last.code, $('bbCopy'));
+  $('bbShare').onclick = () => last && copy('Your DinkyKong Basketball LIVE OBS pass code (' + label(last.days) + '): ' + last.code + '\nOpen dinkykong.pro/basketball.html, sign in, tap “Enter pass code”. Works once, within 30 days.', $('bbShare'));
+  document.addEventListener('click', (e) => { const t = e.target.closest('.o-tabs [data-view="bb"]'); if (t) setTimeout(load, 50); });
+  setTimeout(load, 2500);
+})();
+</script>
 <script>
 (function () {
   const tabs = document.querySelectorAll('.o-tabs button');

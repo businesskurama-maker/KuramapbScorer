@@ -52,14 +52,15 @@
   <section id="vMatches">
     <div class="p-card">
       <h2>Basketball matches <button class="btn primary" id="newBtn">＋ New match</button></h2>
-      <div class="tiny" id="passTxt"></div>
+      <div class="pass-bar" id="passBar"><span class="pass-st" id="passTxt"></span><span class="row"><button class="btn sm" id="codeBtn">Enter pass code</button><button class="btn sm cyan" id="donBtn">Donate · extend pass</button></span></div>
       <div class="mlist" id="mlist"></div>
     </div>
   </section>
 
   <!-- SETUP -->
-  <section id="vSetup" class="hidden" style="display:flex;flex-direction:column;gap:14px">
-    <div class="p-card">
+  <section id="vSetup" class="hidden">
+    <div class="seg su-tabs" id="suTabs"><button data-s="match" class="on">Match</button><button data-s="teams">Teams &amp; rosters</button><button data-s="rules">Rules</button></div>
+    <div class="p-card" data-s="match">
       <h2><span id="suTitle">New match</span><span class="row"><span class="st" id="suStatus"></span></span></h2>
       <div class="fgrid">
         <label class="f">Match title / tournament<input class="in" id="fTitle" maxlength="80" placeholder="Inter-Barangay Cup · Game 3"></label>
@@ -68,13 +69,13 @@
         <label class="f">Match ID<input class="in" id="fCode" disabled placeholder="Generated on create"></label>
       </div>
     </div>
-    <div class="teams2" id="teamCards"></div>
-    <div class="p-card">
-      <h2>Rules <span class="row"><select class="in" id="preset" style="width:auto;min-height:36px"><option value="">Load preset…</option></select></span></h2>
+    <div class="teams2 hidden" id="teamCards" data-s="teams"></div>
+    <div class="p-card hidden" data-s="rules">
+      <h2><span>Rules · <span id="presetLbl" style="color:var(--brand)">Basic OBS</span></span><span class="row"><select class="in" id="preset" style="width:auto;min-height:36px"><option value="">Change rules…</option></select></span></h2>
       <div class="fgrid" id="rules"></div>
       <div class="fgrid" id="rulesT"></div>
     </div>
-    <div class="row no-print" style="justify-content:flex-end;gap:10px">
+    <div class="row no-print su-foot">
       <span class="tiny grow" id="suMsg"></span>
       <button class="btn" id="suCancel">Back</button>
       <button class="btn primary" id="suSave" style="min-width:180px">Create match</button>
