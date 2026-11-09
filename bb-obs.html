@@ -104,6 +104,12 @@
   .card .val { padding: 0 26px; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,.3); font-family: var(--digit); font-weight: 900; font-size: 46px; color: var(--c); white-space: nowrap; }
   .card .val small { font-family: var(--ui); font-size: 15px; font-weight: 800; letter-spacing: .2em; color: var(--ink); }
   .card.foul .val { color: var(--warn); }
+  /* team-foul box: neutral "TEAM" label on top, number + "FOULS" together in one colour */
+  .card .val.vf { flex-direction: column; justify-content: center; align-items: center; gap: 2px; padding: 0 24px; }
+  .card .val.vf .vp { font-family: var(--ui); font-size: 12px; font-weight: 800; letter-spacing: .3em; color: var(--ink2); padding-left: .3em; }
+  .card .val.vf .vn { display: flex; align-items: baseline; gap: 8px; color: var(--warn); line-height: 1; }
+  .card .val.vf .vn small { color: var(--warn); font-size: 15px; }
+  .card.out .val.vf .vn, .card.out .val.vf .vn small { color: #ff4d5e; }
   .card.out .val, .card.out .txt small { color: #ff4d5e; }
   .card.banner { min-width: 520px; }
   .card.banner .txt { align-items: center; text-align: center; padding: 16px 40px 15px; flex: 1; }

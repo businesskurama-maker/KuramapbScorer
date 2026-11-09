@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04060d">
+<title>DinkyKong Basketball · Scoreboard</title>
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800;900&family=Orbitron:wght@700;800;900&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  /* Venue scoreboard: designed on a 1920×1080 stage and scaled to fit any screen (letterboxed). */
+  :root {
+    --home: #00e5ff; --away: #ff2e4d; --ink: #f4f6fb; --ink2: #9aa4bd; --ink3: #5d6784; --warn: #ffb547; --brand: #39ff14; --danger: #ff4d5e;
+    --digit: 'Orbitron', 'Poppins', sans-serif; --ui: 'Poppins', system-ui, sans-serif;
+    --panel: #0b1020; --panel2: #121a33; --line: rgba(255,255,255,.08);
+  }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #03050b; }
+  body { cursor: none; }
+  body:not(.armed) { cursor: default; }
+  #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; font-family: var(--ui); color: var(--ink); overflow: hidden;
+    background:
+      radial-gradient(60% 80% at 0% 50%, color-mix(in srgb, var(--home) 16%, transparent), transparent 70%),
+      radial-gradient(60% 80% at 100% 50%, color-mix(in srgb, var(--away) 16%, transparent), transparent 70%),
+      linear-gradient(180deg, #070b18, #03050b); }
+  .hidden { display: none !important; }
+  .wrap { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 34px 44px 40px; gap: 26px; box-sizing: border-box; }
+
+  /* ---------- top banner: logo · category · event ---------- */
+  .rbn { flex: none; align-self: center; display: none; align-items: center; height: 96px; max-width: 1500px; border-radius: 26px; background: var(--rb-bg, rgba(255,255,255,.05)); border: 1px solid var(--line); overflow: hidden; }
+  .show-round .rbn { display: flex; }
+  .rbn .rl { display: none; height: 100%; padding: 0 22px; align-items: center; }
+  .rbn.has-logo .rl { display: flex; }
+  .rbn .rl img { height: 70px; width: auto; max-width: 200px; object-fit: contain; border-radius: 12px; }
+  .rbn .rr { height: 100%; display: flex; align-items: center; padding: 0 34px; background: var(--rnd, var(--brand)); color: var(--rnd-ink, #04130a); font-weight: 900; font-size: 38px; letter-spacing: .12em; white-space: nowrap; }
+  .rbn .re { padding: 0 40px; font-weight: 800; font-size: 40px; letter-spacing: .16em; color: var(--evt, var(--ink)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rbn.solo-r .re, .rbn.solo-e .rr { display: none; }
+  .rbn.in { animation: rbIn .7s cubic-bezier(.2,.9,.3,1) both; }
+  @keyframes rbIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: none; } }
+  .ttl { display: none !important; }
+  .ttl-fallback { flex: none; align-self: center; font-weight: 800; font-size: 34px; letter-spacing: .3em; color: var(--ink2); }
+
+  /* ---------- main board ---------- */
+  .bar { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr 560px 1fr; gap: 26px; position: relative; }
+  .side { position: relative; display: grid; grid-template-columns: 150px 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: "logo name" "score score" "meta meta";
+    align-items: center; gap: 18px 22px; padding: 30px 36px 30px; border-radius: 40px; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); overflow: hidden; }
+  .side.away { grid-template-columns: 1fr 150px; grid-template-areas: "name logo" "score score" "meta meta"; }
+  .acc { position: absolute; left: 0; right: 0; top: 0; height: 12px; background: var(--c); box-shadow: 0 0 40px var(--c); }
+  .logo { grid-area: logo; width: 150px; height: 150px; display: grid; place-items: center; border-radius: 30px; background: rgba(255,255,255,.04); }
+  .logo img { width: 128px; height: 128px; object-fit: contain; border-radius: 24%; }
+  .logo.none, .no-logos .logo { display: none; }
+  .side:has(.logo.none) .tname b, .no-logos .side .tname b { grid-column: 1 / -1; text-align: center !important; }
+  .tname { display: contents; }
+  .tname b { grid-area: name; font-size: 48px; font-weight: 900; letter-spacing: 0; line-height: 1.05; text-transform: uppercase; color: var(--c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .side.away .tname b { text-align: right; }
+  .score { grid-area: score; display: grid; place-items: center; min-height: 0; position: relative; }
+  .score b { font-family: var(--digit); font-weight: 900; font-size: 360px; line-height: .9; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+    text-shadow: 0 0 60px color-mix(in srgb, var(--c) 45%, transparent), 0 10px 0 rgba(0,0,0,.25); }
+  .font-bebas .score b { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 470px; }
+  .font-poppins .score b { font-family: 'Poppins', sans-serif; font-weight: 900; font-size: 380px; }
+  .score b.bump { animation: bigBump .9s cubic-bezier(.2,.9,.3,1.2); }
+  @keyframes bigBump { 0% { transform: scale(.6) translateY(18%); opacity: 0; filter: blur(6px); } 55% { transform: scale(1.12); opacity: 1; filter: none; color: var(--c); } 100% { transform: none; } }
+  .side.flash::after { content: ''; position: absolute; inset: 0; background: radial-gradient(60% 60% at 50% 55%, color-mix(in srgb, var(--c) 45%, transparent), transparent 70%); animation: glow 1s ease-out forwards; pointer-events: none; }
+  @keyframes glow { from { opacity: 1; } to { opacity: 0; } }
+  .meta { grid-area: meta; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 18px; min-height: 58px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .side.away .meta { flex-direction: row-reverse; }
+  .fouls { font-size: 26px; font-weight: 800; letter-spacing: .14em; color: var(--warn); white-space: nowrap; }
+  .fouls::before { content: 'TEAM '; color: var(--ink3); }
+  .fouls i { font-style: normal; color: var(--warn); font-family: var(--digit); font-size: 40px; margin-left: 12px; vertical-align: -4px; }
+  .pen { display: none; order: 3; font-size: 22px; font-weight: 900; letter-spacing: .16em; padding: 6px 16px 4px; border-radius: 10px; background: var(--warn); color: #1b1200; }
+  .pen.on { display: inline-block; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .tos { display: flex; gap: 10px; align-items: center; }
+  .tos::before { content: 'T.O.'; font-size: 20px; font-weight: 800; letter-spacing: .18em; color: var(--ink3); margin-right: 6px; }
+  .side.away .tos { flex-direction: row-reverse; } .side.away .tos::before { margin: 0 0 0 6px; }
+  .tos i { width: 28px; height: 14px; border-radius: 7px; background: var(--c); }
+  .tos i.used { background: rgba(255,255,255,.12); }
+  .poss { position: absolute; top: 50%; width: 0; height: 0; border: 30px solid transparent; transform: translateY(-50%); opacity: 0; transition: opacity .3s; }
+  .side.home .poss { right: 14px; border-left-color: var(--brand); border-right: 0; }
+  .side.away .poss { left: 14px; border-right-color: var(--brand); border-left: 0; }
+  .side.has-poss .poss { opacity: 1; }
+
+  /* ---------- centre: period · clock · shot clock ---------- */
+  .mid { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; border-radius: 40px; background: #02040a; border: 1px solid var(--line); padding: 30px 20px; position: relative; overflow: hidden; }
+  .per { font-size: calc(64px * var(--psz, 1)); font-weight: 900; letter-spacing: .2em; color: var(--brand); padding-left: .2em; line-height: 1; text-transform: uppercase; }
+  .clk { font-family: var(--digit); font-weight: 900; font-size: 150px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+  .font-bebas .clk { font-family: 'Bebas Neue'; font-weight: 400; font-size: 200px; }
+  .clk.low { color: var(--danger); text-shadow: 0 0 40px rgba(255,77,94,.5); }
+  .shot { font-family: var(--digit); font-weight: 900; font-size: 120px; line-height: 1; color: #ffd84a; min-width: 230px; text-align: center; padding: 14px 20px 10px; border-radius: 26px; background: rgba(255,216,74,.08); border: 3px solid rgba(255,216,74,.4); }
+  .shot:empty { display: none; }
+  .shot.exp { color: var(--danger); border-color: var(--danger); background: rgba(255,77,94,.12); animation: pulse .6s ease-in-out infinite; }
+  .shot::before { content: 'SHOT'; display: block; font-family: var(--ui); font-size: 18px; letter-spacing: .4em; color: var(--ink3); margin-bottom: 4px; padding-left: .4em; }
+  .mid.ended .clk { color: var(--danger); }
+  .mid.fin .per { font-size: 90px; }
+  .mid.fin .clk, .mid.fin .shot { display: none; }
+
+  /* ---------- pop-ups (same engine as OBS, bigger) ---------- */
+  .pop { position: absolute; left: 0; right: 0; bottom: 150px; height: 0; z-index: 5; }
+  .card { position: absolute; bottom: 0; left: 50%; width: max-content; min-width: 620px; max-width: 1400px; transform: translate(-50%, 40px) scale(1.7); transform-origin: 50% 100%; opacity: 0;
+    transition: transform .5s cubic-bezier(.2,.9,.3,1), opacity .3s ease; display: flex; align-items: stretch; border-radius: 16px; overflow: hidden;
+    background: linear-gradient(180deg, #1b2236, #0c101c); box-shadow: 0 30px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.08); }
+  .card.in { opacity: 1; transform: translate(-50%, 0) scale(1.7); }
+  .card .cacc { width: 8px; background: var(--c); flex: none; }
+  .card .jer { min-width: 104px; padding: 0 18px; display: grid; place-items: center; background: var(--c); color: #071018; font-family: var(--digit); font-weight: 900; font-size: 44px; }
+  .card .ph { width: 92px; flex: none; background: center / cover no-repeat rgba(255,255,255,.05); }
+  .card .txt { padding: 14px 26px 13px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+  .card .txt b { font-size: 31px; font-weight: 800; letter-spacing: .03em; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
+  .card .txt small { margin-top: 5px; font-size: 15px; font-weight: 700; letter-spacing: .22em; color: var(--ink2); text-transform: uppercase; white-space: nowrap; }
+  .card .val { padding: 0 26px; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,.3); font-family: var(--digit); font-weight: 900; font-size: 46px; color: var(--c); white-space: nowrap; }
+  .card .val small { font-family: var(--ui); font-size: 15px; font-weight: 800; letter-spacing: .2em; color: var(--ink); }
+  .card .val.vf { flex-direction: column; justify-content: center; align-items: center; gap: 2px; padding: 0 24px; }
+  .card .val.vf .vp { font-family: var(--ui); font-size: 12px; font-weight: 800; letter-spacing: .3em; color: var(--ink2); padding-left: .3em; }
+  .card .val.vf .vn { display: flex; align-items: baseline; gap: 8px; color: var(--warn); line-height: 1; }
+  .card .val.vf .vn small { color: var(--warn); }
+  .card.out .val.vf .vn, .card.out .val.vf .vn small, .card.out .txt small { color: var(--danger); }
+  .card.banner { min-width: 620px; }
+  .card.banner .txt { align-items: center; text-align: center; padding: 16px 40px 15px; flex: 1; }
+  .card.banner .txt b { font-size: 36px; letter-spacing: .12em; }
+  .card.banner .cnt { padding: 0 24px; display: grid; place-items: center; font-family: var(--digit); font-weight: 800; font-size: 34px; background: rgba(0,0,0,.35); color: var(--warn); }
+  .card.final { min-width: 860px; }
+  .card.final .txt { flex: 1; align-items: center; padding: 18px 30px; }
+  .fin { display: flex; align-items: center; gap: 26px; font-weight: 800; font-size: 30px; letter-spacing: .04em; text-transform: uppercase; }
+  .fin .sc { font-family: var(--digit); font-size: 52px; }
+  .fin .l { opacity: .55; }
+  .fin-tag { font-size: 15px; font-weight: 800; letter-spacing: .4em; color: var(--brand); margin-bottom: 6px; }
+  .reduced * { animation: none !important; transition-duration: .01s !important; }
+
+  /* ---------- start screen (fullscreen + sound need one tap) ---------- */
+  #start { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(3,5,11,.72); backdrop-filter: blur(6px); font-family: var(--ui); color: var(--ink); cursor: pointer; }
+  #start div { text-align: center; padding: 34px 44px; border-radius: 24px; background: #0e1530; border: 1px solid rgba(255,255,255,.12); }
+  #start b { display: block; font-size: 26px; margin-bottom: 8px; }
+  #start span { color: var(--ink2); font-size: 15px; }
+  .armed #start { display: none; }
+  #fsBtn { position: fixed; right: 14px; bottom: 14px; z-index: 40; width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(255,255,255,.15); background: rgba(10,14,28,.7); color: #fff; font-size: 20px; cursor: pointer; opacity: 0; transition: opacity .3s; }
+  body:hover #fsBtn { opacity: 1; }
+</style>
+</head>
+<body class="board">
+<div id="stage">
+  <div class="wrap" id="wrap">
+    <div class="rbn" id="rbn"><span class="rl" id="rbnL"><img alt=""></span><span class="rr" id="rbnR"></span><span class="re" id="rbnE"></span></div>
+    <div class="ttl" id="ttl"></div>
+    <div class="bar" id="bar">
+      <div class="side home" id="sH" style="--c:var(--home)">
+        <div class="acc"></div><div class="logo none" id="lH"><img alt=""></div>
+        <div class="tname"><b id="nH">HOME</b><div class="meta"><span class="fouls" id="fH">FOULS<i>0</i></span><span class="pen" id="pH">PENALTY</span><span class="tos" id="tH"></span></div></div>
+        <div class="score"><b id="scH">0</b></div><span class="poss"></span>
+      </div>
+      <div class="mid" id="mid"><span class="per" id="per">Q1</span><span class="clk" id="clk">10:00</span><span class="shot" id="shot"></span></div>
+      <div class="side away" id="sA" style="--c:var(--away)">
+        <div class="acc"></div><div class="logo none" id="lA"><img alt=""></div>
+        <div class="tname"><b id="nA">AWAY</b><div class="meta"><span class="fouls" id="fA">FOULS<i>0</i></span><span class="pen" id="pA">PENALTY</span><span class="tos" id="tA"></span></div></div>
+        <div class="score"><b id="scA">0</b></div><span class="poss"></span>
+      </div>
+    </div>
+    <div class="pop" id="pop"></div>
+  </div>
+  <div id="msg" style="position:absolute;left:40px;top:40px;font:600 26px Poppins,sans-serif;color:#fff"></div>
+</div>
+<div id="start"><div><b>🏀 Tap to start the scoreboard</b><span>Goes fullscreen and turns on the buzzer sound</span></div></div>
+<button id="fsBtn" title="Fullscreen">⛶</button>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/bb-core.js"></script>
+<script src="js/bb-obs.js"></script>
+<script>
+(function () {
+  const go = () => {
+    document.body.classList.add('armed');
+    const el = document.documentElement;
+    try { if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {}); } catch (e) {}
+    try { const A = window.AudioContext || window.webkitAudioContext; if (A) { const ac = new A(); ac.resume(); setTimeout(() => ac.close(), 500); } } catch (e) {}
+    try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}
+  };
+  document.getElementById('start').onclick = go;
+  document.getElementById('fsBtn').onclick = (e) => { e.stopPropagation(); go(); };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && document.body.classList.contains('armed')) { try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {} } });
+})();
+</script>
+</body>
+</html>

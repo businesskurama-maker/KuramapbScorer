@@ -7,6 +7,7 @@
   if (q.get('preview')) document.body.classList.add('preview');
   if (q.get('preview') === 'photo') document.body.classList.add('photo');
   const stage = $('stage');
+  const BOARD = document.body.classList.contains('board');   // venue scoreboard (bb-board.html) reuses this engine
   function fit() { const k = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = 'scale(' + k + ')'; stage.style.left = ((innerWidth - 1920 * k) / 2) + 'px'; stage.style.top = ((innerHeight - 1080 * k) / 2) + 'px'; }
   addEventListener('resize', fit); fit();
   if (!code || !key) { $('msg').textContent = 'Basketball overlay: open this from the DinkyKong OBS Monitor (missing match code / key).'; return; }
@@ -20,7 +21,7 @@
     const first = !S; S = s;
     const b = s.broadcast || {}, c = s.config || {}, d = s.derived || {};
     const root = document.body;
-    root.className = root.className.split(' ').filter((x) => /^(preview|photo)$/.test(x)).join(' ');
+    root.className = root.className.split(' ').filter((x) => /^(preview|photo|board|armed)$/.test(x)).join(' ');
     root.classList.add('theme-' + (b.theme || 'electric'), 'font-' + (b.font || 'digital'), 'pos-' + (b.pos || 'bottom'));
     if (b.names === 'full') root.classList.add('full');
     if (b.show_title || b.theme === 'tournament') root.classList.add('show-title');
@@ -45,7 +46,7 @@
       if (bc) { const n = parseInt(bc.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, bl = n & 255, up = (x) => Math.min(255, Math.round(x + 18));
         root.style.setProperty('--glass', 'rgba(' + r + ',' + g + ',' + bl + ',' + op + ')'); root.style.setProperty('--glass2', 'rgba(' + up(r) + ',' + up(g) + ',' + up(bl) + ',' + op + ')'); root.classList.add('custom-bar'); }
       else { root.style.setProperty('--glass', 'rgba(10,13,22,' + op + ')'); root.style.setProperty('--glass2', 'rgba(22,27,40,' + op + ')'); } }
-    $('wrap').classList.toggle('off', !!(s.overlay && s.overlay.hidden));
+    $('wrap').classList.toggle('off', !BOARD && !!(s.overlay && s.overlay.hidden));
     // CATEGORY ROUND - EVENT / SEASON TITLE banner
     const rnd = String(b.round || '').trim(), evt = String(s.title || '').trim();
     const rb = $('rbn'), rbLogo = /^data:image\//.test(b.rb_logo || '') ? b.rb_logo : '', rbOn = b.show_round !== false && !!(rnd || evt || rbLogo);
@@ -57,7 +58,7 @@
     $('ttl').innerHTML = s.title ? '<b>' + PBB.esc(s.title) + '</b>' + (s.venue ? ' · ' + PBB.esc(s.venue) : '') : 'DINKYKONG <b>LIVE</b>';
     ['home', 'away'].forEach((t) => {
       const T = teamOf(t), k = t === 'home' ? 'H' : 'A';
-      $('n' + k).textContent = b.names === 'full' ? String(T.name || '').slice(0, 15) : (T.short || T.name);
+      $('n' + k).textContent = BOARD ? (T.name || T.short) : b.names === 'full' ? String(T.name || '').slice(0, 15) : (T.short || T.name);
       const lg = $('l' + k); lg.classList.toggle('none', !T.logo); if (T.logo) lg.querySelector('img').src = T.logo;
       $('f' + k).innerHTML = 'FOULS<i>' + ((d.fouls || {})[t] || 0) + '</i>'; $('f' + k).classList.toggle('hidden', b.show_fouls === false);
       $('p' + k).classList.toggle('on', !!(d.penalty || {})[t] && b.show_fouls !== false); $('p' + k).textContent = 'PENALTY';
@@ -74,8 +75,8 @@
     // timer window
     const ext = c.timer_mode === 'external', mid = $('mid');
     mid.className = 'mid' + (ext ? ' ext ext-' + (b.timer_win === 'cutout' ? 'cutout' : 'black') : '') + (s.status === 'final' ? ' fin' : '');
-    if (ext) { mid.style.width = (b.timer_w || 232) + 'px'; } else mid.style.width = '';
-    $('bar').style.height = ext && b.timer_h ? Math.max(70, b.timer_h) + 'px' : '';
+    if (ext && !BOARD) { mid.style.width = (b.timer_w || 232) + 'px'; } else mid.style.width = '';
+    $('bar').style.height = ext && b.timer_h && !BOARD ? Math.max(70, b.timer_h) + 'px' : '';
     $('per').textContent = s.status === 'final' ? 'FINAL' : PBB.periodLabel(d.period || 1, c.periods);
     // period start banner
     if (!first && prevPer != null && d.period !== prevPer && !(last && last.type === 'undo')) push({ kind: 'break', text: 'START OF ' + PBB.periodLabel(d.period, c.periods, true), hold: 3200, prio: 2 });
@@ -137,7 +138,7 @@
       push({ kind: 'foul', team: e.team, hold, prio: 1, out,
         jer: p ? p.number : (T.short || ''), name: p ? PBB.playerName(p) : T.name + (kind === 'B' ? ' BENCH' : ''),
         sub: PBB.FOUL[kind] + (st ? ' (' + st.fouls + ')' : '') + (out ? (st.dq ? ' · DISQUALIFIED' : ' · FOULED OUT') : ''),
-        val: 'TEAM ' + ((S.derived.fouls || {})[e.team] || 0), valTxt: (S.derived.penalty || {})[e.team] ? 'PENALTY' : 'FOULS', photo: p && p.photo });
+        val: String((S.derived.fouls || {})[e.team] || 0), valPre: 'TEAM', valTxt: (S.derived.penalty || {})[e.team] ? 'FOULS · PENALTY' : 'FOULS', photo: p && p.photo });
     }
   }
   function push(item) {
@@ -201,7 +202,8 @@
     } else {
       el.innerHTML = '<div class="cacc"></div><div class="jer">' + E(it.jer) + '</div>' + (it.photo ? '<div class="ph" style="background-image:url(' + JSON.stringify(it.photo).slice(1, -1) + ')"></div>' : '')
         + '<div class="txt"><b>' + E(it.name) + '</b><small>' + E(it.sub) + '</small></div>'
-        + '<div class="val">' + E(it.val) + '<small>' + E(it.valTxt) + '</small></div>';
+        + (it.valPre ? '<div class="val vf"><small class="vp">' + E(it.valPre) + '</small><span class="vn">' + E(it.val) + '<small>' + E(it.valTxt) + '</small></span></div>'
+          : '<div class="val">' + E(it.val) + '<small>' + E(it.valTxt) + '</small></div>');
     }
     $('pop').appendChild(el); cardEl = el; shown = it;
     requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));

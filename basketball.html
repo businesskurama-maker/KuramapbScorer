@@ -106,6 +106,7 @@
       <div class="mb-id"><span class="pc-k">OBS MONITOR</span><b id="moTitle">Match</b></div>
       <div class="mb-score" id="moScore"></div>
       <div class="mb-right"><span class="r-live wait" id="moLive"><i></i><span>CONNECTING</span></span>
+        <a class="btn sm" id="boardOpen" target="_blank" rel="noopener" title="Open the big venue scoreboard for a TV or monitor">▣ Venue scoreboard</a>
         <button class="btn cyan sm" id="copyObs" title="Copy the OBS Browser Source link">⧉ Copy OBS link</button></div>
     </div>
     <div class="mo-grid">
@@ -145,6 +146,9 @@
           <div id="devs" class="dev-list"></div>
         </div>
         <div class="mo-pane hidden" data-t="obs">
+          <span class="pc-k">VENUE SCOREBOARD · TV / MONITOR / PROJECTOR</span>
+          <div class="urlbox"><input class="in" id="boardUrl" readonly><button class="btn" id="copyBoard">Copy</button></div>
+          <p class="tiny" style="margin:-4px 0 6px">Open this link on the court TV (or any browser), tap once for fullscreen + buzzer. Huge score, clock, shot clock, fouls, timeouts and the same scoring pop-ups as OBS. Read-only.</p>
           <span class="pc-k">BROWSER SOURCE LINK</span>
           <div class="urlbox"><input class="in" id="obsUrl" readonly><button class="btn cyan" id="copyObs2">Copy</button></div>
           <ol class="ol steps">

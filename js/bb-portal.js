@@ -414,6 +414,7 @@
     try { H = await rpc('bb_host', { p_code: cur }); } catch (e) { noAccess(e); return; }
     const base = location.href.replace(/[^/]*$/, '');
     const obs = base + 'bb-obs.html?m=' + cur + '&k=' + H.view_key;
+    const board = base + 'bb-board.html?m=' + cur + '&k=' + H.view_key; $('boardUrl').value = board; $('boardOpen').href = board;
     $('obsUrl').value = obs; $('moTitle').textContent = (H.title || 'Match') + ' · ' + cur;
     const bg = [...$('bgSeg').children].find((b) => b.classList.contains('on')).dataset.v;
     $('moFrame').src = obs + '&preview=' + bg;
@@ -453,6 +454,7 @@
   $('zoomSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; [...$('zoomSeg').children].forEach((x) => x.classList.toggle('on', x === b)); $('moPrev').classList.toggle('zoom-lt', b.dataset.z === 'lt'); };
   $('moTabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; [...$('moTabs').children].forEach((x) => x.classList.toggle('on', x === b)); document.querySelectorAll('#vMonitor .mo-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.t !== b.dataset.t)); };
   $('copyObs2').onclick = () => $('copyObs').click();
+  $('copyBoard').onclick = async () => { try { await navigator.clipboard.writeText($('boardUrl').value); toast('Venue scoreboard link copied'); } catch (e) { $('boardUrl').select(); document.execCommand('copy'); toast('Copied'); } };
   $('copyObs').onclick = async () => { try { await navigator.clipboard.writeText($('obsUrl').value); toast('Browser Source URL copied'); } catch (e) { $('obsUrl').select(); document.execCommand('copy'); toast('Copied'); } };
   $('newPin').onclick = async () => { if (!confirm('Make a new PIN? Phones already paired stay connected; new phones need the new PIN.')) return; try { H = await rpc('bb_update', { p_code: cur, p: { new_pin: true } }); $('pin').textContent = H.pin; toast('New PIN ready'); } catch (e) { toast(PBB.errText(e), true); } };
   $('multi').onchange = async () => { try { H = await rpc('bb_update', { p_code: cur, p: { allow_multi: $('multi').checked } }); } catch (e) { toast(PBB.errText(e), true); } };
