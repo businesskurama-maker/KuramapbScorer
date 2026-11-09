@@ -66,7 +66,7 @@
         <button class="btn cyan" id="donBtn">Donate · extend pass</button>
       </div>
     </div>
-    <div class="p-card">
+    <div class="p-card m-listcard">
       <h2>Your matches <button class="btn primary" id="newBtn">＋ New match</button></h2>
       <div class="mlist" id="mlist"></div>
     </div>
@@ -110,12 +110,12 @@
           <div class="row" style="flex-wrap:wrap"><span class="tiny grow">Preview of the exact Browser Source output (transparent areas shown as a pattern).</span>
             <div class="seg" id="bgSeg" style="width:auto"><button data-v="1" class="on">Pattern</button><button data-v="photo">Court</button></div></div>
         </div>
-        <div class="p-card">
+        <div class="p-card mo-look">
           <h2>Lower-third designer <span class="tiny">updates the preview and OBS live</span></h2>
           <div id="moLook"></div>
         </div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+      <div class="mo-right"><div class="mo-c2">
         <div class="p-card" id="moScore"></div>
         <div class="p-card">
           <h3>OBS Browser Source</h3>
@@ -133,6 +133,7 @@
           <div class="g3"><button class="btn danger" id="moPause">Emergency clock pause</button><button class="btn" id="moClear">Clear announcement</button><button class="btn warn" id="moFinal">End match</button></div>
           <div class="toggle"><span>Lock broadcast settings (scorekeepers can’t change the look)</span><input type="checkbox" id="moLock"></div>
         </div>
+      </div><div class="mo-c3">
         <div class="p-card">
           <h2>Pair phones <button class="btn sm" id="newPin">New PIN</button></h2>
           <div class="row"><span class="tiny grow">Scan, then enter the PIN. Each phone gets its own scoped token.</span><span class="pin" id="pin">——————</span></div>
@@ -145,7 +146,7 @@
           <h2>Devices <button class="btn sm danger" id="revokeAll">Remove all</button></h2>
           <div id="devs" style="display:flex;flex-direction:column;gap:6px"></div>
         </div>
-      </div>
+      </div></div>
     </div>
   </section>
 
@@ -155,9 +156,12 @@
       <h2><span id="smTitle">Match summary</span><span class="row no-print"><button class="btn sm" id="xPrint">Print / PDF</button><button class="btn sm" id="xCsv">CSV</button><button class="btn sm" id="xImg">Result image</button></span></h2>
       <div id="smHead"></div>
     </div>
-    <div class="p-card"><h3>Box score</h3><div id="smBox"></div></div>
-    <div class="p-card"><h3>Event history</h3><div id="smEv" style="display:flex;flex-direction:column;gap:6px;max-height:560px;overflow:auto"></div></div>
-    <div class="p-card no-print"><h3>Audit trail</h3><div id="smAudit" class="tiny" style="display:flex;flex-direction:column;gap:4px"></div></div>
+    <div class="sm-body">
+    <div class="p-card sm-box"><h3>Box score</h3><div id="smBox"></div></div>
+    <div class="sm-side">
+    <div class="p-card sm-ev"><h3>Event history</h3><div id="smEv" style="display:flex;flex-direction:column;gap:6px;max-height:560px;overflow:auto"></div></div>
+    <div class="p-card no-print sm-au"><h3>Audit trail</h3><div id="smAudit" class="tiny" style="display:flex;flex-direction:column;gap:4px"></div></div>
+    </div></div>
   </section>
 </main>
 <div class="toast" id="toast"></div>

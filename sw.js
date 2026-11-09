@@ -1,5 +1,5 @@
 /* Kurama Pickleball Scorer service worker: app shell offline, CDN libs + fonts cached on first use. */
-const VERSION = 'aopb-v132';
+const VERSION = 'aopb-v133';
 const SHELL = [
   './', './index.html', './display.html', './remote.html',
   './admin.html', './live.html', './obs.html', './js/live.js', './js/strip.js', './js/tour.js', './css/live.css', './css/strip.css', './owner/', './owner/index.html', './css/app.css', './js/config.js', './js/auth.js', './js/admin.js', './js/common.js', './js/engine.js', './js/link.js', './js/display.js', './js/voice.js', './js/remote.js', './basketball.html', './bb-login.html', './bb-remote.html', './bb-obs.html', './js/bb-core.js', './js/bb-remote.js', './js/bb-obs.js', './js/bb-portal.js', './css/bb.css',

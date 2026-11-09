@@ -62,7 +62,7 @@
 
   /* centre: period + clock */
   .mid { width: calc(232px * var(--dsz, 1)); flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #05070c; position: relative; border-left: 1px solid rgba(255,255,255,.08); border-right: 1px solid rgba(255,255,255,.08); }
-  .per { font-size: calc(15px * var(--lsz, 1)); font-weight: 800; letter-spacing: .26em; color: var(--brand); padding-left: .26em; line-height: 1; }
+  .per { font-size: calc(15px * var(--psz, 1)); font-weight: 800; letter-spacing: .26em; color: var(--brand); padding-left: .26em; line-height: 1; }
   .clk { font-family: var(--digit); font-weight: 800; font-size: calc(40px * var(--dsz, 1)); line-height: 1; margin-top: 6px; font-variant-numeric: tabular-nums; letter-spacing: .03em; }
   .font-bebas .clk { font-family: 'Bebas Neue'; font-weight: 400; font-size: calc(50px * var(--dsz, 1)); }
   .font-poppins .clk { font-family: 'Poppins'; }
@@ -151,6 +151,17 @@
   .theme-classic .rbn .rr { background: var(--rnd, var(--home)); color: var(--rnd-ink, #071018); }
   .theme-minimal .rbn { background: var(--rb-bg, rgba(0,0,0,.9)); border-radius: 6px; }
   .theme-minimal .rbn .rr { background: var(--rnd, #fff); color: var(--rnd-ink, #000); }
+  /* optional banner logo (league / event) */
+  .rbn .rl { flex: none; display: none; align-items: center; justify-content: center; padding: 0 calc(10px * var(--rsz, 1)); }
+  .rbn.has-logo .rl { display: flex; }
+  .rbn .rl img { height: calc(var(--rbh) - 8px); width: auto; max-width: calc(var(--rbh) * 2.4); object-fit: contain; border-radius: 6px; }
+  .rbn.solo-r.has-logo .rr, .rbn.has-logo.solo-e .re { justify-content: center; }
+  .rb-ribbon .rbn .rl { padding: 0 4px 0 18px; }
+  .rb-stack .rbn .rl { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); padding: 0; }
+  .rb-stack .rbn .rl img { height: calc(var(--rbh) - 6px); }
+  .rb-stack .rbn { position: relative; }
+  .rb-pill .rbn .rl { padding: 0 8px 0 6px; }
+  .rb-pill .rbn .rl img { border-radius: 999px; }
   .theme-tournament .bar { height: calc(92px * var(--bhs, 1)); }
   /* custom scoreboard colour */
   .custom-bar .side, .custom-bar .theme-electric .side { background: linear-gradient(180deg, var(--glass2), var(--glass)) !important; }
@@ -187,7 +198,7 @@
 <div id="stage">
   <div class="wrap" id="wrap">
     <div class="pop" id="pop"></div>
-    <div class="rbn" id="rbn"><span class="rr" id="rbnR"></span><span class="re" id="rbnE"></span></div>
+    <div class="rbn" id="rbn"><span class="rl" id="rbnL"><img alt=""></span><span class="rr" id="rbnR"></span><span class="re" id="rbnE"></span></div>
     <div class="ttl" id="ttl"></div>
     <div class="bar" id="bar">
       <div class="side home" id="sH" style="--c:var(--home)">

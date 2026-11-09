@@ -334,13 +334,15 @@
    * el: container; getB(): current broadcast settings; send(patch): saves a broadcast patch. */
   const LOOK_TPL = [['split', 'Split', 'Category tab + title'], ['ribbon', 'Ribbon', 'One coloured ribbon'], ['stack', 'Stacked', 'Small category, big title'], ['pill', 'Pill', 'Compact floating pill']];
   const LOOK_SL = [['scale', 'Overall size', 0.6, 1.5], ['rb_size', 'Category / title banner', 0.6, 1.8], ['name_size', 'Team names', 0.7, 1.5],
-    ['label_size', 'Labels (fouls, period, tabs)', 0.7, 1.6], ['digit_size', 'Numbers (score, clock)', 0.7, 1.4], ['logo_size', 'Team logos', 0.6, 1.3]];
+    ['label_size', 'Labels (fouls, period, tabs)', 0.7, 1.6], ['digit_size', 'Numbers (score, clock)', 0.7, 1.4], ['per_size', 'Quarter / period status', 0.7, 2], ['logo_size', 'Team logos', 0.6, 1.3]];
   const LOOK_COL = [['rb_bg', 'Banner', '#0a0d16'], ['rnd_color', 'Category', '#39ff14'], ['evt_color', 'Event title', '#f4f6fb'], ['bar_color', 'Scoreboard', '#0a0d16']];
-  const LOOK_KEYS = ['rb_tpl', 'show_logos'].concat(LOOK_SL.map((x) => x[0]), LOOK_COL.map((x) => x[0]));
+  const LOOK_KEYS = ['rb_tpl', 'show_logos', 'rb_logo'].concat(LOOK_SL.map((x) => x[0]), LOOK_COL.map((x) => x[0]));
   function lookPanel(el, getB, send) {
     el.innerHTML = '<div class="lk-tpl">' + LOOK_TPL.map(([k, l, d]) => '<button type="button" data-tpl="' + k + '"><i class="lk-ic lk-' + k + '"><b></b><s></s></i><b>' + l + '</b><small>' + d + '</small></button>').join('') + '</div>'
       + '<div class="lk-sl">' + LOOK_SL.map(([k, l, a, z]) => '<label class="lk-r"><span>' + l + '<em data-v="' + k + '">100%</em></span><input type="range" min="' + a + '" max="' + z + '" step="0.05" data-lk="' + k + '"></label>').join('') + '</div>'
       + '<div class="lk-col">' + LOOK_COL.map(([k, l, d]) => '<label class="lk-c"><input type="color" data-lc="' + k + '" value="' + d + '"><span>' + l + '<small data-cv="' + k + '">Auto</small></span><button type="button" class="lk-x" data-cx="' + k + '" title="Back to theme colour">↺</button></label>').join('') + '</div>'
+      + '<div class="lk-logo"><span class="lk-lth" data-lth></span><span class="lk-lt"><b>Title banner logo</b><small>Optional · league or event logo, shown on the banner</small></span>'
+      + '<label class="btn sm">Upload<input type="file" accept="image/*" hidden data-rblogo></label><button type="button" class="btn sm ghost" data-rbx>Remove</button></div>'
       + '<div class="lk-foot"><label class="lk-t"><input type="checkbox" data-lg> Show team logos beside names</label><button type="button" class="btn sm ghost" data-lreset>Reset look</button></div>';
     const pct = (v) => Math.round(v * 100) + '%';
     function paint() {
@@ -349,17 +351,25 @@
       el.querySelectorAll('[data-lk]').forEach((x) => { if (document.activeElement === x && x._drag) return; const v = Number(b[x.dataset.lk]) || 1; x.value = v; el.querySelector('[data-v="' + x.dataset.lk + '"]').textContent = pct(v); });
       LOOK_COL.forEach(([k, , d]) => { const v = /^#[0-9a-f]{6}$/i.test(b[k] || '') ? b[k] : ''; const inp = el.querySelector('[data-lc="' + k + '"]'); if (document.activeElement !== inp) inp.value = v || d; el.querySelector('[data-cv="' + k + '"]').textContent = v ? v.toUpperCase() : 'Theme'; el.querySelector('[data-cx="' + k + '"]').classList.toggle('hidden', !v); });
       el.querySelector('[data-lg]').checked = b.show_logos !== false;
+      const lg = /^data:image\//.test(b.rb_logo || '') ? b.rb_logo : '';
+      el.querySelector('[data-lth]').innerHTML = lg ? '<img src="' + lg + '" alt="">' : '🏆';
+      el.querySelector('[data-rbx]').classList.toggle('hidden', !lg);
     }
     el.addEventListener('click', (e) => {
       const t = e.target.closest('[data-tpl]'); if (t) { send({ rb_tpl: t.dataset.tpl }); return; }
       const x = e.target.closest('[data-cx]'); if (x) { e.preventDefault(); send({ [x.dataset.cx]: null }); return; }
-      if (e.target.closest('[data-lreset]')) { const p = {}; LOOK_KEYS.forEach((k) => { p[k] = null; }); send(p); }
+      if (e.target.closest('[data-rbx]')) { send({ rb_logo: null }); return; }
+      if (e.target.closest('[data-lreset]')) { const p = {}; LOOK_KEYS.forEach((k) => { if (k !== 'rb_logo') p[k] = null; }); send(p); }
     });
     el.addEventListener('input', (e) => { const r = e.target.closest('[data-lk]'); if (r) { r._drag = true; el.querySelector('[data-v="' + r.dataset.lk + '"]').textContent = pct(Number(r.value)); } });
     el.addEventListener('change', (e) => {
       const r = e.target.closest('[data-lk]'); if (r) { r._drag = false; send({ [r.dataset.lk]: Number(r.value) }); return; }
       const c = e.target.closest('[data-lc]'); if (c) { send({ [c.dataset.lc]: c.value }); return; }
-      if (e.target.matches('[data-lg]')) send({ show_logos: e.target.checked });
+      if (e.target.matches('[data-lg]')) { send({ show_logos: e.target.checked }); return; }
+      if (e.target.matches('[data-rblogo]') && e.target.files[0]) {
+        const f = e.target.files[0]; e.target.value = '';
+        cropLogo(f).then((d) => send({ rb_logo: d })).catch((x) => { if (x && x.message !== 'CANCELLED') alert(x.message || 'Could not read that image'); });
+      }
     });
     paint();
     return { paint };

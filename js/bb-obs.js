@@ -29,7 +29,7 @@
     root.style.setProperty('--scale', b.scale || 1); root.style.setProperty('--dsz', b.digit_size || 1);
     // lower-third designer
     const nsz = Number(b.name_size) || 1, dsz = Number(b.digit_size) || 1;
-    root.style.setProperty('--nsz', nsz); root.style.setProperty('--lsz', Number(b.label_size) || 1); root.style.setProperty('--rsz', Number(b.rb_size) || 1);
+    root.style.setProperty('--nsz', nsz); root.style.setProperty('--psz', Number(b.per_size) || Number(b.label_size) || 1); root.style.setProperty('--lsz', Number(b.label_size) || 1); root.style.setProperty('--rsz', Number(b.rb_size) || 1);
     root.style.setProperty('--bhs', Math.max(1, nsz * .95, dsz)); root.style.setProperty('--lgs', Number(b.logo_size) || 1);
     root.classList.add('rb-' + (['split', 'ribbon', 'stack', 'pill'].includes(b.rb_tpl) ? b.rb_tpl : 'split'));
     if (b.show_logos === false) root.classList.add('no-logos');
@@ -47,10 +47,11 @@
     $('wrap').classList.toggle('off', !!(s.overlay && s.overlay.hidden));
     // CATEGORY ROUND - EVENT / SEASON TITLE banner
     const rnd = String(b.round || '').trim(), evt = String(s.title || '').trim();
-    const rb = $('rbn'), rbOn = b.show_round !== false && !!(rnd || evt);
+    const rb = $('rbn'), rbLogo = /^data:image\//.test(b.rb_logo || '') ? b.rb_logo : '', rbOn = b.show_round !== false && !!(rnd || evt || rbLogo);
     root.classList.toggle('show-round', !!rbOn);
     rb.classList.toggle('solo-r', !evt); rb.classList.toggle('solo-e', !rnd);
-    const rbTxt = rnd + '|' + evt;
+    rb.classList.toggle('has-logo', !!rbLogo); { const im = $('rbnL').querySelector('img'); if (rbLogo && im.getAttribute('src') !== rbLogo) im.src = rbLogo; }
+    const rbTxt = rnd + '|' + evt + '|' + rbLogo.length;
     if (rbOn && rb.dataset.t !== rbTxt) { $('rbnR').textContent = rnd; $('rbnE').textContent = evt; rb.classList.remove('in'); void rb.offsetWidth; rb.classList.add('in'); rb.dataset.t = rbTxt; }
     $('ttl').innerHTML = s.title ? '<b>' + PBB.esc(s.title) + '</b>' + (s.venue ? ' · ' + PBB.esc(s.venue) : '') : 'DINKYKONG <b>LIVE</b>';
     ['home', 'away'].forEach((t) => {
