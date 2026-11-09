@@ -534,14 +534,15 @@
     const stopAnim = () => { const v = $('dkVideo'); if (v && v.pause) { v.pause(); v.removeAttribute('src'); v.load(); } };
     const pickDisplay = () => { clearInterval(t); stopAnim(); try { sessionStorage.setItem('aopb.tabRole', 'display'); } catch (e) {} try { localStorage.setItem('aopb.role', 'display'); } catch (e) {} el.classList.add('hidden'); keepAwake(); };
     $('asDisplay').onclick = pickDisplay;
-    const pause = () => { clearInterval(t); $('chooserCount').textContent = 'Choose Scoreboard, Remote or LIVE'; };
+    const pause = () => { clearInterval(t); $('chooserCount').textContent = 'Choose Scoreboard, Remote, LIVE or Basketball'; };
     PBCommon.installButton($('installApp'), { onHelp: (h) => { pause(); const p = $('installHelp'); p.textContent = h; p.classList.remove('hidden'); } });
     $('installApp').addEventListener('click', pause);
     $('asLive').onclick = () => { clearInterval(t); stopAnim(); location.href = 'live.html'; };
+    $('asBasket').onclick = () => { clearInterval(t); stopAnim(); location.href = 'basketball.html'; };
     $('asRemote').onclick = () => { clearInterval(t); try { localStorage.setItem('aopb.role', 'remote'); } catch (e) {} location.href = 'remote.html?scan=1'; };
     el.addEventListener('keydown', (e) => {   // TV remote arrows move between the three choices
-      const opts = [$('asDisplay'), $('asRemote'), $('asLive')]; const i = Math.max(0, opts.indexOf(document.activeElement));
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') opts[Math.min(2, i + 1)].focus();
+      const opts = [$('asDisplay'), $('asRemote'), $('asLive'), $('asBasket')]; const i = Math.max(0, opts.indexOf(document.activeElement));
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') opts[Math.min(3, i + 1)].focus();
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') opts[Math.max(0, i - 1)].focus();
       e.stopPropagation();
     });

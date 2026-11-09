@@ -1,0 +1,361 @@
+/* Basketball LIVE OBS — host portal: matches, setup & rosters, OBS monitor + pairing, stats/history/export. */
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const E = PBB.esc;
+  let sb = null, cur = null, H = null, conn = null, view = 'matches', draft = null, devT = null;
+  let toastT;
+  function toast(t, err) { const el = $('toast'); el.textContent = t; el.classList.toggle('err', !!err); el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), err ? 3600 : 2000); }
+  const rpc = (fn, args) => PBB.rpc(sb, fn, args);
+
+  /* ---------------- auth gate ---------------- */
+  async function boot() {
+    if (!PBB.enabled) { $('gate').classList.remove('hidden'); $('gateMsg').textContent = 'Sign-in is not configured on this copy of the app.'; return; }
+    try { await PBAuth.init(); } catch (e) { $('gate').classList.remove('hidden'); $('gateMsg').textContent = PBB.errText(e); return; }
+    sb = PBAuth.client;
+    PBAuth.onChange(() => paintAuth());
+    paintAuth();
+  }
+  let shownFor = null;
+  function paintAuth() {
+    const u = PBAuth.user;
+    $('gate').classList.toggle('hidden', !!u); $('tabs').classList.toggle('hidden', !u); $('main').classList.toggle('hidden', !u);
+    $('outBtn').classList.toggle('hidden', !u); $('who').textContent = u ? (u.email || '') : '';
+    if (!u) { PBAuth.mountGoogleButton($('gis')).then((ok) => $('inBtn').classList.toggle('hidden', ok)); return; }
+    const p = PBAuth.profile || {}, now = Date.now();
+    const until = Math.max(p.live_until ? Date.parse(p.live_until) : 0, p.trial_until ? Date.parse(p.trial_until) : 0);
+    $('passTxt').innerHTML = p.is_admin ? 'Owner account · unlimited matches' : until > now ? 'LIVE access until <b>' + new Date(until).toLocaleString() + '</b>' : '<span style="color:var(--warn)">No active LIVE pass — activate one on the LIVE screen to create new matches. Existing matches stay available.</span>';
+    if (shownFor !== u.id) { shownFor = u.id; route(); }
+  }
+  $('inBtn').onclick = () => PBAuth.signIn(location.href);
+  $('outBtn').onclick = () => PBAuth.signOut();
+
+  /* ---------------- routing ---------------- */
+  function route() {
+    const h = new URLSearchParams(location.hash.slice(1));
+    cur = h.get('m') || null;
+    go(h.get('v') || (cur ? 'monitor' : 'matches'), true);
+  }
+  function setHash() { const h = new URLSearchParams(); h.set('v', view); if (cur) h.set('m', cur); history.replaceState(null, '', '#' + h); }
+  function go(v, noHash) {
+    if ((v === 'monitor' || v === 'summary') && !cur) v = 'matches';
+    view = v;
+    document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+    ['matches', 'setup', 'monitor', 'summary'].forEach((k) => $('v' + k[0].toUpperCase() + k.slice(1)).classList.toggle('hidden', k !== v));
+    if (!noHash) setHash(); else setHash();
+    if (v !== 'monitor') { clearInterval(devT); }
+    if (v === 'matches') loadMatches();
+    if (v === 'setup') openSetup();
+    if (v === 'monitor') openMonitor();
+    if (v === 'summary') openSummary();
+  }
+  $('tabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; if ((b.dataset.v === 'monitor' || b.dataset.v === 'summary') && !cur) { toast('Open a match first'); return; } if (b.dataset.v === 'setup' && !cur) draft = null; go(b.dataset.v); };
+
+  /* ---------------- matches ---------------- */
+  async function loadMatches() {
+    const { data, error } = await sb.from('bb_matches').select('code,title,venue,status,home,away,derived,created_at,starts_at,finalized_at').order('created_at', { ascending: false }).limit(100);
+    if (error) { $('mlist').innerHTML = '<div class="tiny">' + E(PBB.errText(error)) + '</div>'; return; }
+    $('mlist').innerHTML = (data || []).map((m) => {
+      const sc = (m.derived && m.derived.score) || { home: 0, away: 0 };
+      const when = new Date(m.starts_at || m.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+      return '<div class="mcard"><div class="tt"><span>' + E(m.title || 'Untitled match') + (m.venue ? ' · ' + E(m.venue) : '') + '</span><span class="st ' + m.status + '">' + m.status.toUpperCase() + '</span></div>'
+        + '<div class="vs"><span style="color:' + E(m.home.color) + '">' + E(m.home.name) + '</span><b>' + sc.home + ' – ' + sc.away + '</b><span style="color:' + E(m.away.color) + '">' + E(m.away.name) + '</span></div>'
+        + '<div class="tiny">' + when + ' · ID ' + m.code + '</div>'
+        + '<div class="row" style="flex-wrap:wrap"><button class="btn sm cyan" data-o="monitor" data-c="' + m.code + '">OBS Monitor</button><button class="btn sm" data-o="setup" data-c="' + m.code + '">Setup</button><button class="btn sm" data-o="summary" data-c="' + m.code + '">Stats</button><button class="btn sm ghost" data-del="' + m.code + '">Delete</button></div></div>';
+    }).join('') || '<div class="tiny">No basketball matches yet. Create your first one.</div>';
+  }
+  $('mlist').onclick = async (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.del) { if (!confirm('Delete match ' + b.dataset.del + ' and all its events? This cannot be undone.')) return; try { await rpc('bb_delete', { p_code: b.dataset.del }); toast('Deleted'); loadMatches(); } catch (x) { toast(PBB.errText(x), true); } return; }
+    cur = b.dataset.c; H = null; go(b.dataset.o);
+  };
+  $('newBtn').onclick = () => { cur = null; H = null; draft = null; go('setup'); };
+
+  /* ---------------- setup ---------------- */
+  const RULES = [
+    ['periods', 'Periods', 'sel', [[4, '4 quarters'], [2, '2 halves'], [3, '3 periods']]], ['period_min', 'Period length (min)', 'num', 1, 60], ['ot_min', 'Overtime length (min)', 'num', 1, 20],
+    ['shot_full', 'Shot clock (s)', 'num', 10, 60], ['shot_short', 'Shot clock reset (s)', 'num', 5, 40],
+    ['pf_limit', 'Fouls to foul out', 'num', 3, 10], ['tf_limit', 'Team fouls → penalty', 'num', 2, 15], ['tf_reset', 'Team fouls reset', 'sel', [['period', 'Every period'], ['half', 'Every half'], ['game', 'Never (per game)']]],
+    ['to_mode', 'Timeouts', 'sel', [['halves', 'Per half (FIBA)'], ['game', 'Per game'], ['period', 'Per period']]], ['to_h1', 'Timeouts 1st half', 'num', 0, 9], ['to_h2', 'Timeouts 2nd half', 'num', 0, 9],
+    ['to_game', 'Timeouts per game', 'num', 0, 12], ['to_period', 'Timeouts per period', 'num', 0, 9], ['to_ot', 'Timeouts per overtime', 'num', 0, 5], ['to_secs', 'Timeout length (s)', 'num', 20, 180],
+    ['timer_mode', 'Game timer', 'sel', [['digital', 'DinkyKong digital clock'], ['external', 'Court timer (window)']]], ['format', 'Format', 'sel', [['5v5', 'Standard 5v5'], ['3x3', '3x3'], ['custom', 'Custom rules']]]
+  ];
+  const TOGGLES = [['shot_on', 'Shot clock on'], ['tenths', 'Tenths in the last minute'], ['buzzer', 'Buzzer sound at 0:00'], ['fiba_dq', 'FIBA disqualification (2 U/T fouls)'], ['tf_ot_continues', 'Overtime fouls continue last period'], ['player_scoring', 'Player-based scoring'], ['sk_clock', 'Scorekeepers can run the clock']];
+  const BCAST = [['theme', 'Broadcast theme', [['electric', 'Electric DinkyKong'], ['classic', 'Classic Sports'], ['minimal', 'Minimal Broadcast'], ['tournament', 'Tournament Pro']]], ['names', 'Team display', [['short', 'Initials'], ['full', 'Full names']]], ['anim_ms', 'Pop-up duration', [[2000, '2 s'], [3000, '3 s'], [4000, '4 s'], [5000, '5 s']]]];
+  const DEF = Object.assign({ format: '5v5', timer_mode: 'digital', tenths: true, buzzer: true, player_scoring: true, sk_clock: true, to_game: 5, to_period: 1 }, PBB.PRESETS.fiba);
+  delete DEF.label;
+
+  async function openSetup() {
+    $('suMsg').textContent = '';
+    if (cur) {
+      try { H = await rpc('bb_host', { p_code: cur }); } catch (e) { toast(PBB.errText(e), true); return; }
+      draft = { title: H.title, venue: H.venue, when: H.starts_at, home: Object.assign({}, H.home), away: Object.assign({}, H.away), config: Object.assign({}, H.config), broadcast: Object.assign({}, H.broadcast),
+        players: H.players.map((p) => Object.assign({}, p)) };
+      $('suTitle').textContent = 'Match setup · ' + cur; $('suSave').textContent = 'Save changes'; $('fCode').value = cur;
+      $('suStatus').className = 'st ' + H.status; $('suStatus').textContent = H.status.toUpperCase();
+    } else if (!draft) {
+      draft = { title: '', venue: '', when: '', home: { name: '', short: '', color: '#00e5ff', logo: '' }, away: { name: '', short: '', color: '#ff2e4d', logo: '' }, config: Object.assign({}, DEF), broadcast: { theme: 'electric', names: 'short', anim_ms: 3000 }, players: [] };
+      $('suTitle').textContent = 'New match'; $('suSave').textContent = 'Create match'; $('fCode').value = ''; $('suStatus').textContent = ''; $('suStatus').className = 'st';
+    }
+    $('fTitle').value = draft.title || ''; $('fVenue').value = draft.venue || '';
+    $('fWhen').value = draft.when ? new Date(new Date(draft.when).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
+    $('preset').innerHTML = '<option value="">Load preset…</option>' + Object.entries(PBB.PRESETS).map(([k, v]) => '<option value="' + k + '">' + v.label + '</option>').join('');
+    paintTeams(); paintRules();
+  }
+  function paintTeams() {
+    $('teamCards').innerHTML = ['home', 'away'].map((t) => {
+      const T = draft[t], other = draft[t === 'home' ? 'away' : 'home'];
+      const rows = draft.players.filter((p) => p.team === t).sort((a, b) => Number(a.number) - Number(b.number));
+      return '<div class="p-card tcard" style="--c:' + E(T.color) + '" data-team="' + t + '">'
+        + '<h2>' + (t === 'home' ? 'Home team' : 'Away team') + '<span class="tiny">' + rows.filter((p) => p.active !== false).length + ' players</span></h2>'
+        + '<div class="g2"><label class="f">Full team name<input class="in" data-k="name" maxlength="40" value="' + E(T.name) + '" placeholder="' + (t === 'home' ? 'Team DinkyKong' : 'Red Bulls') + '"></label>'
+        + '<label class="f">Initials (3–5)<input class="in" data-k="short" maxlength="5" value="' + E(T.short) + '" placeholder="' + (t === 'home' ? 'DKG' : 'RBL') + '" style="text-transform:uppercase"></label></div>'
+        + '<div class="row" style="flex-wrap:wrap;gap:12px"><div class="sw-row">' + PBB.ELECTRIC.map((c) => '<button data-col="' + c + '" style="--c:' + c + '" class="' + (c === T.color ? 'on' : '') + (PBB.colorDist(c, other.color) < PBB.MIN_DIST ? ' blocked' : '') + '" title="' + c + '"></button>').join('')
+        + '</div><input type="color" data-k="color" value="' + E(T.color) + '" style="width:40px;height:32px;border:0;background:none"></div>'
+        + '<div class="logo-up"><span class="lg" style="' + (T.logo ? 'background-image:url(' + T.logo + ')' : '') + '"></span><label class="btn sm" style="position:relative;overflow:hidden">' + (T.logo ? 'Change logo' : 'Upload logo (optional)') + '<input type="file" accept="image/*" data-logo="1" style="position:absolute;inset:0;opacity:0"></label>' + (T.logo ? '<button class="btn sm ghost" data-nologo="1">Remove</button>' : '') + '</div>'
+        + '<h3>Roster</h3><div class="tbl-wrap"><table class="rt"><thead><tr><th>#</th><th>First</th><th>Last</th><th>Display</th><th>Pos</th><th title="Starting five">Start</th><th title="Active">Act</th><th></th></tr></thead><tbody>'
+        + rows.map((p) => '<tr data-pid="' + (p.id || p._tmp) + '"' + (p.active === false ? ' style="opacity:.45"' : '') + '><td class="num"><input class="in" data-f="number" inputmode="numeric" maxlength="2" value="' + E(p.number) + '"></td><td><input class="in" data-f="first" value="' + E(p.first) + '"></td><td><input class="in" data-f="last" value="' + E(p.last) + '"></td>'
+          + '<td><input class="in" data-f="display" value="' + E(p.display) + '" placeholder="J. DELA CRUZ"></td><td><input class="in" data-f="position" maxlength="4" value="' + E(p.position) + '" style="width:56px"></td>'
+          + '<td><input type="checkbox" data-f="starter"' + (p.starter ? ' checked' : '') + '></td><td><input type="checkbox" data-f="active"' + (p.active !== false ? ' checked' : '') + '></td><td><button class="btn sm ghost" data-rm="1" title="Remove">✕</button></td></tr>').join('')
+        + '</tbody></table></div>'
+        + '<div class="row" style="flex-wrap:wrap"><button class="btn sm" data-add="1">＋ Add player</button><button class="btn sm" data-bulk="1">Bulk add</button><span class="tiny grow">Starters: ' + rows.filter((p) => p.starter && p.active !== false).length + '/5</span></div></div>';
+    }).join('');
+  }
+  function paintRules() {
+    const c = draft.config;
+    $('rules').innerHTML = RULES.map(([k, l, ty, a, b]) => '<label class="f">' + l + (ty === 'sel'
+      ? '<select class="in" data-r="' + k + '">' + a.map(([v, t]) => '<option value="' + v + '"' + (String(c[k]) === String(v) ? ' selected' : '') + '>' + t + '</option>').join('') + '</select>'
+      : '<input class="in" type="number" data-r="' + k + '" min="' + a + '" max="' + b + '" step="' + (k.endsWith('_min') ? '0.5' : '1') + '" value="' + E(c[k]) + '">') + '</label>').join('')
+      + BCAST.map(([k, l, o]) => '<label class="f">' + l + '<select class="in" data-bc="' + k + '">' + o.map(([v, t]) => '<option value="' + v + '"' + (String(draft.broadcast[k] || '') === String(v) ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label>').join('');
+    $('rulesT').innerHTML = TOGGLES.map(([k, l]) => '<div class="toggle"><span>' + l + '</span><input type="checkbox" data-r="' + k + '"' + (c[k] !== false ? ' checked' : '') + '></div>').join('')
+      + '<div class="toggle"><span>Personal fouls count as team fouls</span><input type="checkbox" data-tfk="P"' + ((c.tf_kinds || ['P', 'T', 'U', 'D']).includes('P') ? ' checked' : '') + '></div>'
+      + '<div class="toggle"><span>Technical fouls count as team fouls</span><input type="checkbox" data-tfk="T"' + ((c.tf_kinds || ['P', 'T', 'U', 'D']).includes('T') ? ' checked' : '') + '></div>'
+      + '<div class="toggle"><span>Unsportsmanlike / disqualifying count</span><input type="checkbox" data-tfk="U"' + ((c.tf_kinds || ['P', 'T', 'U', 'D']).includes('U') ? ' checked' : '') + '></div>';
+  }
+  $('preset').onchange = () => { const p = PBB.PRESETS[$('preset').value]; if (!p) return; const x = Object.assign({}, p); delete x.label; Object.assign(draft.config, x, { preset: $('preset').value }); paintRules(); $('preset').value = ''; toast('Preset loaded: ' + p.label); };
+  $('rules').addEventListener('change', (e) => { const el = e.target; if (el.dataset.r) draft.config[el.dataset.r] = el.type === 'number' ? Number(el.value) : (/^\d+$/.test(el.value) ? Number(el.value) : el.value); if (el.dataset.bc) draft.broadcast[el.dataset.bc] = /^\d+$/.test(el.value) ? Number(el.value) : el.value; });
+  $('rulesT').addEventListener('change', (e) => { const el = e.target; if (el.dataset.r) draft.config[el.dataset.r] = el.checked;
+    if (el.dataset.tfk) { const k = el.dataset.tfk, set = new Set(draft.config.tf_kinds || ['P', 'T', 'U', 'D']); const ks = k === 'U' ? ['U', 'D'] : [k]; ks.forEach((x) => (el.checked ? set.add(x) : set.delete(x))); draft.config.tf_kinds = [...set]; } });
+  ['fTitle', 'fVenue', 'fWhen'].forEach((id) => $(id).addEventListener('input', () => { draft.title = $('fTitle').value; draft.venue = $('fVenue').value; draft.when = $('fWhen').value ? new Date($('fWhen').value).toISOString() : ''; }));
+
+  const findP = (id) => draft.players.find((p) => (p.id || p._tmp) === id);
+  $('teamCards').addEventListener('input', (e) => {
+    const card = e.target.closest('[data-team]'); if (!card) return; const t = card.dataset.team, el = e.target;
+    if (el.dataset.k === 'name' || el.dataset.k === 'short') draft[t][el.dataset.k] = el.dataset.k === 'short' ? el.value.toUpperCase() : el.value;
+    const tr = el.closest('tr'); if (tr && el.dataset.f && el.type !== 'checkbox') { const p = findP(tr.dataset.pid); p[el.dataset.f] = el.dataset.f === 'number' ? el.value.replace(/\D/g, '') : el.value; p._dirty = true; }
+  });
+  $('teamCards').addEventListener('change', async (e) => {
+    const card = e.target.closest('[data-team]'); if (!card) return; const t = card.dataset.team, el = e.target;
+    if (el.dataset.k === 'color') return setColor(t, el.value);
+    if (el.dataset.logo && el.files[0]) { try { draft[t].logo = await PBB.imageToData(el.files[0], 256); paintTeams(); } catch (x) { toast('Could not read that image', true); } return; }
+    const tr = el.closest('tr'); if (tr && el.dataset.f) {
+      const p = findP(tr.dataset.pid);
+      if (el.type === 'checkbox') p[el.dataset.f] = el.checked;
+      p._dirty = true;
+      if (cur && p.id) await saveRow(p);     // live match: each row saves on its own
+      if (el.type === 'checkbox') paintTeams();
+    }
+  });
+  function setColor(t, c) {
+    const other = draft[t === 'home' ? 'away' : 'home'];
+    if (PBB.colorDist(c, other.color) < PBB.MIN_DIST) { toast(PBB.errText('COLORS_TOO_CLOSE'), true); paintTeams(); return; }
+    draft[t].color = c.toLowerCase(); paintTeams();
+  }
+  $('teamCards').addEventListener('click', async (e) => {
+    const card = e.target.closest('[data-team]'); if (!card) return; const t = card.dataset.team, b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.col) return setColor(t, b.dataset.col);
+    if (b.dataset.nologo) { draft[t].logo = ''; paintTeams(); return; }
+    if (b.dataset.add) {
+      const used = new Set(draft.players.filter((p) => p.team === t).map((p) => p.number)); let n = 4; while (used.has(String(n)) && n < 99) n++;
+      const p = { _tmp: 'n' + Math.random().toString(36).slice(2), team: t, number: String(n), first: '', last: '', display: '', position: '', active: true, starter: false, _dirty: true };
+      draft.players.push(p); paintTeams();
+      const inp = document.querySelector('tr[data-pid="' + p._tmp + '"] [data-f="first"]'); inp && inp.focus();
+      return;
+    }
+    if (b.dataset.rm) {
+      const tr = b.closest('tr'), p = findP(tr.dataset.pid);
+      if (cur && p.id) { if (!confirm('Remove #' + p.number + ' ' + (p.first + ' ' + p.last).trim() + '? Players who already have events are set inactive so the history stays correct.')) return;
+        try { H = await rpc('bb_roster', { p_code: cur, p_op: 'delete', p: { id: p.id } }); draft.players = H.players.map((x) => Object.assign({}, x)); toast('Roster updated'); } catch (x) { toast(PBB.errText(x), true); } }
+      else draft.players = draft.players.filter((x) => x !== p);
+      paintTeams(); return;
+    }
+    if (b.dataset.bulk) bulk(t);
+  });
+  function bulk(t) {
+    const m = document.createElement('div'); m.className = 'modal';
+    m.innerHTML = '<div class="sheet"><h3>Bulk add · ' + (t === 'home' ? 'home' : 'away') + ' team</h3><div class="tiny">One player per line: <b>number, first name, last name, position</b> (position optional). Commas or spaces both work. Add “*” for a starter.<br>Example: <code>23 Juan Dela Cruz G *</code></div>'
+      + '<textarea class="in" id="bulkTxt" placeholder="4 Mark Reyes PG *\n7 Carlo Santos\n11 Paolo Lim F"></textarea><div class="g2"><button class="btn" data-x>Cancel</button><button class="btn primary" data-ok>Add players</button></div></div>';
+    document.body.appendChild(m);
+    m.onclick = async (e) => {
+      if (e.target === m || e.target.closest('[data-x]')) { m.remove(); return; }
+      if (!e.target.closest('[data-ok]')) return;
+      const lines = m.querySelector('#bulkTxt').value.split(/\n+/).map((x) => x.trim()).filter(Boolean);
+      const used = new Set(draft.players.filter((p) => p.team === t).map((p) => p.number)); const add = []; const bad = [];
+      lines.forEach((ln) => {
+        const star = /\*/.test(ln); const parts = ln.replace(/\*/g, '').split(/[\s,;\t]+/).filter(Boolean);
+        const num = (parts.shift() || '').replace(/^#/, '');
+        if (!/^\d{1,2}$/.test(num) || used.has(num)) { bad.push(ln); return; }
+        let pos = ''; if (parts.length > 1 && /^(PG|SG|SF|PF|C|G|F|G\/F|F\/C)$/i.test(parts[parts.length - 1])) pos = parts.pop().toUpperCase();
+        const first = parts.shift() || '', last = parts.join(' ');
+        used.add(num); add.push({ _tmp: 'n' + Math.random().toString(36).slice(2), team: t, number: num, first, last, display: '', position: pos, active: true, starter: star, _dirty: true });
+      });
+      draft.players.push(...add); m.remove(); paintTeams();
+      if (cur) for (const p of add) await saveRow(p);
+      toast(add.length + ' player' + (add.length === 1 ? '' : 's') + ' added' + (bad.length ? ' · skipped ' + bad.length + ' (bad or duplicate number)' : ''), !!bad.length);
+    };
+  }
+  async function saveRow(p) {
+    if (!/^\d{1,2}$/.test(p.number)) { toast('Jersey numbers are 0–99', true); return; }
+    if (draft.players.some((x) => x !== p && x.team === p.team && x.number === p.number)) { toast(PBB.errText('DUPLICATE_JERSEY'), true); return; }
+    if (H && H.status === 'live' && !p._liveOk) { if (!confirm('This match is LIVE. Save this roster change now? It updates every remote and the overlay.')) return; p._liveOk = true; }
+    try {
+      H = await rpc('bb_roster', { p_code: cur, p_op: 'upsert', p: { id: p.id || '', team: p.team, number: p.number, first: p.first, last: p.last, display: p.display, position: p.position, active: p.active !== false, starter: !!p.starter } });
+      if (!p.id) { const np = H.players.find((x) => x.team === p.team && x.number === p.number); if (np) { p.id = np.id; delete p._tmp; } }
+      p._dirty = false;
+    } catch (x) { toast(PBB.errText(x), true); }
+  }
+  $('suCancel').onclick = () => go(cur ? 'monitor' : 'matches');
+  $('suSave').onclick = async () => {
+    const d = draft;
+    d.title = $('fTitle').value.trim(); d.venue = $('fVenue').value.trim();
+    for (const t of ['home', 'away']) { if (!d[t].name.trim()) { toast('Enter both team names', true); return; } if (!d[t].short.trim()) d[t].short = d[t].name.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase(); }
+    if (PBB.colorDist(d.home.color, d.away.color) < PBB.MIN_DIST) { toast(PBB.errText('COLORS_TOO_CLOSE'), true); return; }
+    for (const t of ['home', 'away']) { const nums = d.players.filter((p) => p.team === t).map((p) => p.number); if (new Set(nums).size !== nums.length) { toast('Duplicate jersey number on the ' + t + ' team', true); return; } if (nums.some((n) => !/^\d{1,2}$/.test(n))) { toast('Jersey numbers are 0–99', true); return; } }
+    $('suSave').classList.add('busy'); $('suMsg').textContent = 'Saving…';
+    try {
+      if (!cur) {
+        const r = await rpc('bb_create', { p: { title: d.title, venue: d.venue, starts_at: d.when || '', home: d.home, away: d.away, config: d.config, broadcast: d.broadcast,
+          players: d.players.map((p) => ({ team: p.team, number: p.number, first: p.first, last: p.last, display: p.display, position: p.position, active: p.active !== false, starter: !!p.starter })) } });
+        cur = r.code; draft = null; toast('Match created · ID ' + r.code); go('monitor');
+      } else {
+        H = await rpc('bb_update', { p_code: cur, p: { title: d.title, venue: d.venue, starts_at: d.when || '', home: d.home, away: d.away, config: d.config, broadcast: d.broadcast } });
+        for (const p of d.players.filter((x) => x._dirty)) await saveRow(p);
+        toast('Saved · OBS and remotes updated'); $('suMsg').textContent = '';
+      }
+    } catch (e) { toast(PBB.errText(e), true); $('suMsg').textContent = PBB.errText(e); }
+    finally { $('suSave').classList.remove('busy'); if ($('suMsg').textContent === 'Saving…') $('suMsg').textContent = ''; }
+  };
+
+  /* ---------------- monitor ---------------- */
+  async function openMonitor() {
+    try { H = await rpc('bb_host', { p_code: cur }); } catch (e) { toast(PBB.errText(e), true); go('matches'); return; }
+    const base = location.href.replace(/[^/]*$/, '');
+    const obs = base + 'bb-obs.html?m=' + cur + '&k=' + H.view_key;
+    $('obsUrl').value = obs; $('moTitle').textContent = (H.title || 'Match') + ' · ' + cur;
+    const bg = [...$('bgSeg').children].find((b) => b.classList.contains('on')).dataset.v;
+    $('moFrame').src = obs + '&preview=' + bg;
+    $('pin').textContent = H.pin; $('multi').checked = H.allow_multi; $('skClock').checked = H.config.sk_clock !== false; $('moLock').checked = !!H.locked;
+    $('hostRemote').href = 'bb-remote.html?m=' + cur + '&host=1';
+    drawQrs(base);
+    if (!conn || conn._code !== cur) { conn && conn.close(); conn = PBB.connect({ code: cur, key: H.view_key, signedIn: true, onSnap: paintLive, onStatus: liveStatus }); conn._code = cur; }
+    else if (conn.snap) paintLive(conn.snap);
+    paintDevices(); clearInterval(devT); devT = setInterval(async () => { if (view !== 'monitor') return; try { H = await rpc('bb_host', { p_code: cur }); paintDevices(); } catch (e) {} }, 15000);
+  }
+  function liveStatus(s) { const el = $('moLive'); el.className = 'r-live ' + (s === 'live' ? '' : s === 'connecting' ? 'wait' : 'off'); el.querySelector('span').textContent = s === 'live' ? 'LIVE SYNC' : s.toUpperCase(); }
+  function paintLive(s) {
+    const d = s.derived;
+    $('moScore').innerHTML = '<h2>' + E(PBB.periodLabel(d.period, s.config.periods, true)) + '<span class="st ' + s.status + '">' + s.status.toUpperCase() + '</span></h2>'
+      + '<div class="mcard" style="background:none;border:0;padding:0"><div class="vs"><span style="color:' + s.home.color + '">' + E(s.home.name) + '</span><b style="font-size:34px">' + d.score.home + ' – ' + d.score.away + '</b><span style="color:' + s.away.color + '">' + E(s.away.name) + '</span></div>'
+      + '<div class="tiny">Team fouls ' + d.fouls.home + ' – ' + d.fouls.away + ' · Timeouts left ' + (d.tos.allow - d.tos.home) + ' – ' + (d.tos.allow - d.tos.away) + ' · ' + s.devices + ' paired device' + (s.devices === 1 ? '' : 's') + '</div></div>';
+    $('moFinal').textContent = s.status === 'final' ? 'Reopen match' : 'End match';
+    if (H) { H.status = s.status; H.locked = s.locked; } $('moLock').checked = !!s.locked;
+    if (view === 'summary') openSummarySoon();
+  }
+  function paintDevices() {
+    const list = (H.device_list || []).filter((d) => !d.revoked);
+    $('devs').innerHTML = list.map((d) => { const on = Date.now() - Date.parse(d.last_seen) < 120000;
+      return '<div class="dev"><span><span class="dot' + (on ? ' on' : '') + '"></span><b>' + E(d.name || d.role) + '</b><small>' + E(d.role) + ' · paired ' + new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' · last action ' + new Date(d.last_seen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</small></span><button class="btn sm danger" data-rv="' + d.id + '">Remove</button></div>'; }).join('')
+      || '<div class="tiny">No phones paired yet.</div>';
+  }
+  async function drawQrs(base) {
+    try { await PBCommon.loadScript(PBCommon.LIBS.qr); } catch (e) { $('qrs').innerHTML = '<div class="tiny">QR library could not load.</div>'; return; }
+    $('qrs').innerHTML = [['scorekeeper', 'Scorekeeper'], ['clock', 'Clock operator']].map(([r, l]) => {
+      const url = base + 'bb-remote.html?m=' + cur + '&r=' + r; const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
+      return '<div class="qr">' + qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true }) + '<b>' + l + '</b><a class="tiny" href="' + url + '" target="_blank" rel="noopener" style="color:#3a4466">open link</a></div>';
+    }).join('');
+  }
+  $('bgSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; [...$('bgSeg').children].forEach((x) => x.classList.toggle('on', x === b)); $('moFrame').src = $('obsUrl').value + '&preview=' + b.dataset.v; };
+  $('copyObs').onclick = async () => { try { await navigator.clipboard.writeText($('obsUrl').value); toast('Browser Source URL copied'); } catch (e) { $('obsUrl').select(); document.execCommand('copy'); toast('Copied'); } };
+  $('newPin').onclick = async () => { if (!confirm('Make a new PIN? Phones already paired stay connected; new phones need the new PIN.')) return; try { H = await rpc('bb_update', { p_code: cur, p: { new_pin: true } }); $('pin').textContent = H.pin; toast('New PIN ready'); } catch (e) { toast(PBB.errText(e), true); } };
+  $('multi').onchange = async () => { try { H = await rpc('bb_update', { p_code: cur, p: { allow_multi: $('multi').checked } }); } catch (e) { toast(PBB.errText(e), true); } };
+  $('skClock').onchange = async () => { try { H = await rpc('bb_update', { p_code: cur, p: { config: { sk_clock: $('skClock').checked } } }); } catch (e) { toast(PBB.errText(e), true); } };
+  $('devs').onclick = async (e) => { const b = e.target.closest('[data-rv]'); if (!b) return; if (!confirm('Remove this device? It can no longer control the match.')) return; try { H = await rpc('bb_revoke', { p_code: cur, p_device: b.dataset.rv }); paintDevices(); toast('Device removed'); } catch (x) { toast(PBB.errText(x), true); } };
+  $('revokeAll').onclick = async () => { if (!confirm('Remove ALL paired phones from this match?')) return; try { H = await rpc('bb_revoke', { p_code: cur, p_device: null }); paintDevices(); toast('All devices removed'); } catch (x) { toast(PBB.errText(x), true); } };
+  const hostAct = async (type, data, msg) => { try { await conn.act(type, data); msg && toast(msg); } catch (e) { toast(e.message === 'OFFLINE' ? 'Not connected' : PBB.errText(e), true); } };
+  $('moReset').onclick = () => hostAct('overlay', { op: 'reset' }, 'Overlay reset');
+  $('moHide').onclick = () => hostAct('overlay', { op: 'hide' }, 'Overlay hidden');
+  $('moShow').onclick = () => hostAct('overlay', { op: 'show' }, 'Overlay visible');
+  $('moClear').onclick = () => hostAct('overlay', { op: 'clear' }, 'Announcement cleared');
+  $('moPause').onclick = () => hostAct('clock', { op: 'emergency' }, 'Clock paused');
+  $('moLock').onchange = () => hostAct('lock', { on: $('moLock').checked }, $('moLock').checked ? 'Broadcast settings locked' : 'Unlocked');
+  $('moFinal').onclick = () => {
+    const s = conn && conn.snap; if (!s) return;
+    if (s.status === 'final') { if (confirm('Reopen this match? Recorded in the audit trail.')) hostAct('reopen', {}, 'Match reopened'); return; }
+    if (confirm('End the match as FINAL?\n\n' + s.home.name + ' ' + s.derived.score.home + ' — ' + s.derived.score.away + ' ' + s.away.name)) hostAct('final', {}, 'Final saved');
+  };
+
+  /* ---------------- summary / export ---------------- */
+  let sumT = null; function openSummarySoon() { clearTimeout(sumT); sumT = setTimeout(openSummary, 800); }
+  let SUM = null;
+  async function openSummary() {
+    try { H = await rpc('bb_host', { p_code: cur }); } catch (e) { toast(PBB.errText(e), true); return; }
+    const evs = await PBB.rpc(sb, 'bb_events', { p_code: cur, p_key: H.view_key });
+    const { data: audit } = await sb.from('bb_audit').select('actor,action,detail,at').eq('match_id', (await sb.from('bb_matches').select('id').eq('code', cur).single()).data.id).order('at', { ascending: false }).limit(200);
+    SUM = { H, evs, audit: audit || [] };
+    if (!conn || conn._code !== cur) { conn && conn.close(); conn = PBB.connect({ code: cur, key: H.view_key, signedIn: true, onSnap: paintLive, onStatus: liveStatus }); conn._code = cur; }
+    const d = H.derived, c = H.config;
+    $('smTitle').textContent = (H.title || 'Match') + ' · ' + cur;
+    const pers = Object.keys(d.period_scores || {}).map(Number).sort((a, b) => a - b);
+    $('smHead').innerHTML = '<div class="mcard" style="background:none;border:0;padding:0"><div class="tt"><span>' + E(H.venue || '') + ' · ' + (H.starts_at || H.created_at ? new Date(H.starts_at || H.created_at).toLocaleString() : '') + '</span><span class="st ' + H.status + '">' + H.status.toUpperCase() + '</span></div>'
+      + '<div class="vs"><span style="color:' + H.home.color + ';font-size:20px">' + E(H.home.name) + '</span><b style="font-size:40px">' + d.score.home + ' – ' + d.score.away + '</b><span style="color:' + H.away.color + ';font-size:20px">' + E(H.away.name) + '</span></div></div>'
+      + '<div class="tbl-wrap"><table class="box-score"><thead><tr><th>Team</th><th></th>' + pers.map((p) => '<th>' + PBB.periodLabel(p, c.periods) + '</th>').join('') + '<th>T</th></tr></thead><tbody>'
+      + ['home', 'away'].map((t) => '<tr><td>' + E(H[t].short) + '</td><td></td>' + pers.map((p) => '<td>' + d.period_scores[p][t] + '</td>').join('') + '<td><b>' + d.score[t] + '</b></td></tr>').join('') + '</tbody></table></div>';
+    const cols = [['pts', 'PTS'], ['m1', '1PM'], ['m2', '2PM'], ['m3', '3PM'], ['pf', 'PF'], ['tf', 'TF'], ['uf', 'UF'], ['df', 'DF'], ['reb', 'REB'], ['ast', 'AST'], ['stl', 'STL'], ['blk', 'BLK'], ['tov', 'TOV'], ['fta', 'FTA'], ['fga', 'FGA']];
+    $('smBox').innerHTML = ['home', 'away'].map((t) => {
+      const pl = H.players.filter((p) => p.team === t).sort((a, b) => Number(a.number) - Number(b.number));
+      const tot = {}; cols.forEach(([k]) => { tot[k] = pl.reduce((s, p) => s + ((d.players[p.id] || {})[k] || 0), 0); });
+      return '<h3 style="margin:10px 0 6px;color:' + H[t].color + '">' + E(H[t].name) + '</h3><div class="tbl-wrap"><table class="box-score"><thead><tr><th>#</th><th>Player</th>' + cols.map(([, l]) => '<th>' + l + '</th>').join('') + '</tr></thead><tbody>'
+        + pl.map((p) => { const s = d.players[p.id] || {}; return '<tr><td>' + E(p.number) + '</td><td>' + E(PBB.playerName(p)) + (s.out ? ' <span style="color:var(--danger)">' + (s.dq ? 'DQ' : 'FO') + '</span>' : '') + (p.active ? '' : ' <span class="tiny">(inactive)</span>') + '</td>' + cols.map(([k]) => '<td>' + (s[k] || 0) + '</td>').join('') + '</tr>'; }).join('')
+        + '<tr class="tot"><td></td><td>Team' + (d.unassigned[t] ? ' (+' + d.unassigned[t] + ' unassigned)' : '') + '</td>' + cols.map(([k]) => '<td>' + (k === 'pts' ? tot[k] + d.unassigned[t] : tot[k]) + '</td>').join('') + '</tr></tbody></table></div>';
+    }).join('');
+    const P = (id) => H.players.find((p) => p.id === id);
+    $('smEv').innerHTML = evs.map((e) => { const p = P(e.player_id), T = e.team ? H[e.team] : null, dd = e.data || {};
+      const txt = { score: (p ? '#' + p.number + ' ' + PBB.playerName(p, true) : (T ? T.short + ' team' : '')) + ' +' + e.value, foul: (p ? '#' + p.number + ' ' + PBB.playerName(p, true) : (T ? T.short : '')) + ' · ' + PBB.FOUL_SHORT[dd.kind || 'P'] + ' foul', timeout: 'Timeout ' + (T ? T.name : ''), period: 'Period → ' + PBB.periodLabel(dd.to, c.periods), score_adj: (T ? T.short : '') + ' manual ' + e.value, undo: 'Undo ' + (dd.what || ''), redo: 'Redo ' + (dd.what || ''), edit: 'Edited ' + (dd.what || ''), clock: 'Clock ' + (dd.op || ''), final: 'FINAL', reopen: 'Reopened', stat: (p ? '#' + p.number : '') + ' ' + (e.value > 0 ? '+' : '−') + String(dd.key || '').toUpperCase(), sub: (T ? T.short : '') + ' substitution', lineup: (T ? T.short : '') + ' lineup', possession: 'Possession ' + (T ? T.short : '—'), overlay: 'Overlay ' + (dd.op || '') + (dd.text ? ' · ' + dd.text : ''), broadcast: 'Broadcast settings', lock: 'Settings lock' }[e.type] || e.type;
+      return '<div class="ev' + (e.undone ? ' undone' : '') + '"><span class="pp">' + PBB.periodLabel(e.period, c.periods) + '</span><span><b>' + E(txt) + '</b><small>' + new Date(e.at).toLocaleTimeString() + ' · ' + E(e.actor) + ' (' + E(e.role) + ')' + (e.edited ? ' · edited' : '') + (e.undone ? ' · undone' : '') + '</small></span><span></span></div>'; }).join('') || '<div class="tiny">No events yet.</div>';
+    $('smAudit').innerHTML = SUM.audit.map((a) => '<div>' + new Date(a.at).toLocaleString() + ' · <b>' + E(a.actor) + '</b> · ' + E(a.action) + '</div>').join('') || 'No audit entries.';
+  }
+  $('xPrint').onclick = () => window.print();
+  $('xCsv').onclick = () => {
+    if (!SUM) return; const H2 = SUM.H, d = H2.derived;
+    const rows = [['Match', H2.code, H2.title, H2.venue, new Date(H2.starts_at || H2.created_at).toISOString(), H2.status], ['Final', H2.home.name, d.score.home, H2.away.name, d.score.away], [],
+      ['Team', 'Number', 'Player', 'PTS', '1PM', '2PM', '3PM', 'PF', 'TF', 'UF', 'DF', 'REB', 'AST', 'STL', 'BLK', 'TOV', 'FTA', 'FGA']];
+    H2.players.forEach((p) => { const s = d.players[p.id] || {}; rows.push([H2[p.team].name, p.number, PBB.playerName(p), s.pts, s.m1, s.m2, s.m3, s.pf, s.tf, s.uf, s.df, s.reb, s.ast, s.stl, s.blk, s.tov, s.fta, s.fga]); });
+    rows.push([], ['Seq', 'Time', 'Period', 'Type', 'Team', 'Player', 'Value', 'Detail', 'Actor', 'Undone']);
+    SUM.evs.slice().reverse().forEach((e) => { const p = H2.players.find((x) => x.id === e.player_id); rows.push([e.seq, e.at, PBB.periodLabel(e.period, H2.config.periods), e.type, e.team || '', p ? '#' + p.number + ' ' + PBB.playerName(p) : '', e.value, JSON.stringify(e.data || {}), e.actor, e.undone ? 'yes' : '']); });
+    const csv = rows.map((r) => r.map((v) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = 'basketball-' + H2.code + '.csv'; a.click();
+  };
+  $('xImg').onclick = async () => {
+    if (!SUM) return; const H2 = SUM.H, d = H2.derived;
+    const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1080; const g = cv.getContext('2d');
+    await document.fonts.ready;
+    const bg = g.createLinearGradient(0, 0, 0, 1080); bg.addColorStop(0, '#0d1428'); bg.addColorStop(1, '#03050c'); g.fillStyle = bg; g.fillRect(0, 0, 1080, 1080);
+    g.fillStyle = '#39ff14'; g.font = '800 34px Poppins'; g.textAlign = 'center'; g.fillText(H2.status === 'final' ? 'FINAL' : 'LIVE SCORE', 540, 150);
+    g.fillStyle = '#aab3cc'; g.font = '600 30px Poppins'; g.fillText((H2.title || 'Basketball').toUpperCase(), 540, 205);
+    const side = (t, x) => { const T = H2[t]; g.fillStyle = T.color; g.fillRect(x - 160, 290, 320, 10); g.font = '800 46px Poppins'; g.fillText(T.short, x, 380); g.fillStyle = '#fff'; g.font = '600 26px Poppins'; g.fillText(T.name.slice(0, 22), x, 425); g.fillStyle = T.color; g.font = '900 190px Orbitron'; g.fillText(String(d.score[t]), x, 640); };
+    side('home', 290); side('away', 790);
+    g.fillStyle = '#6c7695'; g.font = '700 60px Poppins'; g.fillText('—', 540, 580);
+    const top = H2.players.map((p) => ({ p, s: d.players[p.id] || {} })).sort((a, b) => (b.s.pts || 0) - (a.s.pts || 0)).slice(0, 3).filter((x) => x.s.pts);
+    g.font = '600 28px Poppins'; g.fillStyle = '#aab3cc'; if (top.length) g.fillText('TOP SCORERS', 540, 760);
+    top.forEach((x, i) => { g.fillStyle = H2[x.p.team].color; g.font = '700 32px Poppins'; g.fillText('#' + x.p.number + ' ' + PBB.playerName(x.p) + ' · ' + x.s.pts + ' PTS', 540, 815 + i * 50); });
+    g.fillStyle = '#6c7695'; g.font = '600 24px Poppins'; g.fillText((H2.venue ? H2.venue + ' · ' : '') + new Date(H2.starts_at || H2.created_at).toLocaleDateString() + ' · dinkykong.pro', 540, 1030);
+    cv.toBlob(async (blob) => {
+      const file = new File([blob], 'result-' + H2.code + '.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: 'Final score' }); return; } catch (e) {} }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+    }, 'image/png');
+  };
+
+  PBCommon.registerSW && PBCommon.registerSW();
+  addEventListener('hashchange', () => { if (PBAuth.user) route(); });
+  boot();
+})();

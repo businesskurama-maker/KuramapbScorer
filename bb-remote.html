@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#050912">
+<title>DinkyKong Basketball Remote</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Orbitron:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/bb.css">
+</head>
+<body class="remote">
+
+<!-- pairing -->
+<section class="r-join hidden" id="join">
+  <img src="icons/dinkykong-logo.png" alt="DinkyKong">
+  <h1>🏀 Basketball <b>LIVE OBS</b></h1>
+  <div class="code" id="jCode">——————</div>
+  <p class="muted" id="jMatch" style="margin:0;font-size:14px"></p>
+  <div class="seg" id="jRole" style="width:100%"><button data-v="scorekeeper" class="on">Scorekeeper</button><button data-v="clock">Clock operator</button></div>
+  <input class="in" id="jName" maxlength="30" placeholder="Your name (shown in the event log)" autocomplete="name">
+  <input class="in pin-in" id="jPin" inputmode="numeric" maxlength="6" placeholder="PIN" autocomplete="one-time-code">
+  <button class="btn primary" id="jGo" style="width:100%;min-height:52px">Pair this phone</button>
+  <button class="btn ghost hidden" id="jHost" style="width:100%">I'm the host — continue with my account</button>
+  <p class="tiny" id="jMsg" style="min-height:16px;margin:0"></p>
+  <p class="tiny" style="margin:0">Ask the host for the 6-digit PIN shown on the OBS Monitor. Internet connection required.</p>
+</section>
+
+<!-- app -->
+<section class="r-app hidden" id="app">
+  <header class="r-head">
+    <div class="r-title"><b id="hTitle">Basketball</b><span class="r-live wait" id="hLive"><i></i><span>CONNECTING</span></span></div>
+    <div class="r-clock"><div class="p" id="hPer">Q1</div><div><span class="t stop" id="hClk">10:00</span><span class="s" id="hShot"></span></div></div>
+    <div class="r-hr">
+      <button class="icon-b red needs-live" id="hReset" title="Reset overlay" aria-label="Reset overlay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+    </div>
+  </header>
+  <div class="r-score">
+    <div class="r-team home" id="tsH" style="--c:var(--home)"><span class="nm" id="nH">HOME</span><span class="sc" id="scH">0</span><span class="mt" id="mH"></span></div>
+    <div class="r-vs" id="hRole">—</div>
+    <div class="r-team away" id="tsA" style="--c:var(--away)"><span class="nm" id="nA">AWAY</span><span class="sc" id="scA">0</span><span class="mt" id="mA"></span></div>
+  </div>
+  <div class="r-off hidden" id="offBar">Disconnected — scoring is paused until the match is back in sync.</div>
+
+  <main class="r-main">
+    <!-- SCORE -->
+    <section class="view" id="vScore">
+      <div class="tsw needs-live" id="teamSw"><button data-t="home" style="--c:var(--home)">HOME</button><button data-t="away" style="--c:var(--away)">AWAY</button></div>
+      <div class="sel-line"><span id="selTxt">Pick a player, then the points</span><button class="btn sm ghost" id="benchBtn">Show bench</button></div>
+      <div class="jgrid needs-live" id="jgrid"></div>
+      <div class="pts needs-live" id="pts"><button data-v="1">+1</button><button data-v="2">+2</button><button data-v="3">+3</button></div>
+      <div class="fkind needs-live" id="fkind"><button data-k="P" class="on">PF</button><button data-k="T">TECH</button><button data-k="U">UNSP</button><button data-k="D">DISQ</button><button data-k="B">BENCH</button></div>
+      <div class="sec needs-live">
+        <button class="btn warn" id="foulBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v11M12 19v.5"/></svg>FOUL</button>
+        <button class="btn" id="toBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5h14M12 5v14"/></svg>TIMEOUT</button>
+        <button class="btn" id="undoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>UNDO</button>
+        <button class="btn" id="possBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg><span id="possTxt">POSS</span></button>
+      </div>
+      <div class="g3 needs-live">
+        <button class="btn sm" id="redoBtn">Redo</button>
+        <button class="btn sm" id="adjBtn">± Manual score</button>
+        <button class="btn sm" id="teamOnly">Team-only: off</button>
+      </div>
+      <div class="last" id="lastTxt"></div>
+    </section>
+
+    <!-- CLOCK -->
+    <section class="view hidden" id="vClock">
+      <div class="box" id="clkBox">
+        <h4><span id="cPer">Q1</span><span id="cMode" class="tiny"></span></h4>
+        <div class="bigclock" id="cClk">10:00</div>
+        <button class="btn primary needs-live" id="cGo" style="min-height:64px;font-size:18px;font-weight:800">START</button>
+        <div class="g3 needs-live"><button class="btn" id="cSet">Set time</button><button class="btn" id="cReset">Reset</button><button class="btn danger" id="cEmerg">Emergency pause</button></div>
+      </div>
+      <div class="box" id="shotBox">
+        <h4>Shot clock <button class="btn sm ghost" id="sHide">Hide</button></h4>
+        <div class="bigshot" id="cShot">24</div>
+        <div class="g4 needs-live"><button class="btn" id="s24">24</button><button class="btn" id="s14">14</button><button class="btn" id="sGo">Start</button><button class="btn" id="sSet">Set</button></div>
+      </div>
+      <div class="box needs-live" id="perBox">
+        <h4>Periods</h4>
+        <div class="g3"><button class="btn" id="pPrev">◀ Previous</button><button class="btn warn" id="pEnd">End period</button><button class="btn cyan" id="pNext">Next ▶</button></div>
+        <div class="g2"><button class="btn" id="pOT">Overtime</button><button class="btn danger host-only" id="pFinal">End match (final)</button></div>
+      </div>
+    </section>
+
+    <!-- PLAYERS -->
+    <section class="view hidden" id="vPlayers">
+      <div class="tsw" id="plSw"><button data-t="home" style="--c:var(--home)">HOME</button><button data-t="away" style="--c:var(--away)">AWAY</button></div>
+      <div class="box needs-live">
+        <h4>Stats <span class="seg" id="statSign" style="padding:2px"><button data-v="1" class="on">+1</button><button data-v="-1">−1</button></span></h4>
+        <div class="tiny" id="statSel">Select a player below, then tap a stat.</div>
+        <div class="stat-grid" id="statGrid"></div>
+      </div>
+      <div class="box">
+        <h4>On court <span class="row"><button class="btn sm needs-live" id="subApply">Apply substitution</button></span></h4>
+        <div class="tiny">Tap players to put them IN or OUT, then apply. Tap a name to select it for stats.</div>
+        <div id="plList" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </section>
+
+    <!-- EVENTS -->
+    <section class="view hidden" id="vEvents">
+      <div class="row"><b class="grow" style="font-size:14px">Event timeline</b><button class="btn sm" id="evRefresh">Refresh</button></div>
+      <div id="evList" style="display:flex;flex-direction:column;gap:6px"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view hidden" id="vSettings">
+      <div class="box needs-live">
+        <h4>Broadcast emergency</h4>
+        <button class="btn big-red" id="ovReset">RESET OVERLAY</button>
+        <div class="g3"><button class="btn" id="ovHide">Hide overlay</button><button class="btn" id="ovShow">Show overlay</button><button class="btn" id="ovClear">Clear announcement</button></div>
+        <button class="btn danger" id="ovPause">Emergency clock pause</button>
+        <div class="toggle host-only"><span>Lock broadcast settings</span><input type="checkbox" id="lockT"></div>
+      </div>
+      <div class="box needs-live">
+        <h4>Announcements</h4>
+        <div class="brk" id="brk"></div>
+        <div class="row"><input class="in grow" id="annTxt" maxlength="40" placeholder="Custom announcement"><button class="btn cyan" id="annGo">Show</button></div>
+      </div>
+      <div class="box needs-live" id="bcBox">
+        <h4>Broadcast settings <span class="tiny" id="lockedTxt"></span></h4>
+        <div class="seg" id="theme"><button data-v="classic">Classic</button><button data-v="electric">Electric</button><button data-v="minimal">Minimal</button><button data-v="tournament">Tourn. Pro</button></div>
+        <div class="g2" id="teamEd"></div>
+        <div class="g2">
+          <label class="f">Names<select class="in" data-b="names"><option value="short">Initials</option><option value="full">Full names</option></select></label>
+          <label class="f">Score font<select class="in" data-b="font"><option value="digital">Digital</option><option value="poppins">Poppins</option><option value="bebas">Condensed</option></select></label>
+          <label class="f">Digit size<select class="in" data-b="digit_size"><option value="0.85">Small</option><option value="1">Normal</option><option value="1.15">Large</option></select></label>
+          <label class="f">Overlay scale<select class="in" data-b="scale"><option value="0.8">80%</option><option value="0.9">90%</option><option value="1">100%</option><option value="1.1">110%</option><option value="1.25">125%</option></select></label>
+          <label class="f">Position<select class="in" data-b="pos"><option value="bottom">Bottom centre</option><option value="top">Top centre</option><option value="bottom-left">Bottom left</option><option value="bottom-right">Bottom right</option></select></label>
+          <label class="f">Banner opacity<select class="in" data-b="opacity"><option value="1">100%</option><option value="0.94">94%</option><option value="0.85">85%</option><option value="0.75">75%</option></select></label>
+          <label class="f">Pop-up time<select class="in" data-b="anim_ms"><option value="2000">2 s</option><option value="3000">3 s</option><option value="4000">4 s</option><option value="5000">5 s</option></select></label>
+          <label class="f">Timer<select class="in" id="timerMode"><option value="digital">DinkyKong digital clock</option><option value="external">Court timer (window)</option></select></label>
+          <label class="f">Timer window<select class="in" data-b="timer_win"><option value="black">Solid black</option><option value="cutout">Transparent cut-out</option></select></label>
+          <label class="f">Window width<select class="in" data-b="timer_w"><option value="180">180 px</option><option value="232">232 px</option><option value="280">280 px</option><option value="340">340 px</option></select></label>
+        </div>
+        <div class="toggle"><span>Team fouls</span><input type="checkbox" data-t="show_fouls"></div>
+        <div class="toggle"><span>Timeout indicators</span><input type="checkbox" data-t="show_tos"></div>
+        <div class="toggle"><span>Possession arrow</span><input type="checkbox" data-t="show_poss"></div>
+        <div class="toggle"><span>Player scoring announcements</span><input type="checkbox" data-t="show_player"></div>
+        <div class="toggle"><span>Tournament title tab</span><input type="checkbox" data-t="show_title"></div>
+        <div class="toggle"><span>Reduced motion</span><input type="checkbox" data-t="reduced_motion"></div>
+      </div>
+      <div class="box">
+        <h4>This device</h4>
+        <div class="tiny" id="devTxt"></div>
+        <div class="g2"><button class="btn" id="instBtn">Install app</button><button class="btn danger" id="leaveBtn">Leave match</button></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="r-nav">
+    <button data-v="score" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3.5 3.5 3.5 9.3 0 12.8M18.4 5.6c-3.5 3.5-3.5 9.3 0 12.8"/></svg>Score</button>
+    <button data-v="clock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>Clock</button>
+    <button data-v="players"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c1.9.7 3.1 2.5 3.5 5.4"/></svg>Players</button>
+    <button data-v="events"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Events</button>
+    <button data-v="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.6-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>Settings</button>
+  </nav>
+</section>
+<div class="toast" id="toast"></div>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/bb-core.js"></script>
+<script src="js/bb-remote.js"></script>
+</body>
+</html>

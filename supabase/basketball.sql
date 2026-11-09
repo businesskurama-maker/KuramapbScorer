@@ -71,6 +71,7 @@ create table if not exists public.bb_events (
   unique (match_id, seq)
 );
 create index if not exists bb_events_match on public.bb_events(match_id, seq);
+create index if not exists bb_events_player on public.bb_events(player_id);
 
 create table if not exists public.bb_devices (
   id uuid primary key default gen_random_uuid(),
@@ -111,9 +112,10 @@ create policy bb_devices_own on public.bb_devices for select to authenticated us
 drop policy if exists bb_audit_own on public.bb_audit;
 create policy bb_audit_own on public.bb_audit for select to authenticated using (exists (select 1 from public.bb_matches m where m.id = match_id and m.owner = (select auth.uid())));
 revoke insert, update, delete on public.bb_matches, public.bb_players, public.bb_events, public.bb_devices, public.bb_audit from anon, authenticated;
+revoke select on public.bb_matches, public.bb_players, public.bb_events, public.bb_devices, public.bb_audit from anon;
 
 -- ------------------------------------------------------------------ helpers
-create or replace function public.bb__cfg_default() returns jsonb language sql immutable as $$
+create or replace function public.bb__cfg_default() returns jsonb language sql immutable set search_path = public as $$
   select jsonb_build_object(
     'preset', 'fiba', 'format', '5v5', 'periods', 4, 'period_min', 10, 'ot_min', 5,
     'shot_on', true, 'shot_full', 24, 'shot_short', 14,
@@ -123,7 +125,7 @@ create or replace function public.bb__cfg_default() returns jsonb language sql i
     'timer_mode', 'digital', 'tenths', true, 'buzzer', true, 'sk_clock', true, 'player_scoring', true)
 $$;
 
-create or replace function public.bb__bcast_default() returns jsonb language sql immutable as $$
+create or replace function public.bb__bcast_default() returns jsonb language sql immutable set search_path = public as $$
   select jsonb_build_object(
     'theme', 'electric', 'scale', 1, 'pos', 'bottom', 'opacity', 0.94, 'anim_ms', 3000,
     'names', 'short', 'font', 'digital', 'digit_size', 1,
@@ -132,7 +134,7 @@ create or replace function public.bb__bcast_default() returns jsonb language sql
 $$;
 
 -- current "window" key for team fouls / timeouts
-create or replace function public.bb__win(p int, periods int, mode text, ot_cont boolean) returns text language sql immutable as $$
+create or replace function public.bb__win(p int, periods int, mode text, ot_cont boolean) returns text language sql immutable set search_path = public as $$
   select case
     when mode = 'game' then 'g'
     when mode = 'halves' or mode = 'half' then
@@ -143,7 +145,7 @@ create or replace function public.bb__win(p int, periods int, mode text, ot_cont
 $$;
 
 -- Euclidean RGB distance between two #rrggbb colours (0..441)
-create or replace function public.bb__cdist(a text, b text) returns numeric language plpgsql immutable as $$
+create or replace function public.bb__cdist(a text, b text) returns numeric language plpgsql immutable set search_path = public as $$
 declare ra int; ga int; ba int; rb int; gb int; bb int;
 begin
   if a !~* '^#[0-9a-f]{6}$' or b !~* '^#[0-9a-f]{6}$' then return 999; end if;
@@ -152,7 +154,7 @@ begin
   return sqrt(((ra - rb) ^ 2 + (ga - gb) ^ 2 + (ba - bb) ^ 2)::numeric);
 end $$;
 
-create or replace function public.bb__team_ok(t jsonb) returns jsonb language plpgsql immutable as $$
+create or replace function public.bb__team_ok(t jsonb) returns jsonb language plpgsql immutable set search_path = public as $$
 begin
   if t is null or coalesce(btrim(t ->> 'name'), '') = '' then raise exception 'TEAM_NAME_REQUIRED'; end if;
   return jsonb_build_object(
@@ -269,17 +271,17 @@ begin
 end $$;
 
 -- clock helpers (ms epoch on the server)
-create or replace function public.bb__now() returns bigint language sql stable as $$ select (extract(epoch from clock_timestamp()) * 1000)::bigint $$;
-create or replace function public.bb__left(ck jsonb, nowms bigint) returns bigint language sql immutable as $$
+create or replace function public.bb__now() returns bigint language sql stable set search_path = public as $$ select (extract(epoch from clock_timestamp()) * 1000)::bigint $$;
+create or replace function public.bb__left(ck jsonb, nowms bigint) returns bigint language sql immutable set search_path = public as $$
   select case when coalesce((ck ->> 'running')::boolean, false)
     then greatest(0, coalesce((ck ->> 'ms')::bigint, 0) - (nowms - coalesce((ck ->> 'at')::bigint, nowms)))
     else greatest(0, coalesce((ck ->> 'ms')::bigint, 0)) end
 $$;
-create or replace function public.bb__period_ms(c jsonb, per int) returns bigint language sql immutable as $$
+create or replace function public.bb__period_ms(c jsonb, per int) returns bigint language sql immutable set search_path = public as $$
   select (case when per > coalesce((c ->> 'periods')::int, 4) then coalesce((c ->> 'ot_min')::numeric, 5) else coalesce((c ->> 'period_min')::numeric, 10) end * 60000)::bigint
 $$;
 -- freeze clocks that ran out
-create or replace function public.bb__settle(ck jsonb, nowms bigint) returns jsonb language plpgsql immutable as $$
+create or replace function public.bb__settle(ck jsonb, nowms bigint) returns jsonb language plpgsql immutable set search_path = public as $$
 declare g bigint; s bigint; sh jsonb := coalesce(ck -> 'shot', '{}'::jsonb);
 begin
   g := bb__left(ck, nowms);
@@ -528,7 +530,7 @@ declare
   m bb_matches; who record; role text; actor text; d jsonb := coalesce(p_data, '{}'::jsonb);
   v_team text := nullif(d ->> 'team', ''); v_pid uuid := nullif(d ->> 'player', '')::uuid; v int := coalesce((d ->> 'value')::int, 0);
   per int; nowms bigint := bb__now(); ck jsonb; sh jsonb; tgt bb_events; op text := d ->> 'op'; fold boolean := false;
-  last jsonb; nm text; kinds text[] := array['score','score_adj','foul','timeout','period','possession','stat','lineup','sub'];
+  last jsonb; kinds text[] := array['score','score_adj','foul','timeout','period','possession','stat','lineup','sub'];
   newper int; tmp jsonb; g bigint;
 begin
   if p_id is null then raise exception 'EVENT_ID_REQUIRED'; end if;
@@ -543,7 +545,7 @@ begin
   if role = 'viewer' then raise exception 'READ_ONLY'; end if;
   if role = 'clock' and p_type not in ('clock') then raise exception 'CLOCK_ONLY'; end if;
   if role = 'scorekeeper' and p_type = 'clock' and not coalesce((m.config ->> 'sk_clock')::boolean, true) then raise exception 'NO_CLOCK_RIGHTS'; end if;
-  if role <> 'host' and p_type in ('final', 'reopen', 'lock', 'reset_match') then raise exception 'HOST_ONLY'; end if;
+  if role <> 'host' and p_type in ('final', 'reopen', 'lock') then raise exception 'HOST_ONLY'; end if;
   if role <> 'host' and p_type = 'broadcast' and m.settings_locked then raise exception 'SETTINGS_LOCKED'; end if;
   if m.status = 'final' and p_type not in ('reopen', 'overlay', 'broadcast', 'lock') then raise exception 'MATCH_FINAL'; end if;
 
@@ -559,7 +561,7 @@ begin
   elsif p_type = 'score_adj' then
     if v_team is null or v = 0 or abs(v) > 200 then raise exception 'BAD_ADJ'; end if;
     if (m.derived -> 'score' ->> v_team)::int + v < 0 then raise exception 'NEGATIVE_SCORE'; end if;
-    fold := true;
+    v_pid := null; fold := true;
   elsif p_type = 'foul' then
     if v_team is null or coalesce(d ->> 'kind', 'P') not in ('P', 'T', 'U', 'D', 'B') then raise exception 'BAD_FOUL'; end if;
     d := d || jsonb_build_object('kind', coalesce(d ->> 'kind', 'P'));
@@ -598,6 +600,7 @@ begin
       select * into tgt from bb_events where match_id = m.id and not undone and type = any(kinds) order by seq desc limit 1;
     end if;
     if tgt.id is null then raise exception 'NOTHING_TO_UNDO'; end if;
+    if tgt.type = 'score_adj' and (m.derived -> 'score' ->> tgt.team)::int - tgt.value < 0 then raise exception 'NEGATIVE_SCORE'; end if;
     update bb_events set undone = true, undone_at = now() where id = tgt.id;
     d := jsonb_build_object('target', tgt.id, 'what', tgt.type, 'team', tgt.team, 'value', tgt.value, 'player', tgt.player_id, 'kind', tgt.data ->> 'kind');
     v_team := tgt.team; v_pid := tgt.player_id; v := tgt.value;
@@ -607,6 +610,7 @@ begin
       ck := jsonb_build_object('running', false, 'ms', bb__period_ms(m.config, newper), 'at', nowms,
         'shot', jsonb_build_object('running', false, 'ms', coalesce((m.config ->> 'shot_full')::int, 24) * 1000, 'at', nowms));
     end if;
+    if tgt.type = 'timeout' and (m.overlay -> 'banner' ->> 'id') = tgt.id::text then m.overlay := m.overlay || jsonb_build_object('banner', null); end if;
   elsif p_type = 'redo' then
     if jsonb_array_length(m.redo) = 0 then raise exception 'NOTHING_TO_REDO'; end if;
     select * into tgt from bb_events where id = (m.redo ->> (jsonb_array_length(m.redo) - 1))::uuid and match_id = m.id;
@@ -619,13 +623,14 @@ begin
     if tgt.id is null then raise exception 'BAD_TARGET'; end if;
     if d ? 'player' and nullif(d ->> 'player', '') is not null and not exists (select 1 from bb_players where id = (d ->> 'player')::uuid and match_id = m.id and bb_players.team = tgt.team) then raise exception 'BAD_PLAYER'; end if;
     if tgt.type = 'score' and d ? 'value' and (d ->> 'value')::int not in (1, 2, 3) then raise exception 'BAD_SCORE'; end if;
+    if d ? 'kind' and d ->> 'kind' not in ('P', 'T', 'U', 'D', 'B') then raise exception 'BAD_FOUL'; end if;
     update bb_events set
       player_id = case when d ? 'player' then nullif(d ->> 'player', '')::uuid else player_id end,
       value = case when d ? 'value' and tgt.type = 'score' then (d ->> 'value')::int else value end,
       data = case when d ? 'kind' and tgt.type = 'foul' then data || jsonb_build_object('kind', d ->> 'kind') else data end,
       edited_at = now()
     where id = tgt.id;
-    d := jsonb_build_object('target', tgt.id, 'before', jsonb_build_object('player', tgt.player_id, 'value', tgt.value, 'kind', tgt.data ->> 'kind'), 'after', d - 'target');
+    d := jsonb_build_object('target', tgt.id, 'what', tgt.type, 'before', jsonb_build_object('player', tgt.player_id, 'value', tgt.value, 'kind', tgt.data ->> 'kind'), 'after', d - 'target');
     v_team := tgt.team; v_pid := null; v := 0;
   elsif p_type = 'clock' then
     sh := coalesce(ck -> 'shot', '{}'::jsonb);
@@ -653,9 +658,9 @@ begin
     elsif op = 'shot_pause' then
       ck := jsonb_set(ck, '{shot}', sh || jsonb_build_object('running', false, 'ms', bb__left(sh, nowms), 'at', nowms));
     elsif op = 'shot_set' then
-      ck := jsonb_set(ck, '{shot}', sh || jsonb_build_object('ms', greatest(0, least((d ->> 'ms')::bigint, 99000)), 'at', nowms));
+      ck := jsonb_set(ck, '{shot}', sh || jsonb_build_object('ms', greatest(0, least((d ->> 'ms')::bigint, 99000)), 'at', nowms, 'expired', false));
     elsif op = 'shot_off' then
-      ck := jsonb_set(ck, '{shot}', sh || jsonb_build_object('running', false, 'hidden', not coalesce((sh ->> 'hidden')::boolean, false)));
+      ck := jsonb_set(ck, '{shot}', sh || jsonb_build_object('running', false, 'ms', bb__left(sh, nowms), 'at', nowms, 'hidden', not coalesce((sh ->> 'hidden')::boolean, false)));
     else raise exception 'BAD_CLOCK_OP'; end if;
     d := d || jsonb_build_object('game_ms', bb__left(ck, nowms));
   elsif p_type = 'overlay' then
@@ -676,13 +681,14 @@ begin
       m.home := tmp; if d ? 'away' then m.away := bb__team_ok(m.away || (d -> 'away')); end if;
     end if;
     if d ? 'patch' then m.broadcast := m.broadcast || (d -> 'patch'); end if;
-    if d ? 'timer_mode' then m.config := m.config || jsonb_build_object('timer_mode', d ->> 'timer_mode'); end if;
+    if d ? 'timer_mode' and d ->> 'timer_mode' in ('digital', 'external') then m.config := m.config || jsonb_build_object('timer_mode', d ->> 'timer_mode'); end if;
+    d := d - 'home' - 'away' || jsonb_build_object('teams', d ? 'home' or d ? 'away');
   elsif p_type = 'lock' then
     m.settings_locked := coalesce((d ->> 'on')::boolean, not m.settings_locked);
   elsif p_type = 'final' then
     ck := ck || jsonb_build_object('running', false, 'ms', bb__left(ck, nowms), 'at', nowms);
     m.status := 'final'; m.finalized_at := now();
-    m.overlay := m.overlay || jsonb_build_object('banner', jsonb_build_object('id', p_id, 'kind', 'final', 'text', 'FINAL', 'until', null));
+    m.overlay := m.overlay || jsonb_build_object('hidden', false, 'banner', jsonb_build_object('id', p_id, 'kind', 'final', 'text', 'FINAL', 'until', null));
   elsif p_type = 'reopen' then
     m.status := 'live'; m.finalized_at := null; m.overlay := m.overlay || jsonb_build_object('banner', null);
   else
@@ -705,7 +711,6 @@ begin
     insert into bb_audit (match_id, actor, action, detail) values (m.id, actor || ' (' || role || ')', p_type, d);
   end if;
 
-  select display into nm from bb_players where id = v_pid;
   last := jsonb_build_object('id', p_id, 'type', p_type, 'team', v_team, 'player', v_pid, 'value', v, 'data', d, 'actor', actor);
   perform bb__push(m, last);
   return bb__snap(m) || jsonb_build_object('role', role, 'last', last);
