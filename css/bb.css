@@ -227,3 +227,66 @@ a.btn { text-decoration: none; color: inherit; }
 .ql-txt { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .ql-txt > b { font-size: 17px; }
 @media (max-width: 560px) { .ql-card { grid-template-columns: 1fr; justify-items: center; text-align: center; } .ql-txt .row { justify-content: center; } }
+/* ===== Basketball lobby (sign-in) — full screen, responsive ===== */
+body.portal:has(#gate:not(.hidden)) { height: 100dvh; overflow: hidden; }
+.gate.gate2 { max-width: none; margin: 0; padding: clamp(14px, 3vh, 40px) clamp(14px, 4vw, 64px); min-height: calc(100dvh - 57px); height: calc(100dvh - 57px);
+  display: grid; place-items: center; text-align: left; gap: 0;
+  background: radial-gradient(60% 70% at 78% 50%, rgba(0,229,255,.10), transparent 70%), radial-gradient(50% 60% at 15% 30%, rgba(57,255,20,.08), transparent 70%); }
+.gl-wrap { width: 100%; max-width: 1400px; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: clamp(20px, 5vw, 90px); }
+.gl-left { display: flex; flex-direction: column; align-items: flex-start; gap: clamp(8px, 1.6vh, 18px); min-width: 0; }
+.gl-logo { width: clamp(64px, 12vh, 140px); height: auto; }
+.gl-kicker { font-size: clamp(12px, 1.6vh, 16px); font-weight: 800; letter-spacing: .3em; color: #ff7a00; }
+.gl-title { margin: 0; font-size: clamp(38px, 9vh, 110px); font-weight: 900; line-height: .95; letter-spacing: -.01em; }
+.gl-title b { color: var(--brand); }
+.gl-lead { margin: 0; max-width: 560px; font-size: clamp(14px, 2vh, 19px); line-height: 1.5; color: var(--ink2); }
+.gl-or { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 420px; margin-top: 4px; }
+.gl-or span { flex: 1; height: 1px; background: var(--line); } .gl-or em { font-style: normal; font-size: 11px; color: var(--ink3); white-space: nowrap; }
+.gl-left #inBtn { min-height: 48px; padding: 0 26px; }
+.ql-card { --q: min(56vh, 40vw, 520px); display: flex; flex-direction: column; align-items: center; gap: clamp(10px, 2vh, 20px); width: auto; padding: clamp(14px, 2.4vh, 28px); border-radius: 26px;
+  background: linear-gradient(180deg, rgba(20,29,61,.9), rgba(11,17,36,.9)); border: 1px solid var(--line2); box-shadow: 0 30px 80px rgba(0,0,0,.45); text-align: center; grid-template-columns: none; }
+.ql-qr { width: var(--q); height: var(--q); padding: calc(var(--q) * .045); border-radius: 20px; }
+.ql-txt { align-items: center; gap: 6px; width: var(--q); }
+.ql-txt > b { font-size: clamp(16px, 2.3vh, 22px); }
+.ql-txt .ol { text-align: left; font-size: clamp(12px, 1.6vh, 15px); margin: 0; }
+.ql-code { display: flex; align-items: baseline; gap: 12px; }
+.ql-code .pin { font-size: clamp(24px, 4.5vh, 46px); }
+/* short landscape screens (TV at 720p, laptops): hide the steps, keep the QR big */
+@media (max-height: 720px) and (min-width: 761px) { .ql-txt .ol { display: none; } .gl-lead { font-size: 14px; } }
+/* portrait / phones: stack, QR first */
+@media (max-aspect-ratio: 4/5) {
+  body.portal:has(#gate:not(.hidden)) { height: auto; overflow: auto; }
+  .gate.gate2 { place-items: center; }
+  .gl-wrap { grid-template-columns: 1fr; height: auto; gap: 18px; justify-items: center; }
+  .gl-left { align-items: center; text-align: center; order: 2; }
+  .gl-lead { text-align: center; }
+  .ql-card { --q: min(74vw, 46vh, 440px); order: 1; }
+  .gl-logo { display: none; }
+  .gl-title { font-size: clamp(34px, 10vw, 64px); }
+}
+/* lobby: exact fit (header + gate fill the viewport, no stray scroll) */
+body.portal:has(#gate:not(.hidden)) { display: flex; flex-direction: column; }
+body.portal:has(#gate:not(.hidden)) .p-top { flex: none; }
+.gate.gate2 { flex: 1 1 auto; height: auto; min-height: 0; }
+@media (max-height: 520px) and (min-width: 561px) {
+  .ql-card { --q: min(60vh, 34vw); padding: 10px; gap: 6px; }
+  .ql-txt > b, .ql-txt .ol, #qlMsg { display: none; }
+  .gl-logo { display: none; } .gl-lead { font-size: 13px; } .gl-title { font-size: 40px; }
+  .gl-left { gap: 6px; }
+}
+@media (max-width: 560px) {
+  body.portal:has(#gate:not(.hidden)) { height: 100dvh; overflow: hidden; }
+  .gate.gate2 { place-items: center; padding: 12px 16px; }
+  .gl-wrap { gap: 12px; }
+  .ql-card { --q: min(62vw, 36vh); padding: 14px; gap: 8px; }
+  .ql-txt .ol { display: none; }
+  .ql-txt > b { font-size: 17px; }
+  .gl-kicker { display: none; }
+  .gl-title { font-size: 34px; }
+  .gl-lead { font-size: 13px; line-height: 1.4; }
+  .gl-left { gap: 8px; }
+}
+@media (max-width: 560px) and (max-height: 700px) {
+  .ql-card { --q: min(56vw, 30vh); padding: 10px; }
+  #qlMsg, .gl-lead { display: none; }
+  .gl-or { margin-top: 0; }
+}
