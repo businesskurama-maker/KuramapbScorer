@@ -154,5 +154,21 @@
   // LIVE trial codes are shown as DK-XXXX-XXXX
   const fmtTrial = (c) => { c = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); return c.length === 10 ? c.slice(0, 2) + '-' + c.slice(2, 6) + '-' + c.slice(6) : c; };
 
+  /* All typed text in the app is CAPITALIZED (names, teams, titles, notes, codes).
+     Emails, passwords, URLs and numbers are left alone; add data-nocaps to opt out. */
+  (function capsEverywhere() {
+    const SKIP = /^(email|password|url|number|tel|date|datetime-local|time|month|week|color|range|file|checkbox|radio|hidden|submit|button)$/i;
+    const want = (el) => el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !SKIP.test(el.type || 'text'))) && !el.hasAttribute('data-nocaps') && !el.readOnly;
+    const st = document.createElement('style');
+    st.textContent = 'input:not([type]),input[type=text],input[type=search],textarea{text-transform:uppercase}input[data-nocaps],textarea[data-nocaps]{text-transform:none}input::placeholder,textarea::placeholder{text-transform:none}';
+    (document.head || document.documentElement).appendChild(st);
+    document.addEventListener('input', (e) => {
+      const el = e.target; if (!want(el) || e.isComposing) return;
+      const v = el.value, up = v.toUpperCase(); if (v === up) return;
+      const a = el.selectionStart, b = el.selectionEnd; el.value = up;
+      try { el.setSelectionRange(a, b); } catch (x) {}
+    }, true);
+  })();
+
   window.PBCommon = { fmtTrial, liveText, HOURS, approvalOpen, seg, loadScript, LIBS, keepAwake, registerSW, store, ICON, PALETTE, esc, installButton, installHelp, isStandalone };
 })();
