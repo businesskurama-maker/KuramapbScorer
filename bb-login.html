@@ -62,7 +62,8 @@
       if (!j.ok) throw new Error(j.error || 'Could not approve');
       done = true; $('approve').classList.add('hidden'); $('deny').classList.add('hidden');
       $('lead').textContent = deny ? 'Declined. The screen was not signed in.' : 'Done! The screen is signing in as ' + j.email + '.';
-      $('msg').textContent = deny ? '' : 'You can now use this phone as the scoring remote: scan the Scorekeeper QR on the OBS Monitor.';
+      $('msg').textContent = deny ? '' : 'Control the screen from here: matches, setup, OBS Monitor and stats stay in sync on both.';
+      if (!deny) { const b = document.createElement('a'); b.className = 'btn cyan'; b.style.cssText = 'width:100%;min-height:56px;font-size:16px'; b.href = 'basketball.html'; b.textContent = 'Open the portal on this phone'; $('msg').after(b); }
       try { navigator.vibrate && navigator.vibrate([30, 50, 30]); } catch (e) {}
     } catch (e) {
       const m = String(e.message || e);

@@ -5,7 +5,52 @@
   let sb = null, cur = null, H = null, conn = null, view = 'matches', draft = null, devT = null;
   let toastT;
   function toast(t, err) { const el = $('toast'); el.textContent = t; el.classList.toggle('err', !!err); el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), err ? 3600 : 2000); }
-  const rpc = (fn, args) => PBB.rpc(sb, fn, args);
+  const MUT = ['bb_create', 'bb_update', 'bb_roster', 'bb_delete', 'bb_revoke'];
+  const rpc = async (fn, args) => { const r = await PBB.rpc(sb, fn, args); if (MUT.includes(fn)) link.send('changed', { code: (args && args.p_code) || (r && r.code) || cur }); return r; };
+
+  /* ---------- phone ⇄ screen link (same account): navigation, live setup typing, "data changed" ---------- */
+  const DEV_ID = Math.random().toString(36).slice(2, 10);
+  const IS_PHONE = matchMedia('(max-width: 760px)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
+  const link = (() => {
+    let ch = null, others = [], applying = false;
+    const follow = () => { try { return localStorage.getItem('dk.bb.follow') === '1'; } catch (e) { return false; } };
+    function start(uid) {
+      if (ch || !sb) return;
+      ch = sb.channel('bbu:' + uid, { config: { broadcast: { self: false }, presence: { key: DEV_ID } } });
+      ch.on('broadcast', { event: 'm' }, (e) => onMsg(e.payload || {}));
+      ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); others = Object.keys(st).filter((k) => k !== DEV_ID).map((k) => st[k][0] || {}); paintLink(); });
+      ch.subscribe((st) => { if (st === 'SUBSCRIBED') ch.track({ kind: IS_PHONE ? 'phone' : 'screen', at: Date.now() }); });
+    }
+    function send(t, data) { if (ch && !applying) { try { ch.send({ type: 'broadcast', event: 'm', payload: Object.assign({ t, from: DEV_ID }, data) }); } catch (e) {} } }
+    function onMsg(m) {
+      if (m.from === DEV_ID) return;
+      if (m.t === 'nav' && follow()) { applying = true; try { cur = m.code || null; if (m.view === 'setup' && !cur) draft = m.draft || null; go(m.view); } finally { applying = false; } }
+      if (m.t === 'draft' && follow() && view === 'setup' && (m.code || null) === cur && !document.activeElement.closest('#vSetup')) { draft = m.draft; mirrorDraft(); }
+      if (m.t === 'changed') {
+        if (view === 'matches') loadMatches();
+        else if ((m.code || '') === (cur || '') || !cur) {
+          if (view === 'monitor') openMonitor(); else if (view === 'summary') openSummary();
+          else if (view === 'setup' && cur && !document.activeElement.closest('#vSetup')) openSetup();
+        }
+        toast(IS_PHONE ? 'Updated from the screen' : 'Updated from your phone');
+      }
+    }
+    function paintLink() {
+      const ph = others.filter((o) => o.kind === 'phone').length, sc = others.filter((o) => o.kind === 'screen').length;
+      const n = IS_PHONE ? sc : ph; const el = $('linkChip'); if (!el) return;
+      el.classList.toggle('hidden', !n);
+      el.innerHTML = '<span class="dot on"></span>' + (IS_PHONE ? (n === 1 ? 'Screen connected' : n + ' screens connected') : (n === 1 ? 'Phone connected' : n + ' phones connected'))
+        + (IS_PHONE ? '' : ' · <label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="followT"' + (follow() ? ' checked' : '') + '> follow phone</label>');
+      const f = $('followT'); if (f) f.onchange = () => { try { localStorage.setItem('dk.bb.follow', f.checked ? '1' : '0'); } catch (e) {} };
+    }
+    return { start, send, get applying() { return applying; } };
+  })();
+  let draftT = null;
+  function sendDraft() { clearTimeout(draftT); draftT = setTimeout(() => { if (!draft) return;
+    const d = JSON.parse(JSON.stringify(draft)); let size = JSON.stringify(d).length;
+    if (size > 180000) { ['home', 'away'].forEach((t) => { if (d[t].logo) d[t].logo = ''; }); d.players.forEach((p) => { delete p.photo; }); }
+    link.send('draft', { code: cur, draft: d }); }, 350); }
+  function mirrorDraft() { $('fTitle').value = draft.title || ''; $('fVenue').value = draft.venue || ''; paintTeams(); paintRules(); }
 
   /* ---------------- auth gate ---------------- */
   async function boot() {
@@ -25,7 +70,7 @@
     const p = PBAuth.profile || {}, now = Date.now();
     const until = Math.max(p.live_until ? Date.parse(p.live_until) : 0, p.trial_until ? Date.parse(p.trial_until) : 0);
     $('passTxt').innerHTML = p.is_admin ? 'Owner account · unlimited matches' : until > now ? 'LIVE access until <b>' + new Date(until).toLocaleString() + '</b>' : '<span style="color:var(--warn)">No active LIVE pass — activate one on the LIVE screen to create new matches. Existing matches stay available.</span>';
-    if (shownFor !== u.id) { shownFor = u.id; route(); }
+    if (shownFor !== u.id) { shownFor = u.id; link.start(u.id); route(); }
   }
   $('inBtn').onclick = () => PBAuth.signIn(location.href);
 
@@ -52,6 +97,7 @@
         if (r.status === 'approved' && r.session) {
           $('qlMsg').textContent = 'Approved by ' + (r.email || 'your phone') + ' · signing in…';
           stop();
+          try { localStorage.setItem('dk.bb.follow', '1'); } catch (e) {}
           const { error } = await PBAuth.client.auth.setSession(r.session);
           if (error) { $('qlMsg').textContent = PBB.errText(error); start(); }
         } else if (r.status === 'expired' || r.status === 'missing' || r.status === 'consumed') { $('qlQr').classList.add('old'); await fresh(); }
@@ -77,7 +123,8 @@
     view = v;
     document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
     ['matches', 'setup', 'monitor', 'summary'].forEach((k) => $('v' + k[0].toUpperCase() + k.slice(1)).classList.toggle('hidden', k !== v));
-    if (!noHash) setHash(); else setHash();
+    setHash();
+    link.send('nav', { view: v, code: cur, draft: v === 'setup' && !cur ? draft : null });
     if (v !== 'monitor') { clearInterval(devT); }
     if (v === 'matches') loadMatches();
     if (v === 'setup') openSetup();
@@ -171,6 +218,7 @@
   $('rules').addEventListener('change', (e) => { const el = e.target; if (el.dataset.r) draft.config[el.dataset.r] = el.type === 'number' ? Number(el.value) : (/^\d+$/.test(el.value) ? Number(el.value) : el.value); if (el.dataset.bc) draft.broadcast[el.dataset.bc] = /^\d+$/.test(el.value) ? Number(el.value) : el.value; });
   $('rulesT').addEventListener('change', (e) => { const el = e.target; if (el.dataset.r) draft.config[el.dataset.r] = el.checked;
     if (el.dataset.tfk) { const k = el.dataset.tfk, set = new Set(draft.config.tf_kinds || ['P', 'T', 'U', 'D']); const ks = k === 'U' ? ['U', 'D'] : [k]; ks.forEach((x) => (el.checked ? set.add(x) : set.delete(x))); draft.config.tf_kinds = [...set]; } });
+  ['input', 'change', 'click'].forEach((ev) => $('vSetup').addEventListener(ev, () => setTimeout(sendDraft, 0)));
   ['fTitle', 'fVenue', 'fWhen'].forEach((id) => $(id).addEventListener('input', () => { draft.title = $('fTitle').value; draft.venue = $('fVenue').value; draft.when = $('fWhen').value ? new Date($('fWhen').value).toISOString() : ''; }));
 
   const findP = (id) => draft.players.find((p) => (p.id || p._tmp) === id);
