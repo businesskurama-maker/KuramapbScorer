@@ -1262,3 +1262,11 @@ body.mode-act .act-done { min-height: 0; flex: 1 1 auto; overflow-y: auto; -webk
 .lib-add { display: flex; gap: 6px; }
 .lib-add .text-in { flex: 1; height: 34px; padding: 0 10px; font-size: 14px; min-width: 0; }
 .lib-add.hidden { display: none; }
+
+/* sound on/off pill on the remote header */
+.snd-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 9px; border-radius: 999px; border: 1px solid rgba(57,255,20,.45); background: rgba(57,255,20,.12); color: var(--ball, #39ff14); font: 800 10.5px/1 var(--font-ui, system-ui); letter-spacing: .12em; cursor: pointer; }
+.snd-btn .snd-ic, .snd-btn svg { width: 18px; height: 18px; display: block; }
+.snd-btn.off { border-color: rgba(255,90,106,.55); background: rgba(255,90,106,.14); color: #ff7a88; animation: sndPulse 1.8s ease-in-out infinite; }
+@keyframes sndPulse { 50% { box-shadow: 0 0 0 4px rgba(255,90,106,.18); } }
+.snd-btn.hidden { display: none; }
+@media (max-width: 380px) { .snd-btn b { display: none; } .snd-btn { padding: 0 9px; } }

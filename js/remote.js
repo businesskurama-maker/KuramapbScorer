@@ -90,7 +90,7 @@
     txt.textContent = labels[s] || s;
     if (s === 'connected') { el.classList.add('ok'); el.classList.toggle('slow', rtt > 400); flushQueue(); }
     if (s === 'nodisplay' || s === 'nolib') el.classList.add('bad');
-    renderCtrl(); renderReconn();
+    renderCtrl(); paintSound(); renderReconn();
   }
 
   /* ---------- Join ---------- */
@@ -118,6 +118,22 @@
   $('codeIn').addEventListener('input', (e) => { e.target.value = PBLink.normCode(e.target.value); });
   $('codeIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') join(e.target.value); });
   $('status').onclick = () => { if (!connected && code) { flash('Retrying…'); if (link) link.destroy(); join(code); } };
+
+  /* ---------- Scoreboard sound on/off (one tap, top of the remote) ---------- */
+  const SND_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>';
+  const SND_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z" fill="currentColor"/><path d="m22 9-6 6M16 9l6 6"/></svg>';
+  function soundOn() { return !!(st && st.settings && st.settings.voice !== 0); }
+  function paintSound() {
+    const b = $('sndBtn'); if (!b) return;
+    const show = !!(st && st.settings && !st.liveCourt);
+    b.classList.toggle('hidden', !show); if (!show) return;
+    const on = soundOn();
+    b.classList.toggle('off', !on); $('sndIc').innerHTML = on ? SND_ON : SND_OFF; $('sndTxt').textContent = on ? 'SOUND ON' : 'MUTED';
+  }
+  $('sndBtn').onclick = () => {
+    if (!st) return; const on = !soundOn();
+    if (send({ a: 'voice', on })) { st.settings.voice = on ? 1 : 0; if (draft) draft.voice = on ? 1 : 0; paintSound(); flash(on ? 'Scoreboard sound ON' : 'Scoreboard muted'); try { buzz(on ? [20, 40, 20] : 40); } catch (e) {} }
+  };
 
   /* ---------- State from display ---------- */
   function onState(s) {
