@@ -16,14 +16,21 @@
   const AC = window.AudioContext || window.webkitAudioContext;
   let ctx = null, out = null, bufs = {}, loading = null, gen = 0, active = [];
   const listeners = [];
+  // extra push for the calls players must hear across the court
+  const BOOST = { sideout: 1.7, second: 1.5, teama: 1.3, teamb: 1.3, to_a: 1.3, to_b: 1.3, sf_a: 1.3, sf_b: 1.3, wg_a: 1.2, wg_b: 1.2, wm_a: 1.2, wm_b: 1.2 };
+  function dest(key) { if (!BOOST[key]) return out; const g = ctx.createGain(); g.gain.value = BOOST[key]; g.connect(out); return g; }
 
   function ensureCtx() {
     if (ctx || !AC) return ctx;
     ctx = new AC();
+    // LOUD chain (measured ≈ +4 dB over the old one, without its hard clipping):
+    // strong compressor lifts the quiet parts of every word → makeup gain → soft tanh saturator → trim
     const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -14; comp.knee.value = 6; comp.ratio.value = 4; comp.attack.value = .003; comp.release.value = .12;
-    const gain = ctx.createGain(); gain.gain.value = 1.6;   // loud, the limiter in the clips keeps it clean
-    comp.connect(gain); gain.connect(ctx.destination); out = comp;
+    comp.threshold.value = -34; comp.knee.value = 6; comp.ratio.value = 12; comp.attack.value = .002; comp.release.value = .12;
+    const gain = ctx.createGain(); gain.gain.value = 4.5;
+    const sat = ctx.createWaveShaper(); { const n = 2048, c = new Float32Array(n), k = 2; for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; c[i] = Math.tanh(k * x) / Math.tanh(k); } sat.curve = c; sat.oversample = '4x'; }
+    const trim = ctx.createGain(); trim.gain.value = .94;
+    comp.connect(gain); gain.connect(sat); sat.connect(trim); trim.connect(ctx.destination); out = comp;
     ctx.onstatechange = () => listeners.forEach((f) => f());
     return ctx;
   }
@@ -85,7 +92,8 @@
   function pickVoice() {
     if (!window.speechSynthesis) return null;
     const vs = speechSynthesis.getVoices().filter((v) => /^en/i.test(v.lang));
-    return vs.find((v) => FEMALE.test(v.name) && !/male(?!.*female)/i.test(v.name.replace(/female/i, ''))) || vs.find((v) => FEMALE.test(v.name)) || vs[0] || null;
+    // Chrome's "Google US/UK English" voices are the clearest and loudest at full volume — use them first
+    return vs.find((v) => /google (us|uk) english/i.test(v.name) && !/\bmale\b/i.test(v.name)) || vs.find((v) => FEMALE.test(v.name) && !/male(?!.*female)/i.test(v.name.replace(/female/i, ''))) || vs.find((v) => FEMALE.test(v.name)) || vs[0] || null;
   }
   if (window.speechSynthesis) { try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => {}; } catch (e) {} }
   let it_rate = 0;
@@ -95,7 +103,7 @@
       if (!window.speechSynthesis) return resolve(false);
       try {
         const u = new SpeechSynthesisUtterance(text); const v = pickVoice();
-        if (v) u.voice = v; u.lang = (v && v.lang) || 'en-US'; u.rate = it_rate || .9; u.pitch = 1.05; u.volume = 1;
+        if (v) u.voice = v; u.lang = (v && v.lang) || 'en-US'; u.rate = it_rate || .86; u.pitch = 1.08; u.volume = 1;   // speech volume is capped at 1 by browsers
         let done = false; const fin = (ok) => { if (!done) { done = true; resolve(ok); } };
         u.onend = () => fin(true); u.onerror = () => fin(false);
         const go = () => { try { speechSynthesis.resume(); speechSynthesis.speak(u); } catch (e) { fin(false); } };
@@ -116,7 +124,7 @@
       if (typeof it === 'string') {
         let b = bufs[it];
         if (!b) { b = await fetchClip(it); if (my !== gen) return; if (!b) { if (it[0] === 'c') { const fb = it.slice(1).split('-').map((x) => 'n' + x); for (const k of fb) { const bb = bufs[k]; if (!bb) continue; const src = ctx.createBufferSource(); src.buffer = bb; src.connect(out); t = Math.max(t, ctx.currentTime + .03); src.start(t); active.push(src); t += bb.duration + .12; } } continue; } t = Math.max(t, ctx.currentTime + .03); }
-        const src = ctx.createBufferSource(); src.buffer = b; src.connect(out); src.start(t); active.push(src);
+        const src = ctx.createBufferSource(); src.buffer = b; src.connect(dest(it)); src.start(t); active.push(src);
         t += b.duration + .12;
       } else if (it.gap) t += it.gap;
       else if (it.chime) {   // two-tone "ding-dong" before an announcement
