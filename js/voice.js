@@ -3,7 +3,7 @@
  * Custom team names are spoken with the device's own speech voice (a female one when available). */
 (function () {
   const BASE = 'sounds/voice/';
-  const KEYS = Array.from({ length: 31 }, (_, n) => 'n' + n).concat(['g2', 'g3', 'g4', 'g5', 'sideout', 'second', 'game', 'match', 'winsgame', 'winsmatch', 'teama', 'teamb', 'servesfirst', 'pfs', 'wg_a', 'wg_b', 'wm_a', 'wm_b', 'sf_a', 'sf_b', 'timeout', 'timein', 'toss', 'to_a', 'to_b']);
+  const KEYS = Array.from({ length: 31 }, (_, n) => 'n' + n).concat(['g2', 'g3', 'g4', 'g5', 'sideout', 'second', 'game', 'match', 'winsgame', 'winsmatch', 'teama', 'teamb', 'servesfirst', 'pfs', 'wg_a', 'wg_b', 'wm_a', 'wm_b', 'sf_a', 'sf_b', 'timeout', 'timein', 'toss', 'to_a', 'to_b', 'gp', 'mp']);
   // Whole score calls ("four, two, one") are single natural recordings, fetched the first time they are needed
   const pending = {};
   function fetchClip(k) {
@@ -17,7 +17,7 @@
   let ctx = null, out = null, bufs = {}, loading = null, gen = 0, active = [];
   const listeners = [];
   // extra push for the calls players must hear across the court
-  const BOOST = { sideout: 1.7, second: 1.5, teama: 1.3, teamb: 1.3, to_a: 1.3, to_b: 1.3, sf_a: 1.3, sf_b: 1.3, wg_a: 1.2, wg_b: 1.2, wm_a: 1.2, wm_b: 1.2 };
+  const BOOST = { mp: 1.8, gp: 1.5, sideout: 1.7, second: 1.5, teama: 1.3, teamb: 1.3, to_a: 1.3, to_b: 1.3, sf_a: 1.3, sf_b: 1.3, wg_a: 1.2, wg_b: 1.2, wm_a: 1.2, wm_b: 1.2 };
   function dest(key) { if (!BOOST[key]) return out; const g = ctx.createGain(); g.gain.value = BOOST[key]; g.connect(out); return g; }
 
   function ensureCtx() {

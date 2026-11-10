@@ -145,6 +145,10 @@
         break;
       }
     }
+    // "Game point!" / "Match point!" after the score call
+    if (items && items.length && /^(point|sideout|second|timein|server|toss|pfs)$/.test(ev.type)) {
+      const gp = E.pointFor(state); if (gp) items = items.concat([{ gap: .25 }, gp.kind === 'match' ? 'mp' : 'gp']);
+    }
     if (items && items.length) V.say(items);
   }
   // Browsers only play sound after a tap/click on the page: show a chip until the voice is unlocked

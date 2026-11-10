@@ -391,7 +391,19 @@
     return p;
   }
 
-  const api = { DEFAULT_SETTINGS, ensure, playerName, newMatch, apply, callout, serveSide, publicState, isDecidingGame, stats };
+  /* Game point / match point: the team that wins the game (or the match) with its next rally.
+   * Side-out scoring: only the serving team can score, so only it can be on game point. Rally scoring: either team. */
+  function pointFor(st) {
+    if (!st || st.gameOver || st.matchOver || st.playForServe) return null;
+    const s = st.settings, need = Math.ceil((s.bestOf || 1) / 2), winBy = s.winBy || 2;
+    const teams = s.scoring === 'rally' ? [0, 1] : [st.serving];
+    for (const t of teams) {
+      const mine = st.score[t] + 1, theirs = st.score[1 - t];
+      if (mine >= s.target && mine - theirs >= winBy) return { team: t, kind: st.games[t] + 1 >= need ? 'match' : 'game' };
+    }
+    return null;
+  }
+  const api = { pointFor, DEFAULT_SETTINGS, ensure, playerName, newMatch, apply, callout, serveSide, publicState, isDecidingGame, stats };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PBEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);
