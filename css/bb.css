@@ -676,3 +676,9 @@ table.rt td .in { min-height: 32px; }
 
 .lk-nm { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #0b1224; }
 .lk-nm > span { display: flex; flex-direction: column; font-size: 12.5px; } .lk-nm small { font-size: 10.5px; color: var(--ink3); }
+
+/* venue scoreboard link sits in the tab bar beside Stats & history */
+.p-tabs .tab-link { display: inline-flex; align-items: center; gap: 6px; align-self: center; margin-left: 8px; padding: 6px 12px; border-radius: 10px; border: 1px solid rgba(0,229,255,.35); background: rgba(0,229,255,.08); color: var(--cyan); font-size: 12.5px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.p-tabs .tab-link span { font-size: 11px; opacity: .8; }
+.p-tabs .tab-link:hover { background: rgba(0,229,255,.16); }
+.p-tabs .tab-link.off { opacity: .45; }

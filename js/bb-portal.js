@@ -454,6 +454,14 @@
   $('zoomSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; [...$('zoomSeg').children].forEach((x) => x.classList.toggle('on', x === b)); $('moPrev').classList.toggle('zoom-lt', b.dataset.z === 'lt'); };
   $('moTabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; [...$('moTabs').children].forEach((x) => x.classList.toggle('on', x === b)); document.querySelectorAll('#vMonitor .mo-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.t !== b.dataset.t)); };
   $('copyObs2').onclick = () => $('copyObs').click();
+  // tab-bar link: always points at the current match (opens a quick check of the match first)
+  $('boardOpen').addEventListener('click', async (e) => {
+    if (!cur) { e.preventDefault(); toast('Pick a match first — then open its venue scoreboard.'); return; }
+    if (!($('boardOpen').getAttribute('href') || '').includes('m=' + cur + '&')) {
+      e.preventDefault();
+      try { const h = await rpc('bb_host', { p_code: cur }); const u = location.href.replace(/[^/]*$/, '') + 'bb-board.html?m=' + cur + '&k=' + h.view_key; $('boardOpen').href = u; window.open(u, '_blank', 'noopener'); } catch (x) { noAccess(x); }
+    }
+  });
   $('copyBoard').onclick = async () => { try { await navigator.clipboard.writeText($('boardUrl').value); toast('Venue scoreboard link copied'); } catch (e) { $('boardUrl').select(); document.execCommand('copy'); toast('Copied'); } };
   $('copyObs').onclick = async () => { try { await navigator.clipboard.writeText($('obsUrl').value); toast('Browser Source URL copied'); } catch (e) { $('obsUrl').select(); document.execCommand('copy'); toast('Copied'); } };
   $('newPin').onclick = async () => { if (!confirm('Make a new PIN? Phones already paired stay connected; new phones need the new PIN.')) return; try { H = await rpc('bb_update', { p_code: cur, p: { new_pin: true } }); $('pin').textContent = H.pin; toast('New PIN ready'); } catch (e) { toast(PBB.errText(e), true); } };
