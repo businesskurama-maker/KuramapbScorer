@@ -82,6 +82,7 @@
           <input class="text-in" id="ptName" maxlength="28" placeholder="Tournament name">
           <div class="pt-grid">
             <label class="pt-cell"><span>Format</span><select class="pt-sel" data-tk="format"><option value="rr">Round robin</option><option value="se">Single elim</option><option value="de">Double elim</option><option value="pools">Pools + playoffs</option></select></label>
+            <label class="pt-cell"><span>Match-ups</span><select class="pt-sel" data-tk="draw"><option value="random">Random draw</option><option value="seeded">As entered</option></select></label>
             <label class="pt-cell"><span>Courts</span><select class="pt-sel" data-tk="courts"><option value="1">1 court</option><option value="2">2 courts</option><option value="3">3 courts</option><option value="4">4 courts</option><option value="5">5 courts</option><option value="6">6 courts</option></select></label>
             <label class="pt-cell" id="ptPoolRow"><span>Pools</span><select class="pt-sel" data-tk="pools"><option value="2">2 pools</option><option value="3">3 pools</option><option value="4">4 pools</option></select></label>
             <label class="pt-cell" id="ptPoolRow2"><span>Advance</span><select class="pt-sel" data-tk="advance"><option value="1">Top 1 per pool</option><option value="2">Top 2 per pool</option></select></label>
@@ -93,7 +94,7 @@
             <label class="pt-cell"><span>Court calls</span><select class="pt-sel" data-tk="announce"><option value="1">Announce</option><option value="0">Silent</option></select></label>
           </div>
           <p class="pt-info" id="ptFmtInfo"></p>
-          <div class="ptf"><span class="eyebrow">Teams · one per line</span><span class="pt-hint">Best seed first · players after a colon: <b>NET NINJAS: JUAN, MARIA</b></span><textarea class="text-in pt-teams" id="ptTeams" rows="5" placeholder="NET NINJAS: JUAN, MARIA&#10;DINK DYNASTY: ANA, BEN&#10;SMASH BROS: LEO, MIA&#10;KITCHEN KINGS"></textarea></div>
+          <div class="ptf"><span class="eyebrow">Teams · one per line</span><span class="pt-hint">Players after a colon: <b>NET NINJAS: JUAN, MARIA</b></span><textarea class="text-in pt-teams" id="ptTeams" rows="5" placeholder="NET NINJAS: JUAN, MARIA&#10;DINK DYNASTY: ANA, BEN&#10;SMASH BROS: LEO, MIA&#10;KITCHEN KINGS"></textarea></div>
           <div class="pt-saved" id="ptSaved"></div>
           <p class="pt-count" id="ptCount"></p>
           <button class="big-btn wide" id="ptStart">Start &amp; deploy teams</button>
@@ -184,16 +185,21 @@
       <div class="team-pair">
       <div class="team-edit" data-team="0">
         <div class="team-edit-head"><span class="team-dot" id="dotA"></span><input class="text-in team-in" id="nA" maxlength="18" placeholder="Team name" aria-label="Team A name"></div>
-        <div class="player-row"><input class="text-in" id="pA0" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 1" aria-label="Team A player 1"><input class="text-in pl2" id="pA1" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 2" aria-label="Team A player 2"></div>
-        <div class="saved-row"><div class="saved-chips" id="svA" aria-label="Saved teams"></div><span class="tools"><button class="mini-btn save-team" id="saveA" data-team="0">☆ Save</button><button class="mini-btn swap-btn dbl-only" id="ptA">⇄ Swap</button></span></div>
+        <div class="player-row"><span class="pl-in"><input class="text-in" id="pA0" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 1" aria-label="Team A player 1"><button type="button" class="pl-sv" data-p="pA0" title="Save this player" aria-label="Save player">☆</button></span><span class="pl-in pl2"><input class="text-in" id="pA1" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 2" aria-label="Team A player 2"><button type="button" class="pl-sv" data-p="pA1" title="Save this player" aria-label="Save player">☆</button></span></div>
+        <div class="saved-row"><span class="tools"><button class="mini-btn save-team" id="saveA" data-team="0">☆ Save team</button><button class="mini-btn swap-btn dbl-only" id="ptA">⇄ Swap</button></span></div>
         <div class="swatches" id="swA" role="group" aria-label="Team A color"></div>
       </div>
       <div class="team-edit" data-team="1">
         <div class="team-edit-head"><span class="team-dot" id="dotB"></span><input class="text-in team-in" id="nB" maxlength="18" placeholder="Team name" aria-label="Team B name"></div>
-        <div class="player-row"><input class="text-in" id="pB0" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 1" aria-label="Team B player 1"><input class="text-in pl2" id="pB1" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 2" aria-label="Team B player 2"></div>
-        <div class="saved-row"><div class="saved-chips" id="svB" aria-label="Saved teams"></div><span class="tools"><button class="mini-btn save-team" id="saveB" data-team="1">☆ Save</button><button class="mini-btn swap-btn dbl-only" id="ptB">⇄ Swap</button></span></div>
+        <div class="player-row"><span class="pl-in"><input class="text-in" id="pB0" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 1" aria-label="Team B player 1"><button type="button" class="pl-sv" data-p="pB0" title="Save this player" aria-label="Save player">☆</button></span><span class="pl-in pl2"><input class="text-in" id="pB1" list="savedPl" autocomplete="off" maxlength="16" placeholder="Player 2" aria-label="Team B player 2"><button type="button" class="pl-sv" data-p="pB1" title="Save this player" aria-label="Save player">☆</button></span></div>
+        <div class="saved-row"><span class="tools"><button class="mini-btn save-team" id="saveB" data-team="1">☆ Save team</button><button class="mini-btn swap-btn dbl-only" id="ptB">⇄ Swap</button></span></div>
         <div class="swatches" id="swB" role="group" aria-label="Team B color"></div>
       </div>
+      </div>
+      <div class="lib">
+        <div class="lib-head"><div class="seg lib-tabs" id="libTabs"><button data-l="teams" class="on" type="button">Saved teams <i id="libTn"></i></button><button data-l="players" type="button">Saved players <i id="libPn"></i></button></div></div>
+        <div class="lib-list" id="libList"></div>
+        <form class="lib-add hidden" id="libAdd" autocomplete="off"><input class="text-in" id="libNew" maxlength="16" placeholder="Add a player name"><button class="mini-btn" type="submit">＋ Add</button></form>
       </div>
       <datalist id="savedPl"></datalist>
     </section>

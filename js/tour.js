@@ -16,9 +16,10 @@
     seq = 0;
     const parsed = (opts.teams || []).map((n) => typeof n === 'string' ? parseTeam(n) : { name: String(n.name || '').trim(), players: (n.players || []).filter(Boolean) }).filter((x) => x.name);
     const teams = parsed.map((x, i) => ({ id: 't' + (i + 1), name: x.name, players: x.players.slice(0, 2) }));
-    const t = { v: 1, name: opts.name || 'Tournament', format: opts.format || 'rr', pools: opts.pools || 2, advance: opts.advance || 2,
+    const t = { v: 2, draw: opts.draw === 'seeded' ? 'seeded' : 'random', name: opts.name || 'Tournament', format: opts.format || 'rr', pools: opts.pools || 2, advance: opts.advance || 2,
       rules: Object.assign({ target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles' }, opts.rules || {}), teams, matches: [], createdAt: Date.now() };
-    const ids = teams.map((x) => x.id);
+    // random draw (default): shuffle who meets whom; 'seeded' keeps the order typed (best seed first)
+    const ids = t.draw === 'random' ? shuffle(teams.map((x) => x.id)) : teams.map((x) => x.id);
     if (t.format === 'rr') t.matches = roundRobin(ids, 'rr', null);
     else if (t.format === 'se') t.matches = singleElim(ids.map((id) => ({ team: id })), 'w');
     else if (t.format === 'de') t.matches = doubleElim(ids);
@@ -36,8 +37,34 @@
       for (let r = 0; r < K; r++) for (let p = 0; p < P; p++) seeds.push({ src: { pool: p, rank: r } });
       t.matches.push(...singleElim(seeds, 'po'));
     }
+    setWaves(t);
     resolve(t);
     return t;
+  }
+
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  /* Waves = the order rounds are played in. A match's wave is one more than the matches that feed it
+   * (round robin / pools: its round). A wave only starts when every match of the earlier waves is finished:
+   * winners wait for the whole round, losers wait for the remaining teams, nobody is called back too early. */
+  function setWaves(t) {
+    const byId = {}; t.matches.forEach((m) => { byId[m.id] = m; });
+    const poolTop = {}; t.matches.filter((m) => m.stage === 'pool').forEach((m) => { poolTop[m.pool] = Math.max(poolTop[m.pool] || 0, m.round); });
+    const rrTop = Math.max(0, ...t.matches.filter((m) => m.stage === 'pool').map((m) => m.round));
+    const memo = {};
+    const w = (m, depth) => {
+      if (memo[m.id]) return memo[m.id];
+      if (m.stage === 'rr' || m.stage === 'pool') return (memo[m.id] = m.round);
+      if (m.stage === 'gf' && m.round === 2) { const g1 = t.matches.find((x) => x.stage === 'gf' && x.round === 1); return (memo[m.id] = (g1 ? w(g1, depth + 1) : 1) + 1); }
+      let v = 1;
+      for (const src of [m.srcA, m.srcB]) {
+        if (!src || depth > 60) continue;
+        if (src.m && byId[src.m]) v = Math.max(v, w(byId[src.m], depth + 1) + 1);
+        else if (src.pool != null) v = Math.max(v, (poolTop[src.pool] || rrTop) + 1);
+      }
+      return (memo[m.id] = v);
+    };
+    t.matches.forEach((m) => { m.wave = w(m, 0); });
   }
 
   // Circle method: everyone plays everyone once
@@ -151,7 +178,7 @@
           if (src.m) { const s = t.matches.find((x) => x.id === src.m); if (s && s.status === 'done') { m[side] = src.take === 'W' ? winnerOf(s) : loserOf(s); changed = true; } }
           else if (src.pool != null) {
             const pm = t.matches.filter((x) => x.stage === 'pool' && x.pool === src.pool);
-            if (pm.length && pm.every((x) => x.status === 'done')) { const tab = standings(t, src.pool); m[side] = tab[src.rank] ? tab[src.rank].id : BYE; changed = true; }
+            /* a pool of one team has no matches: complete straight away */ if (pm.every((x) => x.status === 'done')) { const tab = standings(t, src.pool); m[side] = tab[src.rank] ? tab[src.rank].id : BYE; changed = true; }
           }
         }
         if (m.status !== 'done' && m.a != null && m.b != null && (m.a === BYE || m.b === BYE)) {
@@ -162,7 +189,7 @@
       // grand final reset: if the losers-bracket champion wins the first final, play one more
       const gf = t.matches.find((x) => x.stage === 'gf' && x.round === 1);
       if (gf && gf.status === 'done' && gf.result.winner === 'b' && !t.matches.find((x) => x.stage === 'gf' && x.round === 2)) {
-        t.matches.push({ id: mid() + 'r', stage: 'gf', round: 2, label: 'GRAND FINAL · RESET', a: gf.a, b: gf.b, status: 'ready', court: null, result: null }); changed = true;
+        t.matches.push({ id: mid() + 'r', stage: 'gf', round: 2, label: 'GRAND FINAL · RESET', a: gf.a, b: gf.b, status: 'ready', court: null, result: null, wave: (gf.wave || 1) + 1 }); changed = true;
       }
     }
     return t;
@@ -172,7 +199,7 @@
     const m = t.matches.find((x) => x.id === matchId); if (!m) return t;
     let wa = 0, wb = 0, pa = 0, pb = 0;
     games.forEach((g) => { pa += g.a; pb += g.b; if (g.a > g.b) wa++; else wb++; });
-    m.result = { winner: wa >= wb ? 'a' : 'b', games, pa, pb }; m.status = 'done'; m.court = null;
+    m.result = { winner: wa >= wb ? 'a' : 'b', games, pa, pb }; m.status = 'done'; m.court = null; m.endedAt = Date.now();
     return resolve(t);
   }
 
@@ -188,12 +215,31 @@
     return Object.values(row).map((r) => Object.assign(r, { pd: r.pf - r.pa })).sort((x, y) => y.w - x.w || y.pd - x.pd || y.pf - x.pf || x.name.localeCompare(y.name));
   }
 
-  // Next match for a free court: earliest ready match whose teams aren't busy on another court
+  /* Next match for a free court:
+   *  1. only the current wave (earliest wave that still has unfinished matches) — the next round waits for everyone
+   *  2. never a team that is on another court
+   *  3. rest first: teams with fewer matches played, then the ones that finished longest ago, then bracket order */
   function nextFor(t) {
+    if (t.matches.some((m) => m.wave == null)) setWaves(t);
+    const real = (m) => !(m.result && m.result.bye);
+    const open = t.matches.filter((m) => m.status !== 'done' && real(m));
+    if (!open.length) return null;
+    const wave = Math.min(...open.map((m) => m.wave || 1));
     const busy = new Set(t.matches.filter((m) => m.status === 'live').flatMap((m) => [m.a, m.b]));
-    const order = { rr: 0, pool: 0, w: 1, l: 1, po: 2, gf: 3 };
-    return t.matches.filter((m) => m.status === 'ready' && !busy.has(m.a) && !busy.has(m.b))
-      .sort((x, y) => (order[x.stage] - order[y.stage]) || (x.round - y.round) || t.matches.indexOf(x) - t.matches.indexOf(y))[0] || null;
+    const played = {}, lastEnd = {};
+    t.matches.forEach((m) => { if (m.status === 'done' && real(m)) [m.a, m.b].forEach((id) => { played[id] = (played[id] || 0) + 1; lastEnd[id] = Math.max(lastEnd[id] || 0, m.endedAt || 0); }); });
+    const load = (m) => (played[m.a] || 0) + (played[m.b] || 0);
+    const recent = (m) => Math.max(lastEnd[m.a] || 0, lastEnd[m.b] || 0);
+    return t.matches.filter((m) => m.status === 'ready' && (m.wave || 1) === wave && !busy.has(m.a) && !busy.has(m.b))
+      .sort((x, y) => load(x) - load(y) || recent(x) - recent(y) || t.matches.indexOf(x) - t.matches.indexOf(y))[0] || null;
+  }
+  // What the courts are waiting for (for the screen): the round in progress and how many of its matches are left
+  function waveInfo(t) {
+    const real = (m) => !(m.result && m.result.bye);
+    const open = t.matches.filter((m) => m.status !== 'done' && real(m)); if (!open.length) return null;
+    const wave = Math.min(...open.map((m) => m.wave || 1));
+    const inWave = t.matches.filter((m) => (m.wave || 1) === wave && real(m));
+    return { wave, left: inWave.filter((m) => m.status !== 'done').length, total: inWave.length };
   }
 
   function champion(t) {
@@ -208,7 +254,7 @@
   const done = (t) => t.matches.length > 0 && t.matches.every((m) => m.status === 'done');
   const progress = (t) => ({ done: t.matches.filter((m) => m.status === 'done' && !(m.result && m.result.bye)).length, total: t.matches.filter((m) => !(m.result && m.result.bye)).length });
 
-  const api = { parseTeam, teamPlayers, create, resolve, record, standings, nextFor, champion, done, progress, teamName, winnerOf, BYE };
+  const api = { parseTeam, teamPlayers, create, resolve, record, standings, nextFor, waveInfo, setWaves, champion, done, progress, teamName, winnerOf, BYE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PBTour = api;
 })(typeof window !== 'undefined' ? window : globalThis);

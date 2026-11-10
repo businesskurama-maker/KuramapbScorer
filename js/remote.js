@@ -582,37 +582,61 @@
     list.flat().map((x) => String(x || '').trim()).filter(Boolean).forEach((n) => { if (!seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); cur.unshift(n); } });
     store.set(SAVED_P, cur.slice(0, 80)); renderSaved();
   }
+  // Saved library (teams + individual players) under the two team cards
+  let libTab = 'teams';
   function renderSaved() {
-    const teams = savedTeams();
-    ['svA', 'svB'].forEach((id, t) => {
-      const el = $(id); if (!el) return;
-      el.innerHTML = teams.length ? teams.map((x, i) => '<span class="sv-chip"><button class="sv-pick" data-i="' + i + '" data-t="' + t + '" title="Use this team"><i style="background:' + PBCommon.esc(x.color || '#888') + '"></i>' + PBCommon.esc(x.name) + (x.players && x.players.some(Boolean) ? '<small>' + PBCommon.esc(x.players.filter(Boolean).join(' · ')) + '</small>' : '') + '</button><button class="sv-del" data-i="' + i + '" aria-label="Remove ' + PBCommon.esc(x.name) + '">×</button></span>').join('')
-        : '<span class="sv-empty">No saved teams yet</span>';
-    });
-    const pl = new Set(); teams.forEach((x) => (x.players || []).forEach((n) => n && pl.add(n))); savedPlayers().forEach((n) => pl.add(n));
-    $('savedPl').innerHTML = [...pl].map((n) => '<option value="' + PBCommon.esc(n) + '">').join('');
+    const teams = savedTeams(), plist = savedPlayers(), E = PBCommon.esc;
+    $('libTn').textContent = teams.length || ''; $('libPn').textContent = plist.length || '';
+    $('libTabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.l === libTab));
+    $('libAdd').classList.toggle('hidden', libTab !== 'players');
+    const to = (kind, i) => '<span class="lib-to"><button type="button" data-to="0" data-kind="' + kind + '" data-i="' + i + '" title="Put on team A">A</button><button type="button" data-to="1" data-kind="' + kind + '" data-i="' + i + '" title="Put on team B">B</button><button type="button" class="lib-x" data-del="' + kind + '" data-i="' + i + '" aria-label="Remove">×</button></span>';
+    $('libList').innerHTML = libTab === 'teams'
+      ? (teams.map((x, i) => '<div class="lib-it"><i style="background:' + E(x.color || '#888') + '"></i><span class="lib-nm"><b>' + E(x.name) + '</b>' + (x.players && x.players.some(Boolean) ? '<small>' + E(x.players.filter(Boolean).join(' · ')) + '</small>' : '') + '</span>' + to('team', i) + '</div>').join('')
+        || '<div class="lib-empty">No saved teams yet — type a team, then tap <b>☆ Save team</b>.</div>')
+      : (plist.map((n, i) => '<div class="lib-it"><i class="pl-dot">👤</i><span class="lib-nm"><b>' + E(n) + '</b></span>' + to('player', i) + '</div>').join('')
+        || '<div class="lib-empty">No saved players yet — tap <b>☆</b> in a player box, or add one below.</div>');
+    const pl = new Set(); teams.forEach((x) => (x.players || []).forEach((n) => n && pl.add(n))); plist.forEach((n) => pl.add(n));
+    $('savedPl').innerHTML = [...pl].map((n) => '<option value="' + E(n) + '">').join('');
+  }
+  function savePlayer(name, quiet) {
+    name = String(name || '').trim().toUpperCase().slice(0, 16); if (!name) { flash('Type a player name first'); return false; }
+    const list = savedPlayers().filter((x) => x.toLowerCase() !== name.toLowerCase()); list.unshift(name); store.set(SAVED_P, list.slice(0, 120));
+    renderSaved(); if (!quiet) flash('Saved player ' + name); return true;
+  }
+  function putPlayer(name, t) {   // first empty slot of that team (player 2 is skipped in singles), else replace the last slot
+    const L = t ? 'B' : 'A', single = !!(draft && draft.mode === 'singles');
+    const slots = single ? ['p' + L + '0'] : ['p' + L + '0', 'p' + L + '1'];
+    const free = slots.find((id) => !$(id).value.trim()) || slots[slots.length - 1];
+    $(free).value = name; flash(name + ' → team ' + (t ? 'B' : 'A'));
   }
   function pickSaved(i, t) {
     const x = savedTeams()[i]; if (!x) return;
     const L = t ? 'B' : 'A';
     $('n' + L).value = x.name; $('p' + L + '0').value = (x.players && x.players[0]) || ''; $('p' + L + '1').value = (x.players && x.players[1]) || '';
-    if (x.color && String(x.color).toLowerCase() !== String(draft.colors[1 - t]).toLowerCase()) draft.colors[t] = x.color;
-    paintSheet(); flash(x.name + ' added');
+    if (draft && draft.colors && x.color && String(x.color).toLowerCase() !== String(draft.colors[1 - t]).toLowerCase()) draft.colors[t] = x.color;
+    if (draft) paintSheet(); flash(x.name + ' added');
   }
   function saveTeam(t) {
     const L = t ? 'B' : 'A';
     const name = $('n' + L).value.trim().toUpperCase(); const pls = [$('p' + L + '0').value.trim(), $('p' + L + '1').value.trim()];
     if (!name && !pls.some(Boolean)) { flash('Type a team name first'); return; }
-    const entry = { name: name || pls.filter(Boolean).join(' & ').toUpperCase(), players: pls, color: draft.colors[t] };
+    const entry = { name: name || pls.filter(Boolean).join(' & ').toUpperCase(), players: pls, color: draft && draft.colors ? draft.colors[t] : undefined };
     const list = savedTeams().filter((x) => x.name.toLowerCase() !== entry.name.toLowerCase());
-    list.unshift(entry); store.set(SAVED_T, list.slice(0, 40));
-    rememberPlayers([pls]); flash('Saved ' + entry.name);
+    list.unshift(entry); store.set(SAVED_T, list.slice(0, 60));
+    pls.filter(Boolean).forEach((n) => savePlayer(n, true)); libTab = 'teams'; renderSaved(); flash('Saved team ' + entry.name);
   }
-  ['svA', 'svB'].forEach((id) => $(id).addEventListener('click', (e) => {
-    const pick = e.target.closest('.sv-pick'), del = e.target.closest('.sv-del');
-    if (pick) pickSaved(+pick.dataset.i, +pick.dataset.t);
-    if (del) { const list = savedTeams(); const x = list[+del.dataset.i]; if (x && confirm('Remove saved team ' + x.name + '?')) { list.splice(+del.dataset.i, 1); store.set(SAVED_T, list); renderSaved(); } }
-  }));
+  $('libTabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; libTab = b.dataset.l; renderSaved(); };
+  $('libList').addEventListener('click', (e) => {
+    const go = e.target.closest('[data-to]'), del = e.target.closest('[data-del]');
+    if (go) { const i = +go.dataset.i, t = +go.dataset.to; if (go.dataset.kind === 'team') pickSaved(i, t); else { const n = savedPlayers()[i]; if (n) putPlayer(n, t); } }
+    if (del) {
+      const i = +del.dataset.i;
+      if (del.dataset.del === 'team') { const list = savedTeams(); const x = list[i]; if (x && confirm('Remove saved team ' + x.name + '?')) { list.splice(i, 1); store.set(SAVED_T, list); renderSaved(); } }
+      else { const list = savedPlayers(); const n = list[i]; if (n && confirm('Remove saved player ' + n + '?')) { list.splice(i, 1); store.set(SAVED_P, list); renderSaved(); } }
+    }
+  });
+  $('libAdd').onsubmit = (e) => { e.preventDefault(); if (savePlayer($('libNew').value)) $('libNew').value = ''; };
+  document.querySelectorAll('.pl-sv').forEach((b) => { b.onclick = () => savePlayer($(b.dataset.p).value); });
   $('saveA').onclick = () => saveTeam(0); $('saveB').onclick = () => saveTeam(1);
   renderSaved();
 
@@ -910,7 +934,7 @@
     de: 'Lose twice to be out. Losers-bracket winner meets the winners-bracket champion in the grand final.',
     pools: 'Pools play round robin; the top teams of each pool go on to a knockout playoff.'
   };
-  const ptDraft = Object.assign({ format: 'rr', courts: 2, pools: 2, advance: 2, target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles', courtChange: 0, announce: 1, name: '', teams: '' }, store.get('aopb.tourPhone', {}) || {});
+  const ptDraft = Object.assign({ format: 'rr', draw: 'random', courts: 2, pools: 2, advance: 2, target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles', courtChange: 0, announce: 1, name: '', teams: '' }, store.get('aopb.tourPhone', {}) || {});
   let ptState = null;
   const ptList = () => $('ptTeams').value.split('\n').map((x) => x.trim().toUpperCase()).filter(Boolean);
   const ptEsc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

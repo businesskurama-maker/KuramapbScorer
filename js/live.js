@@ -518,8 +518,10 @@
     $('tourBtn').classList.toggle('on', !!tour);
   }
   function readyList() {
-    const order = { rr: 0, pool: 0, w: 1, l: 1, po: 2, gf: 3 };
-    return tour.matches.filter((m) => m.status === 'ready').sort((x, y) => (order[x.stage] - order[y.stage]) || (x.round - y.round) || tour.matches.indexOf(x) - tour.matches.indexOf(y));
+    // the match the scheduler will call next comes first, then the rest of the current round, then later rounds
+    if (tour.matches.some((m) => m.wave == null)) T.setWaves(tour);
+    const first = T.nextFor(tour);
+    return tour.matches.filter((m) => m.status === 'ready').sort((x, y) => (y === first) - (x === first) || ((x.wave || 1) - (y.wave || 1)) || tour.matches.indexOf(x) - tour.matches.indexOf(y));
   }
 
   // OBS: small board in the top corner (standings or pools while they run, then who's on court / up next)
@@ -537,10 +539,10 @@
   }
 
   /* Setup */
-  const draft = Object.assign({ format: 'rr', pools: 2, advance: 2, target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles', courtChange: 0, announce: 1, name: '', teams: '' }, store.get('aopb.tourDraft', {}) || {});
+  const draft = Object.assign({ format: 'rr', draw: 'random', pools: 2, advance: 2, target: 11, bestOf: 1, scoring: 'sideout', mode: 'doubles', courtChange: 0, announce: 1, name: '', teams: '' }, store.get('aopb.tourDraft', {}) || {});
   draft.announce = store.get('aopb.liveAnnounce', 1) !== 0 ? 1 : 0;
   draft.courts = cfg.n;
-  const SEGS = { tourFormat: 'format', tourPools: 'pools', tourAdv: 'advance', tourTarget: 'target', tourBestOf: 'bestOf', tourScoring: 'scoring', tourMode: 'mode', tourCourts: 'courts', tourCC: 'courtChange', tourAnn: 'announce' };
+  const SEGS = { tourFormat: 'format', tourDraw: 'draw', tourPools: 'pools', tourAdv: 'advance', tourTarget: 'target', tourBestOf: 'bestOf', tourScoring: 'scoring', tourMode: 'mode', tourCourts: 'courts', tourCC: 'courtChange', tourAnn: 'announce' };
   Object.keys(SEGS).forEach((id) => $(id).querySelectorAll('button').forEach((b) => b.onclick = () => {
     const k = SEGS[id]; draft[k] = /^\d+$/.test(b.dataset.v) ? Number(b.dataset.v) : b.dataset.v; renderSetup();
   }));
@@ -593,10 +595,10 @@
     if (o.announce != null) store.set('aopb.liveAnnounce', o.announce ? 1 : 0);
     const bad = setupProblem(list, o); if (bad) return bad;
     const n6 = Math.min(6, Math.max(1, Number(o.courts) || cfg.n));
-    Object.assign(draft, { name: o.name || '', format: o.format, pools: Number(o.pools) || 2, advance: Number(o.advance) || 2, target: Number(o.target) || 11, bestOf: Number(o.bestOf) || 1, scoring: o.scoring === 'rally' ? 'rally' : 'sideout', mode: o.mode === 'singles' ? 'singles' : 'doubles', courtChange: o.courtChange ? 1 : 0, announce: o.announce == null ? draft.announce : (o.announce ? 1 : 0), courts: n6, teams: list.join('\n') });
+    Object.assign(draft, { name: o.name || '', format: o.format, draw: o.draw === 'seeded' ? 'seeded' : o.draw === 'random' ? 'random' : (draft.draw || 'random'), pools: Number(o.pools) || 2, advance: Number(o.advance) || 2, target: Number(o.target) || 11, bestOf: Number(o.bestOf) || 1, scoring: o.scoring === 'rally' ? 'rally' : 'sideout', mode: o.mode === 'singles' ? 'singles' : 'doubles', courtChange: o.courtChange ? 1 : 0, announce: o.announce == null ? draft.announce : (o.announce ? 1 : 0), courts: n6, teams: list.join('\n') });
     store.set('aopb.tourDraft', draft);
     if (n6 !== cfg.n) setCourts(n6);
-    tour = T.create({ name: (draft.name || 'TOURNAMENT').trim().toUpperCase().slice(0, 28), format: draft.format, teams: list, pools: draft.pools, advance: draft.advance,
+    tour = T.create({ name: (draft.name || 'TOURNAMENT').trim().toUpperCase().slice(0, 28), format: draft.format, draw: draft.draw, teams: list, pools: draft.pools, advance: draft.advance,
       rules: { target: draft.target, bestOf: draft.bestOf, scoring: draft.scoring, mode: draft.mode, courtChange: draft.courtChange } });
     saveTour(); tab = draft.format === 'rr' || draft.format === 'pools' ? 'matches' : 'bracket';
     const n = fillCourts();
@@ -609,7 +611,7 @@
   function restartTour() {
     if (!tour) return;
     const t = tour;
-    const opts = { name: t.name, format: t.format, pools: t.pools, advance: t.advance, courts: cfg.n, announce: announceOn() ? 1 : 0,
+    const opts = { name: t.name, format: t.format, draw: t.draw || 'random', pools: t.pools, advance: t.advance, courts: cfg.n, announce: announceOn() ? 1 : 0,
       target: t.rules.target, bestOf: t.rules.bestOf, scoring: t.rules.scoring, mode: t.rules.mode, courtChange: t.rules.courtChange,
       teams: t.teams.map((x) => x.name + (x.players && x.players.length ? ': ' + x.players.join(', ') : '')) };
     courts.forEach((c) => { clearTimeout(c.tourT); c.tourT = null; if (c.tm) { c.tm = null; c.state = E.newMatch(Object.assign({}, c.state.settings, { names: ['TBD', 'TBD'] })); courtPush(c); } });

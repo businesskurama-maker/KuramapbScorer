@@ -122,6 +122,7 @@
       <div class="tsu-left">
         <div class="tsu-f"><label class="eyebrow" for="tourName">Tournament name</label><input class="text-in" id="tourName" maxlength="28" placeholder="CITY OPEN 2026"></div>
         <div class="tsu-f"><span class="eyebrow">Format</span><div class="seg tsu-seg" id="tourFormat"><button data-v="rr">Round robin</button><button data-v="se">Single elim</button><button data-v="de">Double elim</button><button data-v="pools">Pools + playoffs</button></div><p class="tsu-fmt" id="tourFmtInfo"></p></div>
+        <div class="tsu-f"><span class="eyebrow">Match-ups</span><div class="seg tsu-seg" id="tourDraw"><button data-v="random">🎲 Random draw</button><button data-v="seeded">As entered (seeded)</button></div><p class="tsu-fmt">Courts take matches round by round: the next round only starts when every team has finished the current one, and teams that rested longest play first.</p></div>
         <div class="tsu-grid">
           <div class="tsu-f" id="poolRow"><span class="eyebrow">Pools</span><div class="seg" id="tourPools"><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button></div></div>
           <div class="tsu-f" id="poolRow2"><span class="eyebrow">Advance per pool</span><div class="seg" id="tourAdv"><button data-v="1">1</button><button data-v="2">2</button></div></div>
@@ -136,7 +137,7 @@
         </div>
       </div>
       <div class="tsu-right">
-        <div class="tsu-f"><label class="eyebrow" for="tourTeams">Teams · one per line</label><span class="tsu-hint">Best seed first · add players after a colon, e.g. <b>NET NINJAS: JUAN, MARIA</b></span></div>
+        <div class="tsu-f"><label class="eyebrow" for="tourTeams">Teams · one per line</label><span class="tsu-hint">Order only matters for “As entered” (best seed first) · add players after a colon, e.g. <b>NET NINJAS: JUAN, MARIA</b></span></div>
         <textarea class="text-in tsu-teams" id="tourTeams" rows="8" placeholder="NET NINJAS: JUAN, MARIA&#10;DINK DYNASTY: ANA, BEN&#10;SMASH BROS: LEO, MIA&#10;KITCHEN KINGS"></textarea>
         <div class="tsu-info" id="tourInfo"></div>
         <button class="btn primary tsu-start" id="tourStart">Start tournament</button>
