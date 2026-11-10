@@ -199,6 +199,13 @@
   .theme-minimal.rb-stack .rbn, .theme-minimal.rb-pill .rbn { height: auto; }
   .theme-electric .side { background: linear-gradient(180deg, rgba(26,31,46,var(--op)), rgba(8,10,18,var(--op))); }
   .reduced * { animation: none !important; transition-duration: .01s !important; }
+  /* event logo in a top corner (separate from the lower third) */
+  .corner-logo { position: absolute; top: calc(48px * var(--edge, 1)); z-index: 4; display: none; opacity: 0; transition: opacity .5s ease; }
+  .corner-logo.on { display: block; opacity: 1; animation: clIn .7s cubic-bezier(.2,.9,.3,1); }
+  .corner-logo.tl { left: calc(56px * var(--edge, 1)); } .corner-logo.tr { right: calc(56px * var(--edge, 1)); }
+  .corner-logo img { display: block; height: calc(130px * var(--cls, 1)); width: auto; max-width: calc(320px * var(--cls, 1)); object-fit: contain; filter: drop-shadow(0 6px 16px rgba(0,0,0,.45)); }
+  @keyframes clIn { from { opacity: 0; transform: translateY(-12px) scale(.94); } to { opacity: 1; transform: none; } }
+
 </style>
 </head>
 <body>
@@ -221,6 +228,7 @@
       </div>
     </div>
   </div>
+  <div class="corner-logo" id="cornerLogo"><img alt=""></div>
   <div id="msg" style="position:absolute;left:40px;top:40px;font:600 22px Poppins,sans-serif;color:#fff;text-shadow:0 2px 6px #000"></div>
 </div>
 <script src="js/config.js"></script>

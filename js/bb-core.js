@@ -336,21 +336,25 @@
   const LOOK_SL = [['scale', 'Overall size', 0.6, 1.5], ['bar_h', 'Scoreboard height', 0.7, 1.4], ['edge', 'Distance from screen edge', 0, 2.5], ['rb_size', 'Category / title banner', 0.6, 1.8], ['name_size', 'Team names', 0.7, 1.5],
     ['label_size', 'Labels (fouls, period, tabs)', 0.7, 1.6], ['digit_size', 'Numbers (score, clock)', 0.7, 1.4], ['per_size', 'Quarter / period status', 0.7, 2], ['logo_size', 'Team logos', 0.6, 1.3]];
   const LOOK_COL = [['rb_bg', 'Banner', '#0a0d16'], ['rnd_color', 'Category', '#39ff14'], ['evt_color', 'Event title', '#f4f6fb'], ['bar_color', 'Scoreboard', '#0a0d16']];
-  const LOOK_KEYS = ['rb_tpl', 'show_logos', 'rb_logo'].concat(LOOK_SL.map((x) => x[0]), LOOK_COL.map((x) => x[0]));
+  const LOOK_KEYS = ['rb_tpl', 'show_logos', 'rb_logo', 'logo_pos', 'cl_size'].concat(LOOK_SL.map((x) => x[0]), LOOK_COL.map((x) => x[0]));
   function lookPanel(el, getB, send) {
     el.innerHTML = '<div class="seg seg-sm lk-tabs"><button type="button" data-lt="tpl" class="on">Template</button><button type="button" data-lt="size">Size</button><button type="button" data-lt="col">Colour</button><button type="button" data-lt="logo">Logo</button></div>'
       + '<div class="lk-pane" data-lp="tpl"><div class="lk-tpl">' + LOOK_TPL.map(([k, l, d]) => '<button type="button" data-tpl="' + k + '"><i class="lk-ic lk-' + k + '"><b></b><s></s></i><b>' + l + '</b><small>' + d + '</small></button>').join('') + '</div>'
       + '<div class="lk-nm"><span><b>Team names</b><small>On the scoreboard</small></span><div class="seg seg-sm" data-nmseg><button type="button" data-nm="short">Initials</button><button type="button" data-nm="full">Full name (max 15)</button></div></div></div>'
       + '<div class="lk-pane hidden" data-lp="size"><div class="lk-sl">' + LOOK_SL.map(([k, l, a, z]) => '<label class="lk-r"><span>' + l + '<em data-v="' + k + '">100%</em></span><input type="range" min="' + a + '" max="' + z + '" step="0.05" data-lk="' + k + '"></label>').join('') + '</div></div>'
       + '<div class="lk-pane hidden" data-lp="col"><div class="lk-col">' + LOOK_COL.map(([k, l, d]) => '<label class="lk-c"><input type="color" data-lc="' + k + '" value="' + d + '"><span>' + l + '<small data-cv="' + k + '">Auto</small></span><button type="button" class="lk-x" data-cx="' + k + '" title="Back to theme colour">↺</button></label>').join('') + '</div></div>'
-      + '<div class="lk-pane hidden" data-lp="logo"><div class="lk-logo"><span class="lk-lth" data-lth></span><span class="lk-lt"><b>Title banner logo</b><small>Optional · league or event logo, shown on the banner</small></span>'
+      + '<div class="lk-pane hidden" data-lp="logo"><div class="lk-logo"><span class="lk-lth" data-lth></span><span class="lk-lt"><b>Event logo</b><small>Optional · league or tournament logo</small></span>'
       + '<label class="btn sm">Upload<input type="file" accept="image/*" hidden data-rblogo></label><button type="button" class="btn sm ghost" data-rbx>Remove</button></div>'
+      + '<div class="lk-nm"><span><b>Logo position</b><small>On the banner, or alone in a top corner</small></span><div class="seg seg-sm"><button type="button" data-lpos="banner">On banner</button><button type="button" data-lpos="tl">Top left</button><button type="button" data-lpos="tr">Top right</button></div></div>'
+      + '<label class="lk-r lk-cl"><span>Corner logo size<em data-v="cl_size">100%</em></span><input type="range" min="0.4" max="2.5" step="0.05" data-lk="cl_size"></label>'
       + '<label class="lk-t lk-tl"><input type="checkbox" data-lg> Show team logos beside team names</label><p class="tiny" style="margin:6px 0 0">Team logos are uploaded in Match setup → Teams &amp; rosters.</p></div>'
       + '<div class="lk-foot"><span class="tiny">Saved when you let go of a slider or pick a colour.</span><button type="button" class="btn sm ghost" data-lreset>Reset look</button></div>';
     const pct = (v) => Math.round(v * 100) + '%';
     function paint() {
       const b = getB() || {};
       el.querySelectorAll('[data-tpl]').forEach((x) => x.classList.toggle('on', x.dataset.tpl === (b.rb_tpl || 'split')));
+      el.querySelectorAll('[data-lpos]').forEach((x) => x.classList.toggle('on', x.dataset.lpos === (b.logo_pos || 'banner')));
+      el.querySelector('.lk-cl').classList.toggle('dim', !(b.logo_pos === 'tl' || b.logo_pos === 'tr'));
       el.querySelectorAll('[data-nm]').forEach((x) => x.classList.toggle('on', x.dataset.nm === (b.names === 'full' ? 'full' : 'short')));
       el.querySelectorAll('[data-lk]').forEach((x) => { if (document.activeElement === x && x._drag) return; const v = b[x.dataset.lk] == null || b[x.dataset.lk] === '' ? 1 : Number(b[x.dataset.lk]); x.value = v; el.querySelector('[data-v="' + x.dataset.lk + '"]').textContent = pct(v); });
       LOOK_COL.forEach(([k, , d]) => { const v = /^#[0-9a-f]{6}$/i.test(b[k] || '') ? b[k] : ''; const inp = el.querySelector('[data-lc="' + k + '"]'); if (document.activeElement !== inp) inp.value = v || d; el.querySelector('[data-cv="' + k + '"]').textContent = v ? v.toUpperCase() : 'Theme'; el.querySelector('[data-cx="' + k + '"]').classList.toggle('hidden', !v); });
@@ -361,6 +365,7 @@
     }
     el.addEventListener('click', (e) => {
       const tb = e.target.closest('[data-lt]'); if (tb) { el.querySelectorAll('[data-lt]').forEach((x) => x.classList.toggle('on', x === tb)); el.querySelectorAll('[data-lp]').forEach((x) => x.classList.toggle('hidden', x.dataset.lp !== tb.dataset.lt)); return; }
+      const lp = e.target.closest('[data-lpos]'); if (lp) { send({ logo_pos: lp.dataset.lpos }); return; }
       const nm = e.target.closest('[data-nm]'); if (nm) { send({ names: nm.dataset.nm }); return; }
       const t = e.target.closest('[data-tpl]'); if (t) { send({ rb_tpl: t.dataset.tpl }); return; }
       const x = e.target.closest('[data-cx]'); if (x) { e.preventDefault(); send({ [x.dataset.cx]: null }); return; }

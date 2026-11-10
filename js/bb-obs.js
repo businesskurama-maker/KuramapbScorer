@@ -52,7 +52,15 @@
     $('wrap').classList.toggle('off', !BOARD && !!(s.overlay && s.overlay.hidden));
     // CATEGORY ROUND - EVENT / SEASON TITLE banner
     const rnd = String(b.round || '').trim(), evt = String(s.title || '').trim();
-    const rb = $('rbn'), rbLogo = /^data:image\//.test(b.rb_logo || '') ? b.rb_logo : '', rbOn = b.show_round !== false && !!(rnd || evt || rbLogo);
+    // event logo: on the banner, or on its own in a top corner (tl / tr) with its own size
+    const evLogo = /^data:image\//.test(b.rb_logo || '') ? b.rb_logo : '', corner = (b.logo_pos === 'tl' || b.logo_pos === 'tr') ? b.logo_pos : '';
+    const cl = $('cornerLogo');
+    if (cl) {
+      cl.className = 'corner-logo' + (corner && evLogo ? ' on ' + corner : '');
+      cl.style.setProperty('--cls', b.cl_size == null ? 1 : Number(b.cl_size));
+      const ci = cl.querySelector('img'); if (evLogo && ci.getAttribute('src') !== evLogo) ci.src = evLogo;
+    }
+    const rb = $('rbn'), rbLogo = corner ? '' : evLogo, rbOn = b.show_round !== false && !!(rnd || evt || rbLogo);
     root.classList.toggle('show-round', !!rbOn);
     rb.classList.toggle('solo-r', !evt); rb.classList.toggle('solo-e', !rnd);
     rb.classList.toggle('has-logo', !!rbLogo); { const im = $('rbnL').querySelector('img'); if (rbLogo && im.getAttribute('src') !== rbLogo) im.src = rbLogo; }

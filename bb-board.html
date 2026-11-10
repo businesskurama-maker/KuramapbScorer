@@ -138,6 +138,15 @@
   .fin .l { opacity: .55; }
   .fin-tag { font-size: 15px; font-weight: 800; letter-spacing: .4em; color: var(--brand); margin-bottom: 6px; }
   .reduced * { animation: none !important; transition-duration: .01s !important; }
+  /* event logo in a top corner (separate from the lower third) */
+  .corner-logo { position: absolute; top: calc(48px * var(--edge, 1)); z-index: 4; display: none; opacity: 0; transition: opacity .5s ease; }
+  .corner-logo.on { display: block; opacity: 1; animation: clIn .7s cubic-bezier(.2,.9,.3,1); }
+  .corner-logo.tl { left: calc(56px * var(--edge, 1)); } .corner-logo.tr { right: calc(56px * var(--edge, 1)); }
+  .corner-logo img { display: block; height: calc(130px * var(--cls, 1)); width: auto; max-width: calc(320px * var(--cls, 1)); object-fit: contain; filter: drop-shadow(0 6px 16px rgba(0,0,0,.45)); }
+  @keyframes clIn { from { opacity: 0; transform: translateY(-12px) scale(.94); } to { opacity: 1; transform: none; } }
+  .board .corner-logo { top: 22px; } .board .corner-logo.tl { left: 40px; } .board .corner-logo.tr { right: 40px; }
+  .board .corner-logo img { height: calc(100px * var(--cls, 1)); max-height: 118px; }
+
 
   /* ---------- start screen (fullscreen + sound need one tap) ---------- */
   #start { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(3,5,11,.72); backdrop-filter: blur(6px); font-family: var(--ui); color: var(--ink); cursor: pointer; }
@@ -169,6 +178,7 @@
     </div>
     <div class="pop" id="pop"></div>
   </div>
+  <div class="corner-logo" id="cornerLogo"><img alt=""></div>
   <div id="msg" style="position:absolute;left:40px;top:40px;font:600 26px Poppins,sans-serif;color:#fff"></div>
 </div>
 <div id="start"><div><b>🏀 Tap to start the scoreboard</b><span>Goes fullscreen and turns on the buzzer sound</span></div></div>

@@ -691,3 +691,6 @@ table.rt td .in { min-height: 32px; }
 .evl-tx b { font-size: 13.5px; }
 .bn-bar .bn-lg { display: flex; align-items: center; padding: 0 8px; font-style: normal; }
 .bn-bar .bn-lg img { height: 26px; width: auto; max-width: 70px; object-fit: contain; border-radius: 5px; }
+
+.lk-cl { margin-top: 12px; padding: 0 2px; }
+.lk-cl.dim { opacity: .45; }
