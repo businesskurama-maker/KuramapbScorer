@@ -84,7 +84,12 @@
         <label class="f">Date &amp; time<input class="in" id="fWhen" type="datetime-local"></label>
         <label class="f">Match ID<input class="in" id="fCode" disabled placeholder="Generated on create"></label>
       </div>
-      <div class="bn-prev"><span class="tiny">OBS banner</span><div class="bn-bar" id="bnPrev"><b id="bnR"></b><span id="bnE"></span></div></div>
+      <div class="ev-logo">
+        <div class="evl-th" id="evlTh">🏆</div>
+        <div class="evl-tx"><b>Event logo</b><span class="tiny">Optional · league / tournament logo shown on the OBS banner and the venue scoreboard. Auto-cropped, WebP ≤ 50 KB.</span></div>
+        <div class="row" style="gap:6px"><label class="btn sm cyan">Upload logo<input type="file" accept="image/*" hidden id="evlIn"></label><button class="btn sm ghost hidden" id="evlRm" type="button">Remove</button></div>
+      </div>
+      <div class="bn-prev"><span class="tiny">OBS banner</span><div class="bn-bar" id="bnPrev"><i class="bn-lg hidden" id="bnL"><img alt=""></i><b id="bnR"></b><span id="bnE"></span></div></div>
     </div>
     <div class="p-card nm-card hidden" data-s="teams"><div class="row" style="flex-wrap:wrap;gap:10px"><span class="grow"><b>Team names on the scoreboard</b><br><span class="tiny">Full names show up to 15 characters.</span></span><div class="seg" id="nameMode" style="width:auto"><button data-v="short">Initials</button><button data-v="full">Full name</button></div></div></div>
     <div class="teams2 hidden" id="teamCards" data-s="teams"></div>

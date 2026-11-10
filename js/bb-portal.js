@@ -305,8 +305,17 @@
   function bnPrev() {
     const r = $('fRound').value.trim(), e = $('fTitle').value.trim();
     $('bnR').textContent = r; $('bnE').textContent = e || (r ? '' : 'Type an event title or category to show the banner');
-    $('bnPrev').classList.toggle('empty', !r && !e); $('bnR').classList.toggle('hidden', !r);
+    const lg = draft && draft.broadcast && /^data:image\//.test(draft.broadcast.rb_logo || '') ? draft.broadcast.rb_logo : '';
+    $('bnPrev').classList.toggle('empty', !r && !e && !lg); $('bnR').classList.toggle('hidden', !r);
+    $('bnL').classList.toggle('hidden', !lg); if (lg) $('bnL').querySelector('img').src = lg;
+    $('evlTh').innerHTML = lg ? '<img src="' + lg + '" alt="">' : '🏆'; $('evlRm').classList.toggle('hidden', !lg);
   }
+  $('evlIn').onchange = async () => {
+    const f = $('evlIn').files[0]; $('evlIn').value = ''; if (!f || !draft) return;
+    try { draft.broadcast.rb_logo = await PBB.cropLogo(f); bnPrev(); sendDraft(); toast(cur ? 'Event logo ready — tap Save changes' : 'Event logo added'); }
+    catch (x) { if (x.message !== 'CANCELLED') toast(x.message || 'Could not read that image', true); }
+  };
+  $('evlRm').onclick = () => { if (!draft) return; draft.broadcast.rb_logo = null; bnPrev(); sendDraft(); toast(cur ? 'Logo removed — tap Save changes' : 'Logo removed'); };
   $('fRound').addEventListener('input', () => { draft.broadcast.round = $('fRound').value.trim(); bnPrev(); });
   $('fTitle').addEventListener('input', bnPrev);
   ['fTitle', 'fVenue', 'fWhen'].forEach((id) => $(id).addEventListener('input', () => { draft.title = $('fTitle').value; draft.venue = $('fVenue').value; draft.when = $('fWhen').value ? new Date($('fWhen').value).toISOString() : ''; }));
