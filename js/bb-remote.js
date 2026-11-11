@@ -276,6 +276,17 @@
     const s = await act('timeout', { team: selT, force: left <= 0 });
     if (s) toast('Timeout ' + team(selT).name + ' · clock stopped');
   };
+  /* running timeout: live countdown + end early (the timeout stays counted) */
+  const toBanner = () => { const bn = S && S.overlay && S.overlay.banner; return bn && bn.kind === 'timeout' && (!bn.until || conn.serverNow() < bn.until + 900) ? bn : null; };
+  setInterval(() => {
+    const bn = toBanner(), el = $('toLive'); el.classList.toggle('hidden', !bn); if (!bn) return;
+    const t = team(bn.team) || {}; el.style.setProperty('--c', t.color || 'var(--brand)');
+    $('toLiveT').textContent = t.name || ''; $('toLiveC').textContent = bn.until ? Math.max(0, Math.ceil((bn.until - conn.serverNow()) / 1000)) : '—';
+    const canClock = role === 'clock' || role === 'host' || (role === 'scorekeeper' && S.config.sk_clock !== false);
+    $('toEndGo').classList.toggle('hidden', !canClock || S.config.timer_mode === 'external');
+  }, 250);
+  $('toEnd').onclick = async () => { buzz(40); const s = await act('timeout_end', {}, { force: true }); if (s) { toast('Timeout ended'); $('toLive').classList.add('hidden'); } };
+  $('toEndGo').onclick = async () => { buzz([40, 30, 40]); const s = await act('clock', { op: 'start' }, { force: true }); if (s) { toast('Timeout over · clock running'); $('toLive').classList.add('hidden'); } };
   $('undoBtn').onclick = async () => { buzz([20, 30, 20]); const s = await act('undo', {}); if (s) toast('Undone: ' + describeUndo(s.last)); };
   function describeUndo(l) { if (!l || !l.data) return 'last action'; const d = l.data; return (d.what || '') + (l.team ? ' · ' + team(l.team).short : '') + (d.value ? ' ' + d.value : ''); }
   $('redoBtn').onclick = async () => { buzz(30); const s = await act('redo', {}); if (s) toast('Redone'); };

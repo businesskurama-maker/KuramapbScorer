@@ -809,3 +809,14 @@ table.rt td.num { white-space: nowrap; }
 .ln-x { font-size: 10px; font-weight: 800; letter-spacing: .08em; color: var(--danger); padding: 0 6px; }
 .ln-foot { position: sticky; bottom: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px; padding-top: 8px; background: linear-gradient(transparent, var(--card) 30%); }
 .ln-foot .btn.primary { min-height: 50px; font-size: 15px; }
+
+/* ---------- remote: running timeout bar ---------- */
+.to-live { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "i c" "b b"; gap: 8px 12px; align-items: center; margin: 6px 12px 0; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--c, var(--brand)) 14%, var(--card)); border: 1px solid color-mix(in srgb, var(--c, var(--brand)) 55%, transparent); animation: toPulse 1.6s ease-in-out infinite; }
+.to-live .tl-info { grid-area: i; display: flex; flex-direction: column; min-width: 0; }
+.to-live .tl-k { font-size: 10.5px; font-weight: 800; letter-spacing: .22em; color: var(--warn); }
+.to-live b { font-size: 15px; font-weight: 800; color: var(--c, var(--ink)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
+.to-live .tl-cnt { grid-area: c; font-family: var(--digit); font-size: 34px; font-weight: 800; color: var(--warn); min-width: 58px; text-align: right; line-height: 1; }
+.to-live .tl-btns { grid-area: b; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.to-live .tl-btns .btn { min-height: 42px; }
+.to-live .tl-btns .btn.hidden + .btn, .to-live .tl-btns .btn:only-child { grid-column: 1 / -1; }
+@keyframes toPulse { 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c, var(--brand)) 18%, transparent); } }

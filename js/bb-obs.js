@@ -190,7 +190,7 @@
   function activeBanner() {
     const bn = S && S.overlay && S.overlay.banner;
     if (!bn) return null;
-    if (bn.until && conn.serverNow() > bn.until + 4000 && bn.kind !== 'timeout') return null;
+    if (bn.until && conn.serverNow() > bn.until + (bn.kind === 'timeout' ? 900 : 4000)) return null;   // countdown over: back to the scoreboard
     return { kind: 'banner', bid: bn.id, bkind: bn.kind, text: bn.text, sub: bn.sub, team: bn.team, until: bn.until, persistent: true };
   }
   function renderBanner() {
@@ -203,8 +203,8 @@
   }
   setInterval(() => {   // banners with an end time (e.g. break with a duration) drop themselves
     if (!S) return; const bn = S.overlay && S.overlay.banner;
-    if (bn && bn.until && bn.kind !== 'timeout' && conn.serverNow() > bn.until + 4000 && shown && shown.persistent) { bannerId = null; hideCard(); setTimeout(next, 380); }
-  }, 1000);
+    if (bn && bn.until && conn.serverNow() > bn.until + (bn.kind === 'timeout' ? 900 : 4000) && shown && shown.persistent) { bannerId = null; hideCard(); setTimeout(next, 380); }
+  }, 250);
 
   const cssUrl = (u) => "'" + String(u).replace(/['"\\\n<>]/g, '') + "'";
   let cardEl = null;
