@@ -35,7 +35,7 @@
     const nsz = Number(b.name_size) || 1, dsz = Number(b.digit_size) || 1;
     root.style.setProperty('--nsz', nsz); root.style.setProperty('--psz', Number(b.per_size) || Number(b.label_size) || 1); root.style.setProperty('--lsz', Number(b.label_size) || 1); root.style.setProperty('--rsz', Number(b.rb_size) || 1);
     // scoreboard height is its own setting now (bigger text no longer makes the bar taller)
-    root.style.setProperty('--bhs', Number(b.bar_h) || 1); root.style.setProperty('--edge', b.edge == null ? 1 : Number(b.edge)); root.style.setProperty('--lgs', Number(b.logo_size) || 1);
+    root.style.setProperty('--bhs', Number(b.bar_h) || 1); root.style.setProperty('--edge', b.edge == null ? 1 : Number(b.edge)); root.style.setProperty('--lgs', Number(b.logo_size) || 1); root.style.setProperty('--pps', 2 * (Number(b.pop_size) || 1));
     root.classList.add('rb-' + (['split', 'ribbon', 'stack', 'pill'].includes(b.rb_tpl) ? b.rb_tpl : 'split'));
     if (b.show_logos === false) root.classList.add('no-logos');
     const hex = (v) => /^#[0-9a-f]{6}$/i.test(v || '') ? v : '';

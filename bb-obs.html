@@ -96,6 +96,11 @@
     display: flex; align-items: stretch; border-radius: 16px; overflow: hidden; background: linear-gradient(180deg, var(--glass2), var(--glass)); filter: drop-shadow(0 10px 22px rgba(0,0,0,.45)); }
   .pos-top .card { bottom: auto; top: 10px; transform: translate(-50%, -24px); }
   .card.in { opacity: 1; transform: translate(-50%, 0); }
+  /* player pop-ups (score / foul / substitution) are drawn bigger: 2x by default, slider in the designer */
+  .card.score, .card.foul, .card.sub { transform-origin: 50% 100%; transform: translate(-50%, 24px) scale(var(--pps, 2)); }
+  .card.score.in, .card.foul.in, .card.sub.in { transform: translate(-50%, 0) scale(var(--pps, 2)); }
+  .pos-top .card.score, .pos-top .card.foul, .pos-top .card.sub { transform-origin: 50% 0; transform: translate(-50%, -24px) scale(var(--pps, 2)); }
+  .pos-top .card.score.in, .pos-top .card.foul.in, .pos-top .card.sub.in { transform: translate(-50%, 0) scale(var(--pps, 2)); }
   .card .cacc { width: 8px; background: var(--c); flex: none; }
   .card .jer { min-width: 104px; padding: 0 18px; display: grid; place-items: center; background: var(--c); color: #071018; font-family: var(--digit); font-weight: 900; font-size: 44px; }
   .card .ph { width: 92px; flex: none; background: center / cover no-repeat rgba(255,255,255,.05); }
