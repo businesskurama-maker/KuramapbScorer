@@ -272,7 +272,7 @@
       return '<div class="p-card tcard" style="--c:' + E(T.color) + '" data-team="' + t + '">'
         + '<h2>' + (t === 'home' ? 'Home team' : 'Away team') + '<span class="tiny">' + rows.filter((p) => p.active !== false).length + ' players</span></h2>'
         + (st ? '<label class="f ss-pick">Season team<select class="in" data-steam="' + t + '"><option value="">Pick a team from ' + E(st.title) + '…</option>' + st.teams.map((x) => '<option value="' + x.id + '"' + (T.sid === x.id ? ' selected' : '') + (other.sid === x.id ? ' disabled' : '') + '>' + E(x.name) + ' · ' + x.players.length + ' players</option>').join('') + '</select></label>' : '')
-        + '<div class="g2"><label class="f">Full team name<input class="in" data-k="name" maxlength="15" placeholder="Max 15 letters" value="' + E(T.name) + '" placeholder="' + (t === 'home' ? 'Team DinkyKong' : 'Red Bulls') + '"></label>'
+        + '<div class="g2"><label class="f">Full team name<input class="in" data-k="name" maxlength="20" placeholder="Max 20 letters" value="' + E(T.name) + '" placeholder="' + (t === 'home' ? 'Team DinkyKong' : 'Red Bulls') + '"></label>'
         + '<label class="f">Initials (3–5)<input class="in" data-k="short" maxlength="5" value="' + E(T.short) + '" placeholder="' + (t === 'home' ? 'DKG' : 'RBL') + '" style="text-transform:uppercase"></label></div>'
         + '<div class="row" style="flex-wrap:wrap;gap:12px"><div class="sw-row">' + PBB.ELECTRIC.map((c) => '<button data-col="' + c + '" style="--c:' + c + '" class="' + (c === T.color ? 'on' : '') + (PBB.colorDist(c, other.color) < PBB.MIN_DIST ? ' blocked' : '') + '" title="' + c + '"></button>').join('')
         + '</div><input type="color" data-k="color" value="' + E(T.color) + '" style="width:40px;height:32px;border:0;background:none"></div>'
@@ -407,7 +407,7 @@
   $('suSave').onclick = async () => {
     const d = draft;
     d.title = $('fTitle').value.trim(); d.venue = $('fVenue').value.trim();
-    for (const t of ['home', 'away']) { d[t].name = String(d[t].name || '').trim().slice(0, 15); if (!d[t].name) { toast('Enter both team names', true); return; } if (!d[t].short.trim()) d[t].short = d[t].name.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase(); }
+    for (const t of ['home', 'away']) { d[t].name = String(d[t].name || '').trim().slice(0, 20); if (!d[t].name) { toast('Enter both team names', true); return; } if (!d[t].short.trim()) d[t].short = d[t].name.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase(); }
     if (PBB.colorDist(d.home.color, d.away.color) < PBB.MIN_DIST) { toast(PBB.errText('COLORS_TOO_CLOSE'), true); return; }
     for (const t of ['home', 'away']) { const nums = d.players.filter((p) => p.team === t).map((p) => p.number); if (new Set(nums).size !== nums.length) { toast('Duplicate jersey number on the ' + t + ' team', true); return; } if (nums.some((n) => !/^\d{1,2}$/.test(n))) { toast('Jersey numbers are 0–99', true); return; } }
     $('suSave').classList.add('busy'); $('suMsg').textContent = 'Saving…';
@@ -530,7 +530,7 @@
       const full = t.players.length >= 15;
       return '<div class="p-card ss-team" style="--c:' + E(t.color) + '" data-tid="' + t.id + '">'
         + '<div class="sst-head"><label class="sst-lg' + (ro ? ' ro' : '') + '" title="Team logo">' + (t.logo ? '<img src="' + E(t.logo) + '" alt="">' : '<span>' + E(t.short || '?') + '</span>') + (ro ? '' : '<input type="file" accept="image/*" data-tlogo hidden>') + '</label>'
-        + '<input class="in sst-nm" data-tf="name" maxlength="15" value="' + E(t.name) + '"' + (ro ? ' disabled' : '') + '><input class="in sst-sh" data-tf="short" maxlength="5" value="' + E(t.short) + '"' + (ro ? ' disabled' : '') + '>'
+        + '<input class="in sst-nm" data-tf="name" maxlength="20" value="' + E(t.name) + '"' + (ro ? ' disabled' : '') + '><input class="in sst-sh" data-tf="short" maxlength="5" value="' + E(t.short) + '"' + (ro ? ' disabled' : '') + '>'
         + '<input type="color" class="ss-col" data-tf="color" value="' + E(t.color) + '"' + (ro ? ' disabled' : '') + '>'
         + '<span class="sst-cnt' + (full ? ' full' : '') + '">' + t.players.length + '/15</span>' + (ro ? '' : '<button class="btn sm ghost" data-tdel title="Remove team">✕</button>') + '</div>'
         + '<div class="sst-pl">' + t.players.map((p) => '<div class="ssp" data-pid="' + p.id + '">'

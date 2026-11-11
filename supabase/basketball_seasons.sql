@@ -23,7 +23,7 @@ create index if not exists bb_seasons_owner on public.bb_seasons(owner, created_
 create table if not exists public.bb_season_teams (
   id uuid primary key default gen_random_uuid(),
   season_id uuid not null references public.bb_seasons(id) on delete cascade,
-  name text not null check (char_length(btrim(name)) between 1 and 15),
+  name text not null check (char_length(btrim(name)) between 1 and 20),
   short text not null default '',
   color text not null default '#00e5ff',
   logo text,
@@ -148,7 +148,7 @@ begin
     if (select count(*) from bb_season_teams where season_id = s.id) >= 64 then raise exception 'TOO_MANY_TEAMS'; end if;
     if coalesce(btrim(p ->> 'name'), '') = '' then raise exception 'TEAM_NAME_REQUIRED'; end if;
     insert into bb_season_teams (season_id, name, short, color, logo)
-    values (s.id, left(btrim(p ->> 'name'), 15), upper(left(btrim(coalesce(nullif(p ->> 'short', ''), left(p ->> 'name', 3))), 5)),
+    values (s.id, left(btrim(p ->> 'name'), 20), upper(left(btrim(coalesce(nullif(p ->> 'short', ''), left(p ->> 'name', 3))), 5)),
       case when coalesce(p ->> 'color', '') ~* '^#[0-9a-f]{6}$' then lower(p ->> 'color') else '#00e5ff' end, bb__media(p ->> 'logo'))
     returning id into tid;
   else
@@ -156,7 +156,7 @@ begin
     if tid is null then raise exception 'NO_TEAM'; end if;
     s := bb__season(tid); tid := (p ->> 'id')::uuid;
     update bb_season_teams set
-      name = case when coalesce(btrim(p ->> 'name'), '') <> '' then left(btrim(p ->> 'name'), 15) else name end,
+      name = case when coalesce(btrim(p ->> 'name'), '') <> '' then left(btrim(p ->> 'name'), 20) else name end,
       short = case when p ? 'short' then upper(left(btrim(coalesce(nullif(p ->> 'short', ''), left(name, 3))), 5)) else short end,
       color = case when coalesce(p ->> 'color', '') ~* '^#[0-9a-f]{6}$' then lower(p ->> 'color') else color end,
       logo = case when p ? 'logo' then bb__media(p ->> 'logo') else logo end
@@ -395,3 +395,7 @@ revoke all on function public.bb__season(uuid, boolean), public.bb__season_stats
 revoke all on function public.bb_create(jsonb) from public, anon;
 grant execute on function public.bb_create(jsonb) to authenticated;
 revoke all on function public.bb__snap(public.bb_matches) from public, anon, authenticated;
+
+-- team names up to 20 characters
+alter table public.bb_season_teams drop constraint if exists bb_season_teams_name_check;
+alter table public.bb_season_teams add constraint bb_season_teams_name_check check (char_length(btrim(name)) between 1 and 20);

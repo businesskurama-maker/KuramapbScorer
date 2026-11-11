@@ -78,7 +78,7 @@
     $('ttl').innerHTML = s.title ? '<b>' + PBB.esc(s.title) + '</b>' + (s.venue ? ' · ' + PBB.esc(s.venue) : '') : 'DINKYKONG <b>LIVE</b>';
     ['home', 'away'].forEach((t) => {
       const T = teamOf(t), k = t === 'home' ? 'H' : 'A';
-      $('n' + k).textContent = b.names === 'full' ? String(T.name || '').slice(0, BOARD ? 30 : 15) : (T.short || T.name);
+      $('n' + k).textContent = b.names === 'full' ? String(T.name || '').slice(0, BOARD ? 30 : 20) : (T.short || T.name);
       const lg = $('l' + k); lg.classList.toggle('none', !T.logo); if (T.logo) lg.querySelector('img').src = T.logo;
       $('f' + k).innerHTML = 'FOULS<i>' + ((d.fouls || {})[t] || 0) + '</i>'; $('f' + k).classList.toggle('hidden', b.show_fouls === false);
       $('p' + k).classList.toggle('on', !!(d.penalty || {})[t] && b.show_fouls !== false); $('p' + k).textContent = 'PENALTY';

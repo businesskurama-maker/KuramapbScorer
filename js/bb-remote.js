@@ -502,7 +502,7 @@
     $('lockT').checked = !!S.locked;
     if (!document.activeElement || !$('teamEd').contains(document.activeElement)) {
       $('teamEd').innerHTML = ['home', 'away'].map((t) => { const T = team(t), other = team(t === 'home' ? 'away' : 'home');
-        return '<div class="box" style="padding:10px;--c:' + T.color + '"><label class="f">' + t.toUpperCase() + ' name<input class="in" data-tn="' + t + '" maxlength="15" value="' + E(T.name) + '"></label>'
+        return '<div class="box" style="padding:10px;--c:' + T.color + '"><label class="f">' + t.toUpperCase() + ' name<input class="in" data-tn="' + t + '" maxlength="20" value="' + E(T.name) + '"></label>'
           + '<label class="f">Initials<input class="in" data-ts="' + t + '" maxlength="5" value="' + E(T.short) + '" style="text-transform:uppercase"></label>'
           + '<div class="sw-row">' + PBB.ELECTRIC.map((c) => '<button data-tc="' + t + '" data-c="' + c + '" style="--c:' + c + '" class="' + (c === T.color ? 'on' : '') + (PBB.colorDist(c, other.color) < PBB.MIN_DIST ? ' blocked' : '') + '"></button>').join('') + '</div>'
           + '<label class="btn sm" style="position:relative;overflow:hidden">' + (T.logo ? 'Change logo' : 'Upload logo') + '<input type="file" accept="image/*" data-tl="' + t + '" style="position:absolute;inset:0;opacity:0"></label>'
@@ -522,7 +522,7 @@
   $('lockT').onchange = () => act('lock', { on: $('lockT').checked }, { force: true });
   $('teamEd').addEventListener('change', async (e) => {
     const el = e.target;
-    if (el.dataset.tn) bcast({ [el.dataset.tn]: { name: el.value.trim().slice(0, 15) || team(el.dataset.tn).name } });
+    if (el.dataset.tn) bcast({ [el.dataset.tn]: { name: el.value.trim().slice(0, 20) || team(el.dataset.tn).name } });
     if (el.dataset.ts) bcast({ [el.dataset.ts]: { short: el.value.trim().toUpperCase() } });
     if (el.dataset.tl && el.files[0]) { const f = el.files[0]; el.value = ''; try { const logo = await PBB.cropLogo(f); bcast({ [el.dataset.tl]: { logo } }); } catch (x) { if (x.message !== 'CANCELLED') toast(x.message || 'Could not read that image', true); } }
   });
