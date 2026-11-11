@@ -584,7 +584,7 @@
     draft[k] = /^\d+$/.test(v) ? Number(v) : v; paintSheet();
     if (['winBy', 'timeouts', 'tags'].includes(k) && st && send({ a: 'rules', rules: { [k]: draft[k] } })) flash('Updated');
     if (k === 'voice' && st && send({ a: 'voice', on: draft.voice === 1 })) flash(draft.voice ? 'Voice calls on' : 'Voice calls off');
-    if (k === 'voicePack' && st && send({ a: 'voice', pack: draft.voicePack })) flash({ classic: 'Classic voice', anime: 'Anime Hype voice', mc: 'Hype MC voice' }[draft.voicePack] + ' · listen to the TV');
+    if (k === 'voicePack' && st && send({ a: 'voice', pack: draft.voicePack })) flash(({ classic: 'Classic voice', anime: 'Anime Hype voice' }[draft.voicePack] || 'Classic voice') + ' · listen to the TV');
     if (k === 'courtChange' && st && send({ a: 'midswap', on: draft.courtChange === 1 })) flash(draft.courtChange ? 'Court change at half: on' : 'No court change at half');
   }));
   ['nA', 'nB'].forEach((id) => $(id).addEventListener('input', paintSheet));

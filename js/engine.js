@@ -15,7 +15,7 @@
     firstServer: 0,         // 0 | 1 | 'pfs' (play for serve: a rally decides who serves first)
     autoSwap: true,         // switch ends between games
     voice: 1,               // 1: loud voice calls the score and the winner on the scoreboard · 0: silent
-    voicePack: 'classic',   // announcer voice: classic · anime (anime-style hype) · mc (deep hip-hop / arena MC)
+    voicePack: 'classic',   // announcer voice: classic · anime (anime-style hype) 
     courtChange: 0,         // 0 (default): no court change at half · 1: change court at the half of the deciding game
     timeouts: 2,            // timeouts per team per game (0 | 1 | 2)
     tags: 0                 // 1: the remote asks why each rally ended (winner / net / out / kitchen / error) for stats
@@ -345,7 +345,7 @@
       case 'pfs': return startPfs(st);
       case 'voice':
         if ('on' in action) st.settings.voice = action.on ? 1 : 0;
-        if (action.pack && /^(classic|anime|mc)$/.test(action.pack)) st.settings.voicePack = action.pack;
+        if (action.pack && /^(classic|anime|mc)$/.test(action.pack)) st.settings.voicePack = action.pack === 'mc' ? 'classic' : action.pack;
         return st;
       case 'timeout': return callTimeout(st, action.team === 1 ? 1 : 0);
       case 'timein': return endTimeout(st);

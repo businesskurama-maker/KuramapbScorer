@@ -2,10 +2,10 @@
  * Numbers and phrases are pre-recorded clips (sounds/voice/*.mp3) so it sounds the same on every TV, laptop and tablet.
  * Custom team names are spoken with the device's own speech voice (a female one when available). */
 (function () {
-  // Voice packs: classic (default) · anime (anime-style hype announcer) · mc (deep hip-hop / arena MC)
-  const PACKS = { classic: 'sounds/voice/', anime: 'sounds/voice-anime/', mc: 'sounds/voice-mc/' };
+  // Voice packs: classic (default) · anime (anime-style hype announcer) 
+  const PACKS = { classic: 'sounds/voice/', anime: 'sounds/voice-anime/' };
   // device speech for custom team names, tuned to sit near each pack
-  const TTS_STYLE = { classic: { pitch: 1.08, rate: .86, male: false }, anime: { pitch: 1.45, rate: 1.02, male: false }, mc: { pitch: .7, rate: .9, male: true } };
+  const TTS_STYLE = { classic: { pitch: 1.08, rate: .86, male: false }, anime: { pitch: 1.45, rate: 1.02, male: false } };
   let pack = 'classic', BASE = PACKS.classic;
   const KEYS = Array.from({ length: 31 }, (_, n) => 'n' + n).concat(['g2', 'g3', 'g4', 'g5', 'sideout', 'second', 'game', 'match', 'winsgame', 'winsmatch', 'teama', 'teamb', 'servesfirst', 'pfs', 'wg_a', 'wg_b', 'wm_a', 'wm_b', 'sf_a', 'sf_b', 'timeout', 'timein', 'toss', 'to_a', 'to_b', 'gp', 'mp']);
   // Whole score calls ("four, two, one") are single natural recordings, fetched the first time they are needed
