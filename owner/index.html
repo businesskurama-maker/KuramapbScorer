@@ -390,6 +390,7 @@
         <div><span class="eyebrow" id="bbNewLbl">New code</span><b id="bbCode"></b><small id="bbFor"></small></div>
         <div class="trial-btns"><button class="btn primary" id="bbCopy">Copy code</button><button class="btn" id="bbShare">Copy message</button></div>
       </div>
+      <div class="bb-clean hidden" id="bbClean"><span id="bbCleanTxt"></span><button class="mini-btn danger" id="bbCleanGo">Delete all used &amp; old</button></div>
       <div class="table-wrap"><table>
         <thead><tr><th>Code</th><th>Pass</th><th>For</th><th>Created</th><th>Status</th><th></th></tr></thead>
         <tbody id="bbCodes"></tbody>
@@ -409,14 +410,17 @@
   const fmt = (d) => new Date(d).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   const fmtC = (c) => c.replace(/^(..)(....)(....)$/, '$1-$2-$3');
   const label = (d) => d === 7 ? '1 week' : d + ' day' + (d === 1 ? '' : 's');
-  let last = null;
+  let last = null, old = [];
   async function load() {
     if (!window.PBAuth || !PBAuth.client || !PBAuth.user) return;
     const { data } = await PBAuth.client.from('bb_codes').select('*').order('created_at', { ascending: false }).limit(100);
     const now = Date.now();
+    old = (data || []).filter((t) => t.revoked || t.redeemed_at || new Date(t.expires_at).getTime() < now).map((t) => t.code);
+    $('bbClean').classList.toggle('hidden', !old.length);
+    $('bbCleanTxt').textContent = old.length + ' used, cancelled or expired code' + (old.length === 1 ? '' : 's') + '. Deleting them does not affect passes already given.';
     $('bbCodes').innerHTML = (data || []).map((t) => {
       const [cls, txt] = t.revoked ? ['off', 'Cancelled'] : t.redeemed_at ? ['done', 'Used by ' + (t.redeemed_email || 'user') + ' · ' + fmt(t.redeemed_at)] : new Date(t.expires_at).getTime() < now ? ['done', 'Expired unused'] : ['unused', 'Not used yet'];
-      return '<tr><td class="tcode">' + esc(fmtC(t.code)) + '</td><td>' + label(t.days) + '</td><td>' + esc(t.note || '—') + '</td><td>' + fmt(t.created_at) + '</td><td><span class="tst ' + cls + '">' + esc(txt) + '</span></td><td>' + (cls === 'unused' ? '<button class="mini-btn" data-x="' + esc(t.code) + '">Cancel</button>' : '') + '</td></tr>';
+      return '<tr><td class="tcode">' + esc(fmtC(t.code)) + '</td><td>' + label(t.days) + '</td><td>' + esc(t.note || '—') + '</td><td>' + fmt(t.created_at) + '</td><td><span class="tst ' + cls + '">' + esc(txt) + '</span></td><td>' + (cls === 'unused' ? '<button class="mini-btn" data-x="' + esc(t.code) + '">Cancel</button>' : '<button class="mini-btn danger" data-del="' + esc(t.code) + '">Delete</button>') + '</td></tr>';
     }).join('') || '<tr><td colspan="6" style="color:var(--ink-3)">No basketball codes yet.</td></tr>';
     const heads = [...document.querySelectorAll('#bbCodes')[0].closest('table').querySelectorAll('thead th')].map((x) => x.textContent);
     $('bbCodes').querySelectorAll('tr').forEach((tr) => [...tr.children].forEach((td, i) => td.setAttribute('data-label', heads[i] || '')));
@@ -434,6 +438,13 @@
     } catch (x) { alert('Could not generate a code: ' + x.message); }
     finally { b.disabled = false; }
   };
+  async function del(codes, msg) {
+    if (!codes.length || !confirm(msg)) return;
+    const { data, error } = await PBAuth.client.rpc('admin_delete_bb_codes', { p_codes: codes });
+    if (error) alert('Could not delete: ' + error.message); load();
+  }
+  $('bbCleanGo').onclick = () => del(old, 'Delete ' + old.length + ' used, cancelled or expired code' + (old.length === 1 ? '' : 's') + '?\n\nPeople who already used them keep their pass. This cannot be undone.');
+  $('bbCodes').addEventListener('click', (e) => { const d = e.target.closest('[data-del]'); if (d) del([d.dataset.del], 'Delete code ' + fmtC(d.dataset.del) + '?\n\nIf someone used it, they keep their pass.'); });
   $('bbCodes').onclick = async (e) => { const b = e.target.closest('[data-x]'); if (!b) return; if (!confirm('Cancel code ' + fmtC(b.dataset.x) + '?')) return; const { error } = await PBAuth.client.rpc('admin_revoke_bb_code', { p_code: b.dataset.x }); if (error) alert(error.message); load(); };
   const copy = async (t, btn) => { try { await navigator.clipboard.writeText(t); const o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => (btn.textContent = o), 1500); } catch (x) { prompt('Copy this:', t); } };
   $('bbCopy').onclick = () => last && copy(last.code, $('bbCopy'));

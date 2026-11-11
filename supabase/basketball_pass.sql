@@ -159,3 +159,17 @@ do $$ declare d text; begin
   if position('bb_pass_ok' in d) = 0 then raise exception 'patch failed'; end if;
   execute d;
 end $$;
+
+-- owner can delete finished codes (used, cancelled or expired). Unused live codes must be cancelled first.
+-- Deleting a used code never touches the pass it already gave (profiles.bb_until).
+create or replace function public.admin_delete_bb_codes(p_codes text[]) returns int language plpgsql security definer set search_path to 'public' as $$
+declare n int;
+begin
+  if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
+  delete from public.bb_codes where code = any (select upper(x) from unnest(p_codes) x)
+    and (redeemed_at is not null or revoked or expires_at < now());
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke all on function public.admin_delete_bb_codes(text[]) from public, anon;
+grant execute on function public.admin_delete_bb_codes(text[]) to authenticated;
