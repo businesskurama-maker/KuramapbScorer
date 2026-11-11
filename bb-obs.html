@@ -112,6 +112,46 @@
   .card .val.vf .vn small { color: var(--warn); font-size: 15px; }
   .card.out .val.vf .vn, .card.out .val.vf .vn small { color: #ff4d5e; }
   .card.out .val, .card.out .txt small { color: #ff4d5e; }
+  /* game stat chips (2PT · 3PT · FT · FOULS) + photo layout + substitution card */
+  .card .chips { display: flex; gap: 6px; margin-top: 8px; }
+  .card .chips span { display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 9px 3px; border-radius: 7px; background: rgba(255,255,255,.07); font-size: 12px; font-weight: 800; letter-spacing: .14em; color: var(--ink2); line-height: 1.2; }
+  .card .chips span i { font-style: normal; font-family: var(--digit); font-size: 19px; font-weight: 800; letter-spacing: 0; color: var(--ink); }
+  .card .chips span.hot { background: color-mix(in srgb, var(--c) 26%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 60%, transparent); color: var(--ink); }
+  .card .chips span.hot i { color: var(--c); }
+  .card .chips span.f i { color: var(--warn); }
+  .card.foul .chips span.f.hot { background: rgba(255,181,71,.18); box-shadow: inset 0 0 0 1px rgba(255,181,71,.6); }
+  .card.foul .chips span.f.hot i { color: var(--warn); }
+  .card.has-ph .phx { position: relative; width: 136px; flex: none; background: center 15% / cover no-repeat rgba(255,255,255,.06); }
+  .card.has-ph .phx::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 50%, color-mix(in srgb, var(--c) 70%, transparent)); }
+  .card.has-ph .phx b { position: absolute; left: 10px; bottom: 6px; z-index: 1; font-family: var(--digit); font-weight: 900; font-size: 32px; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.65); line-height: 1; }
+  .card.has-ph .txt { padding: 14px 28px 13px 22px; }
+  .card.has-ph .txt b { font-size: 34px; }
+  .card.sub { min-width: 720px; }
+  .card.sub .sb-tag { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; padding: 0 22px; background: var(--c); color: #071018; }
+  .card.sub .sb-tag small { font-size: 11px; font-weight: 900; letter-spacing: .22em; }
+  .card.sub .sb-tag b { font-size: 28px; font-weight: 900; letter-spacing: .04em; line-height: 1; }
+  .card.sub .sb-wrap { display: flex; align-items: stretch; }
+  .card.sub .sb-col { padding: 12px 24px; display: flex; flex-direction: column; justify-content: center; gap: 8px; min-width: 0; }
+  .card.sub .sb-col + .sb-col { border-left: 1px solid rgba(255,255,255,.1); }
+  .card.sub .sb-h { font-size: 12px; font-weight: 900; letter-spacing: .3em; }
+  .card.sub .sb-in .sb-h { color: var(--brand); } .card.sub .sb-out .sb-h { color: #ff5a6a; }
+  .card.sub .sb-out .sb-p { opacity: .78; }
+  .card.sub .sb-l { display: flex; flex-direction: column; gap: 8px; }
+  .card.sub .sb-p { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+  .card.sub .sb-p > i { position: relative; width: 50px; height: 50px; border-radius: 50%; flex: none; background: var(--c); display: grid; place-items: center; font-style: normal; font-family: var(--digit); font-weight: 900; font-size: 20px; color: #071018; }
+  .card.sub .sb-p > i.pic { background: center 18% / cover no-repeat rgba(255,255,255,.08); box-shadow: 0 0 0 2px var(--c); }
+  .card.sub .sb-p > i.pic b { position: absolute; right: -8px; bottom: -4px; min-width: 24px; height: 20px; padding: 0 4px; border-radius: 6px; background: var(--c); color: #071018; font-size: 13px; line-height: 20px; text-align: center; }
+  .card.sub .sb-p > span { font-size: 23px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+  .card.sub.many .sb-wrap { flex-direction: column; justify-content: center; }
+  .card.sub.many .sb-col { flex-direction: row; align-items: center; gap: 16px; padding: 9px 22px; }
+  .card.sub.many .sb-col + .sb-col { border-left: 0; border-top: 1px solid rgba(255,255,255,.1); }
+  .card.sub.many .sb-h { width: 70px; flex: none; }
+  .card.sub.many .sb-l { flex-direction: row; gap: 18px; }
+  .card.sub.many .sb-p { gap: 8px; }
+  .card.sub.many .sb-p > i { width: 36px; height: 36px; font-size: 15px; }
+  .card.sub.many .sb-p > i.pic b { font-size: 11px; height: 16px; line-height: 16px; min-width: 20px; right: -7px; }
+  .card.sub.many .sb-p > span { font-size: 17px; }
+  .corner-logo video { display: block; height: calc(130px * var(--cls, 1)); width: calc(130px * var(--cls, 1)); object-fit: contain; filter: drop-shadow(0 6px 16px rgba(0,0,0,.45)); }
   .card.banner { min-width: 520px; }
   .card.banner .txt { align-items: center; text-align: center; padding: 16px 40px 15px; flex: 1; }
   .card.banner .txt b { font-size: 36px; letter-spacing: .12em; }

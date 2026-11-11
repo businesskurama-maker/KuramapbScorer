@@ -30,7 +30,13 @@
     DUPLICATE_JERSEY: 'That jersey number is already used on this team.', LIVE_PASS_REQUIRED: 'Your Basketball pass has ended. Donate or enter a pass code to create matches.', BAD_CODE: 'That pass code is not valid.', USED_CODE: 'That pass code was already used.', EXPIRED_CODE: 'That pass code expired.', BAD_REFERENCE: 'Enter the last 6 digits of the reference number.', DUPLICATE_REFERENCE: 'That reference number was already sent.', TOO_MANY_PENDING: 'You already have 3 donations waiting for confirmation.',
     SIGN_IN_REQUIRED: 'Sign in first.', NO_MATCH: 'Match not found.', PIN_LOCKED: 'Too many wrong PINs. Wait 10 minutes.',
     SCOREKEEPER_TAKEN: 'A scorekeeper is already connected. The host can allow more devices.', TEAM_NAME_REQUIRED: 'Both teams need a name.',
-    TEXT_REQUIRED: 'Type the announcement first.', BAD_PERIOD: 'Invalid period.'
+    TEXT_REQUIRED: 'Type the announcement first.', BAD_PERIOD: 'Invalid period.',
+    NO_SEASON: 'Season not found.', SEASON_ENDED: 'This season has ended. Reopen it to make changes.', SEASON_TITLE_REQUIRED: 'Type a season title.',
+    TITLE_MISMATCH: 'The title you typed does not match the season title.', OWNER_ONLY: 'Only the account that created the season can delete it.',
+    ROSTER_FULL: 'This team already has 15 players.', TEAM_HAS_MATCHES: 'This team already played in a season match, so it cannot be removed.',
+    SAME_TEAM: 'Pick two different teams.', TOO_MANY_TEAMS: 'A season can have up to 64 teams.', BAD_JERSEY: 'Jersey numbers are 0–99.',
+    LINEUP_SIZE: 'Pick the right number of starters.', BAD_LINEUP: 'That lineup is not valid.', SUB_COUNT: 'Pick the same number of players going IN and OUT.',
+    SUB_NOT_ON_COURT: 'A player going OUT is not on court any more. Refresh and try again.', SUB_ALREADY_ON: 'A player going IN is already on court.'
   };
   function errText(e) {
     const m = String((e && (e.message || e.msg)) || e || '');
@@ -336,7 +342,7 @@
   const LOOK_SL = [['scale', 'Overall size', 0.6, 1.5], ['bar_h', 'Scoreboard height', 0.7, 1.4], ['edge', 'Distance from screen edge', 0, 2.5], ['rb_size', 'Category / title banner', 0.6, 1.8], ['name_size', 'Team names', 0.7, 1.5],
     ['label_size', 'Labels (fouls, period, tabs)', 0.7, 1.6], ['digit_size', 'Numbers (score, clock)', 0.7, 1.4], ['per_size', 'Quarter / period status', 0.7, 2], ['logo_size', 'Team logos', 0.6, 1.3]];
   const LOOK_COL = [['rb_bg', 'Banner', '#0a0d16'], ['rnd_color', 'Category', '#39ff14'], ['evt_color', 'Event title', '#f4f6fb'], ['bar_color', 'Scoreboard', '#0a0d16']];
-  const LOOK_KEYS = ['rb_tpl', 'show_logos', 'rb_logo', 'logo_pos', 'cl_size'].concat(LOOK_SL.map((x) => x[0]), LOOK_COL.map((x) => x[0]));
+  const LOOK_KEYS = ['rb_tpl', 'show_logos', 'rb_logo', 'logo_pos', 'cl_size', 'season_logo'].concat(LOOK_SL.map((x) => x[0]), LOOK_COL.map((x) => x[0]));
   function lookPanel(el, getB, send) {
     el.innerHTML = '<div class="seg seg-sm lk-tabs"><button type="button" data-lt="tpl" class="on">Template</button><button type="button" data-lt="size">Size</button><button type="button" data-lt="col">Colour</button><button type="button" data-lt="logo">Logo</button></div>'
       + '<div class="lk-pane" data-lp="tpl"><div class="lk-tpl">' + LOOK_TPL.map(([k, l, d]) => '<button type="button" data-tpl="' + k + '"><i class="lk-ic lk-' + k + '"><b></b><s></s></i><b>' + l + '</b><small>' + d + '</small></button>').join('') + '</div>'
@@ -346,6 +352,7 @@
       + '<div class="lk-pane hidden" data-lp="logo"><div class="lk-logo"><span class="lk-lth" data-lth></span><span class="lk-lt"><b>Event logo</b><small>Optional · league or tournament logo</small></span>'
       + '<label class="btn sm">Upload<input type="file" accept="image/*" hidden data-rblogo></label><button type="button" class="btn sm ghost" data-rbx>Remove</button></div>'
       + '<div class="lk-nm"><span><b>Logo position</b><small>On the banner, or alone in a top corner</small></span><div class="seg seg-sm"><button type="button" data-lpos="banner">On banner</button><button type="button" data-lpos="tl">Top left</button><button type="button" data-lpos="tr">Top right</button></div></div>'
+      + '<label class="lk-t"><input type="checkbox" data-slg> Season logo in the top corner <span class="tiny">(season games · animated WebM)</span></label>'
       + '<label class="lk-r lk-cl"><span>Corner logo size<em data-v="cl_size">100%</em></span><input type="range" min="0.4" max="2.5" step="0.05" data-lk="cl_size"></label>'
       + '<label class="lk-t lk-tl"><input type="checkbox" data-lg> Show team logos beside team names</label><p class="tiny" style="margin:6px 0 0">Team logos are uploaded in Match setup → Teams &amp; rosters.</p></div>'
       + '<div class="lk-foot"><span class="tiny">Saved when you let go of a slider or pick a colour.</span><button type="button" class="btn sm ghost" data-lreset>Reset look</button></div>';
@@ -354,7 +361,8 @@
       const b = getB() || {};
       el.querySelectorAll('[data-tpl]').forEach((x) => x.classList.toggle('on', x.dataset.tpl === (b.rb_tpl || 'split')));
       el.querySelectorAll('[data-lpos]').forEach((x) => x.classList.toggle('on', x.dataset.lpos === (b.logo_pos || 'banner')));
-      el.querySelector('.lk-cl').classList.toggle('dim', !(b.logo_pos === 'tl' || b.logo_pos === 'tr'));
+      el.querySelector('.lk-cl').classList.toggle('dim', !(b.logo_pos === 'tl' || b.logo_pos === 'tr') && b.season_logo === false);
+      el.querySelector('[data-slg]').checked = b.season_logo !== false;
       el.querySelectorAll('[data-nm]').forEach((x) => x.classList.toggle('on', x.dataset.nm === (b.names === 'full' ? 'full' : 'short')));
       el.querySelectorAll('[data-lk]').forEach((x) => { if (document.activeElement === x && x._drag) return; const v = b[x.dataset.lk] == null || b[x.dataset.lk] === '' ? 1 : Number(b[x.dataset.lk]); x.value = v; el.querySelector('[data-v="' + x.dataset.lk + '"]').textContent = pct(v); });
       LOOK_COL.forEach(([k, , d]) => { const v = /^#[0-9a-f]{6}$/i.test(b[k] || '') ? b[k] : ''; const inp = el.querySelector('[data-lc="' + k + '"]'); if (document.activeElement !== inp) inp.value = v || d; el.querySelector('[data-cv="' + k + '"]').textContent = v ? v.toUpperCase() : 'Theme'; el.querySelector('[data-cx="' + k + '"]').classList.toggle('hidden', !v); });
@@ -377,6 +385,7 @@
       const r = e.target.closest('[data-lk]'); if (r) { r._drag = false; send({ [r.dataset.lk]: Number(r.value) }); return; }
       const c = e.target.closest('[data-lc]'); if (c) { send({ [c.dataset.lc]: c.value }); return; }
       if (e.target.matches('[data-lg]')) { send({ show_logos: e.target.checked }); return; }
+      if (e.target.matches('[data-slg]')) { send({ season_logo: e.target.checked }); return; }
       if (e.target.matches('[data-rblogo]') && e.target.files[0]) {
         const f = e.target.files[0]; e.target.value = '';
         cropLogo(f).then((d) => send({ rb_logo: d })).catch((x) => { if (x && x.message !== 'CANCELLED') alert(x.message || 'Could not read that image'); });
@@ -385,6 +394,104 @@
     paint();
     return { paint };
   }
+
+  /* ---------- media for seasons: WebP images (≤ 500 KB), animated logo → WebM, uploads to Supabase Storage ---------- */
+  const loadImg = (src) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('That file is not an image')); im.src = src; });
+  const canvasBlob = (cv, type, q) => new Promise((res) => cv.toBlob(res, type, q));
+  // draws src (image / video / frame) centre-cropped to a square (fit:'cover') or letter-boxed (fit:'contain')
+  function drawSquare(g, src, w, h, size, fit) {
+    const k = fit === 'contain' ? size / Math.max(w, h) : size / Math.min(w, h);
+    const dw = w * k, dh = h * k;
+    g.clearRect(0, 0, size, size); g.imageSmoothingQuality = 'high';
+    g.drawImage(src, (size - dw) / 2, fit === 'top' ? 0 : (size - dh) / 2, dw, dh);
+  }
+  // any image file → square WebP Blob ≤ maxBytes (default 500 KB). fit 'top' keeps faces (photos) in frame.
+  async function toWebp(file, opts) {
+    opts = opts || {};
+    const maxB = opts.maxBytes || 500 * 1024, url = URL.createObjectURL(file);
+    try {
+      const im = await loadImg(url);
+      for (const size of opts.sizes || [512, 448, 384, 320, 256]) {
+        const cv = document.createElement('canvas'); cv.width = cv.height = size;
+        drawSquare(cv.getContext('2d'), im, im.naturalWidth, im.naturalHeight, size, opts.fit || 'cover');
+        for (const q of [0.9, 0.82, 0.74, 0.65, 0.55]) {
+          const b = await canvasBlob(cv, 'image/webp', q);
+          if (b && b.type === 'image/webp' && b.size <= maxB) return b;
+          if (b && b.type !== 'image/webp') { const p = await canvasBlob(cv, 'image/png'); if (p && p.size <= maxB) return p; break; }   // Safari: no WebP encoder
+        }
+      }
+      throw new Error('Could not make that image small enough');
+    } finally { URL.revokeObjectURL(url); }
+  }
+  /* Season logo: a square image, GIF or short video.
+   * → { poster: WebP Blob, anim: WebM Blob | null, secs }  (WebM keeps transparency, 320 px, ≤ 6 s, loops on OBS) */
+  async function seasonLogo(file, onProgress) {
+    const prog = onProgress || (() => {});
+    const isVid = /^video\//.test(file.type), isGif = file.type === 'image/gif';
+    if (!isVid && !isGif) return { poster: await toWebp(file, { maxBytes: 300 * 1024, fit: 'contain' }), anim: null };
+    const SIZE = 320, MAXS = 6;
+    const cv = document.createElement('canvas'); cv.width = cv.height = SIZE; const g = cv.getContext('2d');
+    const canRec = typeof MediaRecorder !== 'undefined' && cv.captureStream && MediaRecorder.isTypeSupported('video/webm;codecs=vp8');
+    let poster = null;
+    const grabPoster = async () => { if (!poster) poster = await canvasBlob(cv, 'image/webp', 0.85); };
+    const url = URL.createObjectURL(file);
+    try {
+      let rec = null, chunks = [];
+      const startRec = () => { if (!canRec) return; const st = cv.captureStream(25); rec = new MediaRecorder(st, { mimeType: 'video/webm;codecs=vp8', videoBitsPerSecond: 650000 }); rec.ondataavailable = (e) => e.data && e.data.size && chunks.push(e.data); rec.start(250); };
+      const stopRec = () => new Promise((res) => { if (!rec) return res(null); rec.onstop = () => res(new Blob(chunks, { type: 'video/webm' })); rec.stop(); });
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      let secs = 0;
+      if (isVid) {
+        const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.src = url; v.crossOrigin = 'anonymous';
+        await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error('That video cannot be played in this browser')); });
+        secs = Math.min(MAXS, v.duration || MAXS);
+        drawSquare(g, v, v.videoWidth, v.videoHeight, SIZE, 'contain'); await grabPoster();
+        if (canRec) {
+          startRec(); await v.play();
+          await new Promise((res) => { const t0 = performance.now(); (function f() { drawSquare(g, v, v.videoWidth, v.videoHeight, SIZE, 'contain'); const el = (performance.now() - t0) / 1000; prog(Math.min(1, el / secs)); if (el >= secs || v.ended) res(); else requestAnimationFrame(f); })(); });
+          v.pause();
+        }
+      } else if (typeof ImageDecoder !== 'undefined') {
+        const dec = new ImageDecoder({ data: await file.arrayBuffer(), type: 'image/gif' });
+        await dec.tracks.ready; const n = Math.max(1, dec.tracks.selectedTrack.frameCount);
+        const frames = [];
+        for (let i = 0; i < n && frames.reduce((a, b) => a + b.d, 0) < MAXS * 1000; i++) { const r = await dec.decode({ frameIndex: i }); frames.push({ img: r.image, d: Math.max(20, (r.image.duration || 100000) / 1000) }); }
+        const tot = frames.reduce((a, b) => a + b.d, 0); secs = Math.min(MAXS, tot / 1000);
+        const fw = frames[0].img.displayWidth, fh = frames[0].img.displayHeight;
+        drawSquare(g, frames[0].img, fw, fh, SIZE, 'contain'); await grabPoster();
+        if (canRec && frames.length > 1) {
+          startRec(); let el = 0;
+          for (const fr of frames) { drawSquare(g, fr.img, fw, fh, SIZE, 'contain'); await wait(fr.d); el += fr.d; prog(Math.min(1, el / tot)); }
+        }
+        frames.forEach((f) => f.img.close && f.img.close()); dec.close && dec.close();
+      } else {   // older browsers: let the <img> animate and sample it for 3 s
+        const im = await loadImg(url); secs = 3;
+        drawSquare(g, im, im.naturalWidth, im.naturalHeight, SIZE, 'contain'); await grabPoster();
+        if (canRec) { startRec(); const t0 = performance.now(); await new Promise((res) => { (function f() { drawSquare(g, im, im.naturalWidth, im.naturalHeight, SIZE, 'contain'); const el = (performance.now() - t0) / 1000; prog(el / secs); if (el >= secs) res(); else requestAnimationFrame(f); })(); }); }
+      }
+      const anim = await stopRec();
+      if (!poster || !poster.size) throw new Error('Could not read that file');
+      if (anim && anim.size > 1.9 * 1024 * 1024) throw new Error('The animated logo is too big. Use a shorter or simpler clip.');
+      return { poster, anim: anim && anim.size ? anim : null, secs };
+    } finally { URL.revokeObjectURL(url); }
+  }
+  // upload into the public 'bb-media' bucket under the signed-in user's folder → public URL
+  async function upload(c, path, blob) {
+    const uid = (await c.auth.getUser()).data.user.id;
+    const ext = blob.type === 'video/webm' ? 'webm' : blob.type === 'image/png' ? 'png' : 'webp';
+    const full = uid + '/' + path.replace(/^\/+/, '') + '-' + Date.now().toString(36) + '.' + ext;
+    const { error } = await c.storage.from('bb-media').upload(full, blob, { contentType: blob.type, upsert: true, cacheControl: '31536000' });
+    if (error) throw new Error(error.message || 'Upload failed');
+    return c.storage.from('bb-media').getPublicUrl(full).data.publicUrl;
+  }
+  // best-effort removal of uploaded files (URLs) or of a whole folder ("<uid>/s/<season>")
+  async function removeMedia(c, urls) {
+    const keys = (urls || []).filter(Boolean).map((u) => (String(u).split('/object/public/bb-media/')[1] || '')).filter(Boolean);
+    if (keys.length) { try { await c.storage.from('bb-media').remove(keys); } catch (e) {} }
+  }
+  async function removeFolder(c, folder) {
+    try { const { data } = await c.storage.from('bb-media').list(folder, { limit: 1000 }); const ks = (data || []).map((o) => folder + '/' + o.name); if (ks.length) await c.storage.from('bb-media').remove(ks); } catch (e) {}
+  }
   window.PBB = { lookPanel, client, rpc, connect, uuid, errText, errCode, clockLeft, fmtClock, fmtShot, periodLabel, colorDist, MIN_DIST, ELECTRIC,
-    playerName, FOUL, FOUL_SHORT, BREAKS, PRESETS, esc, imageToData, cropLogo, enabled: !!(cfg.supabaseUrl && cfg.supabaseAnonKey) };
+    playerName, FOUL, FOUL_SHORT, BREAKS, PRESETS, esc, imageToData, cropLogo, toWebp, seasonLogo, upload, removeMedia, removeFolder, enabled: !!(cfg.supabaseUrl && cfg.supabaseAnonKey) };
 })();

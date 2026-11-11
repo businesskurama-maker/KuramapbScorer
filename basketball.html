@@ -44,7 +44,7 @@
 </div>
 
 <nav class="p-tabs hidden" id="tabs">
-  <button data-v="matches" class="on">Matches</button><button data-v="setup">Match setup</button><button data-v="monitor">OBS Monitor</button><button data-v="summary">Stats &amp; history</button><a class="tab-link" id="boardOpen" target="_blank" rel="noopener" title="Open the big venue scoreboard on a TV / monitor (new tab)">▣ Venue scoreboard <span>↗</span></a>
+  <button data-v="matches" class="on">Matches</button><button data-v="seasons">Seasons</button><button data-v="setup">Match setup</button><button data-v="monitor">OBS Monitor</button><button data-v="summary">Stats &amp; history</button><a class="tab-link" id="boardOpen" target="_blank" rel="noopener" title="Open the big venue scoreboard on a TV / monitor (new tab)">▣ Venue scoreboard <span>↗</span></a>
 </nav>
 
 <main class="p-wrap hidden" id="main">
@@ -72,12 +72,67 @@
     </div>
   </section>
 
+  <!-- SEASONS -->
+  <section id="vSeasons" class="hidden">
+    <div id="ssListView">
+      <div class="p-card ss-intro">
+        <div><span class="pc-k">SEASONS</span><h2 style="margin:4px 0 2px">Leagues &amp; seasons</h2><span class="tiny">Register teams and players once. Every game you play in a season is saved to it: standings, player totals and your end-of-season awards (MVP and more).</span></div>
+        <button class="btn primary" id="ssNew">＋ New season</button>
+      </div>
+      <div class="ss-grid" id="ssList"></div>
+    </div>
+    <div id="ssDetail" class="hidden">
+      <div class="p-card ss-hero">
+        <button class="ss-logo" id="ssLogo" title="Upload the season logo"><span class="ss-lg-in" id="ssLogoIn">🏆</span><i>Change</i></button>
+        <div class="ss-id">
+          <span class="pc-k" id="ssKicker">SEASON</span>
+          <input class="in ss-title" id="ssTitle" maxlength="60" placeholder="Season title">
+          <span class="tiny" id="ssMeta"></span>
+        </div>
+        <div class="ss-act">
+          <button class="btn sm" id="ssBack">← All seasons</button>
+          <button class="btn sm" id="ssEnd">End season</button>
+          <button class="btn sm danger" id="ssDel">Delete season</button>
+        </div>
+        <input type="file" id="ssLogoIn2" accept="image/*,image/gif,video/*" hidden>
+      </div>
+      <div class="ss-logo-hint tiny" id="ssLogoMsg">Season logo: square image, GIF or short video. GIFs and videos are converted to a small looping WebM (transparent background kept) and play as the OBS corner logo in this season's games.</div>
+      <div class="seg su-tabs" id="ssTabs"><button data-s="teams" class="on">Teams &amp; players</button><button data-s="games">Games</button><button data-s="stats">Standings &amp; awards</button></div>
+      <div data-ss="teams">
+        <div class="p-card ss-addteam">
+          <span class="pc-k">ADD A TEAM</span>
+          <form class="ss-at-row" id="ssTeamForm" autocomplete="off">
+            <input class="in" id="ssTName" maxlength="15" placeholder="Team name (max 15)">
+            <input class="in" id="ssTShort" maxlength="5" placeholder="Initials" style="text-transform:uppercase">
+            <input type="color" id="ssTColor" value="#00e5ff" class="ss-col">
+            <button class="btn primary" type="submit">＋ Add team</button>
+          </form>
+        </div>
+        <div class="ss-teams" id="ssTeams"></div>
+      </div>
+      <div data-ss="games" class="hidden">
+        <div class="p-card m-listcard">
+          <h2>Season games <button class="btn primary" id="ssNewGame">＋ New game in this season</button></h2>
+          <div class="mlist" id="ssGames"></div>
+        </div>
+      </div>
+      <div data-ss="stats" class="hidden">
+        <div class="ss-stats">
+          <div class="p-card"><div class="ms-head"><span class="pc-k">STANDINGS</span><span class="tiny">Final games only</span></div><div class="tbl-wrap" id="ssStand"></div></div>
+          <div class="p-card"><div class="ms-head"><span class="pc-k">AWARDS</span><span class="tiny">You choose the winners</span></div><div id="ssAwards"></div></div>
+        </div>
+        <div class="p-card"><div class="ms-head"><span class="pc-k">PLAYER LEADERS</span><span class="tiny">Tap a column to sort · all started games</span></div><div class="tbl-wrap" id="ssLead"></div></div>
+      </div>
+    </div>
+  </section>
+
   <!-- SETUP -->
   <section id="vSetup" class="hidden">
     <div class="seg su-tabs" id="suTabs"><button data-s="match" class="on">Match</button><button data-s="teams">Teams &amp; rosters</button><button data-s="rules">Rules</button></div>
     <div class="p-card" data-s="match">
       <h2><span id="suTitle">New match</span><span class="row"><span class="st" id="suStatus"></span></span></h2>
       <div class="fgrid su-grid">
+        <label class="f su-wide">Season<select class="in" id="fSeason"><option value="">No season · single game</option></select></label>
         <label class="f su-wide">Event / season title<input class="in" id="fTitle" maxlength="60" placeholder="e.g. SBAL Season 6"></label>
         <label class="f su-wide">Category / round<input class="in" id="fRound" maxlength="40" placeholder="e.g. Men's Open · Finals"></label>
         <label class="f">Venue / court<input class="in" id="fVenue" maxlength="80" placeholder="e.g. Covered Court A"></label>

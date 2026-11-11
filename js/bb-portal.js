@@ -5,7 +5,7 @@
   let sb = null, cur = null, H = null, conn = null, view = 'matches', draft = null, devT = null;
   let toastT;
   function toast(t, err) { const el = $('toast'); el.textContent = t; el.classList.toggle('err', !!err); el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), err ? 3600 : 2000); }
-  const MUT = ['bb_create', 'bb_update', 'bb_roster', 'bb_delete', 'bb_revoke'];
+  const MUT = ['bb_create', 'bb_update', 'bb_roster', 'bb_delete', 'bb_revoke', 'bb_season_save', 'bb_season_team', 'bb_season_team_delete', 'bb_season_player', 'bb_season_player_delete', 'bb_season_delete'];
   const rpc = async (fn, args) => { const r = await PBB.rpc(sb, fn, args); if (MUT.includes(fn)) link.send('changed', { code: (args && args.p_code) || (r && r.code) || cur }); return r; };
 
   /* ---------- phone ⇄ screen link (same account): navigation, live setup typing, "data changed" ---------- */
@@ -48,6 +48,7 @@
       if (m.t === 'draft' && follow() && view === 'setup' && (m.code || null) === cur && !document.activeElement.closest('#vSetup')) { draft = m.draft; mirrorDraft(); }
       if (m.t === 'changed') {
         if (view === 'matches') loadMatches();
+        else if (view === 'seasons') { if (!document.activeElement.closest('#vSeasons')) openSeasons(); }
         else if ((m.code || '') === (cur || '') || !cur) {
           if (view === 'monitor') openMonitor(); else if (view === 'summary') openSummary();
           else if (view === 'setup' && cur && !document.activeElement.closest('#vSetup')) openSetup();
@@ -139,19 +140,20 @@
   /* ---------------- routing ---------------- */
   function route() {
     const h = new URLSearchParams(location.hash.slice(1));
-    cur = h.get('m') || null;
+    cur = h.get('m') || null; SS.id = h.get('s') || null;
     go(h.get('v') || (cur ? 'monitor' : 'matches'), true);
   }
-  function setHash() { const h = new URLSearchParams(); h.set('v', view); if (cur) h.set('m', cur); history.replaceState(null, '', '#' + h); }
+  function setHash() { const h = new URLSearchParams(); h.set('v', view); if (cur) h.set('m', cur); if (view === 'seasons' && SS.id) h.set('s', SS.id); history.replaceState(null, '', '#' + h); }
   function go(v, noHash) {
     if ((v === 'monitor' || v === 'summary') && !cur) { if (v !== view) toast('Pick a match first — tap OBS Monitor on a match card, or create one.'); v = 'matches'; }
     view = v;
     document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
-    ['matches', 'setup', 'monitor', 'summary'].forEach((k) => $('v' + k[0].toUpperCase() + k.slice(1)).classList.toggle('hidden', k !== v));
+    ['matches', 'seasons', 'setup', 'monitor', 'summary'].forEach((k) => $('v' + k[0].toUpperCase() + k.slice(1)).classList.toggle('hidden', k !== v));
     setHash();
     link.send('nav', { view: v, code: cur, draft: v === 'setup' && !cur ? draft : null });
     if (v !== 'monitor') { clearInterval(devT); }
     if (v === 'matches') loadMatches();
+    if (v === 'seasons') openSeasons();
     if (v === 'setup') openSetup();
     if (v === 'monitor') openMonitor();
     if (v === 'summary') openSummary();
@@ -160,14 +162,15 @@
 
   /* ---------------- matches ---------------- */
   async function loadMatches() {
-    const { data, error } = await sb.from('bb_matches').select('code,owner,title,venue,status,home,away,derived,created_at,starts_at,finalized_at').order('created_at', { ascending: false }).limit(100);
+    const { data, error } = await sb.from('bb_matches').select('code,owner,title,venue,status,home,away,derived,created_at,starts_at,finalized_at,season_id').order('created_at', { ascending: false }).limit(100);
     if (error) { $('mlist').innerHTML = '<div class="tiny">' + E(PBB.errText(error)) + '</div>'; return; }
+    await seasonNames();
     $('mlist').innerHTML = (data || []).map((m) => {
       const sc = (m.derived && m.derived.score) || { home: 0, away: 0 };
       const when = new Date(m.starts_at || m.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
       return '<div class="mcard"><div class="tt"><span>' + E(m.title || 'Untitled match') + (m.venue ? ' · ' + E(m.venue) : '') + '</span><span class="st ' + m.status + '">' + m.status.toUpperCase() + '</span></div>'
         + '<div class="vs"><span style="color:' + E(m.home.color) + '">' + E(m.home.name) + '</span><b>' + sc.home + ' – ' + sc.away + '</b><span style="color:' + E(m.away.color) + '">' + E(m.away.name) + '</span></div>'
-        + '<div class="tiny">' + when + ' · ID ' + m.code + (PBAuth.user && m.owner !== PBAuth.user.id ? ' · <span style="color:var(--warn)">another account</span>' : '') + '</div>'
+        + '<div class="tiny">' + (m.season_id && SS.names[m.season_id] ? '<span class="ss-chip">🏆 ' + E(SS.names[m.season_id]) + '</span> ' : '') + when + ' · ID ' + m.code + (PBAuth.user && m.owner !== PBAuth.user.id ? ' · <span style="color:var(--warn)">another account</span>' : '') + '</div>'
         + '<div class="row" style="flex-wrap:wrap"><button class="btn sm cyan" data-o="monitor" data-c="' + m.code + '">OBS Monitor</button><button class="btn sm" data-o="setup" data-c="' + m.code + '">Setup</button><button class="btn sm" data-o="summary" data-c="' + m.code + '">Stats</button><button class="btn sm ghost" data-del="' + m.code + '">Delete</button></div></div>';
     }).join('') || '<div class="m-empty"><div style="font-size:34px">🏀</div><b>No matches yet</b><span class="tiny">Create a match to set up teams, rosters and the OBS scoreboard.</span></div>';
   }
@@ -243,18 +246,19 @@
     $('suMsg').textContent = '';
     if (cur) {
       try { H = await rpc('bb_host', { p_code: cur }); } catch (e) { noAccess(e); return; }
-      draft = { title: H.title, venue: H.venue, when: H.starts_at, home: Object.assign({}, H.home), away: Object.assign({}, H.away), config: Object.assign({}, H.config), broadcast: Object.assign({}, H.broadcast),
+      draft = { season_id: (H.season && H.season.id) || '', title: H.title, venue: H.venue, when: H.starts_at, home: Object.assign({}, H.home), away: Object.assign({}, H.away), config: Object.assign({}, H.config), broadcast: Object.assign({}, H.broadcast),
         players: H.players.map((p) => Object.assign({}, p)) };
       $('suTitle').textContent = 'Match setup · ' + cur; $('suSave').textContent = 'Save changes'; $('fCode').value = cur;
       $('suStatus').className = 'st ' + H.status; $('suStatus').textContent = H.status.toUpperCase();
     } else if (!draft) {
       suTab('match');
-      draft = { title: '', venue: '', when: '', home: { name: '', short: '', color: '#00e5ff', logo: '' }, away: { name: '', short: '', color: '#ff2e4d', logo: '' }, config: Object.assign({}, DEF), broadcast: { theme: 'electric', names: 'short', anim_ms: 3000 }, players: [] };
+      draft = { season_id: '', title: '', venue: '', when: '', home: { name: '', short: '', color: '#00e5ff', logo: '' }, away: { name: '', short: '', color: '#ff2e4d', logo: '' }, config: Object.assign({}, DEF), broadcast: { theme: 'electric', names: 'short', anim_ms: 3000 }, players: [] };
       $('suTitle').textContent = 'New match'; $('suSave').textContent = 'Create match'; $('fCode').value = ''; $('suStatus').textContent = ''; $('suStatus').className = 'st';
     }
     $('fTitle').value = draft.title || ''; $('fVenue').value = draft.venue || ''; $('fRound').value = draft.broadcast.round || ''; setTimeout(bnPrev);
     $('fWhen').value = draft.when ? new Date(new Date(draft.when).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
     $('preset').innerHTML = '<option value="">Change rules…</option>' + Object.entries(PBB.PRESETS).map(([k, v]) => '<option value="' + k + '">' + v.label + '</option>').join('');
+    await paintSeasonPick();
     paintTeams(); paintRules();
   }
   function suTab(k) { document.querySelectorAll('#suTabs button').forEach((b) => b.classList.toggle('on', b.dataset.s === k)); document.querySelectorAll('#vSetup > [data-s]').forEach((el) => el.classList.toggle('hidden', el.dataset.s !== k)); $('main').scrollTop = 0; }
@@ -264,19 +268,21 @@
     $('teamCards').innerHTML = ['home', 'away'].map((t) => {
       const T = draft[t], other = draft[t === 'home' ? 'away' : 'home'];
       const rows = draft.players.filter((p) => p.team === t).sort((a, b) => Number(a.number) - Number(b.number));
+      const st = !cur && draft.season_id ? SS.pickCache : null;
       return '<div class="p-card tcard" style="--c:' + E(T.color) + '" data-team="' + t + '">'
         + '<h2>' + (t === 'home' ? 'Home team' : 'Away team') + '<span class="tiny">' + rows.filter((p) => p.active !== false).length + ' players</span></h2>'
+        + (st ? '<label class="f ss-pick">Season team<select class="in" data-steam="' + t + '"><option value="">Pick a team from ' + E(st.title) + '…</option>' + st.teams.map((x) => '<option value="' + x.id + '"' + (T.sid === x.id ? ' selected' : '') + (other.sid === x.id ? ' disabled' : '') + '>' + E(x.name) + ' · ' + x.players.length + ' players</option>').join('') + '</select></label>' : '')
         + '<div class="g2"><label class="f">Full team name<input class="in" data-k="name" maxlength="15" placeholder="Max 15 letters" value="' + E(T.name) + '" placeholder="' + (t === 'home' ? 'Team DinkyKong' : 'Red Bulls') + '"></label>'
         + '<label class="f">Initials (3–5)<input class="in" data-k="short" maxlength="5" value="' + E(T.short) + '" placeholder="' + (t === 'home' ? 'DKG' : 'RBL') + '" style="text-transform:uppercase"></label></div>'
         + '<div class="row" style="flex-wrap:wrap;gap:12px"><div class="sw-row">' + PBB.ELECTRIC.map((c) => '<button data-col="' + c + '" style="--c:' + c + '" class="' + (c === T.color ? 'on' : '') + (PBB.colorDist(c, other.color) < PBB.MIN_DIST ? ' blocked' : '') + '" title="' + c + '"></button>').join('')
         + '</div><input type="color" data-k="color" value="' + E(T.color) + '" style="width:40px;height:32px;border:0;background:none"></div>'
         + '<div class="logo-up"><span class="lg" style="' + (T.logo ? 'background-image:url(' + T.logo + ')' : '') + '"></span><label class="btn sm" style="position:relative;overflow:hidden">' + (T.logo ? 'Change logo' : 'Upload logo (optional)') + '<input type="file" accept="image/*" data-logo="1" style="position:absolute;inset:0;opacity:0"></label>' + (T.logo ? '<button class="btn sm ghost" data-nologo="1">Remove</button>' : '') + '</div>'
         + '<h3>Roster</h3><div class="tbl-wrap"><table class="rt"><thead><tr><th>#</th><th>First</th><th>Last</th><th>Display</th><th>Pos</th><th title="Starting five">Start</th><th title="Active">Act</th><th></th></tr></thead><tbody>'
-        + rows.map((p) => '<tr data-pid="' + (p.id || p._tmp) + '"' + (p.active === false ? ' style="opacity:.45"' : '') + '><td class="num"><input class="in" data-f="number" inputmode="numeric" maxlength="2" value="' + E(p.number) + '"></td><td><input class="in" data-f="first" value="' + E(p.first) + '"></td><td><input class="in" data-f="last" value="' + E(p.last) + '"></td>'
+        + rows.map((p) => '<tr data-pid="' + (p.id || p._tmp) + '"' + (p.active === false ? ' style="opacity:.45"' : '') + '><td class="num">' + (p.photo ? '<i class="rt-ph" style="background-image:url(' + E(p.photo) + ')"></i>' : '') + '<input class="in" data-f="number" inputmode="numeric" maxlength="2" value="' + E(p.number) + '"></td><td><input class="in" data-f="first" value="' + E(p.first) + '"></td><td><input class="in" data-f="last" value="' + E(p.last) + '"></td>'
           + '<td><input class="in" data-f="display" value="' + E(p.display) + '" placeholder="J. DELA CRUZ"></td><td><input class="in" data-f="position" maxlength="4" value="' + E(p.position) + '" style="width:56px"></td>'
           + '<td><input type="checkbox" data-f="starter"' + (p.starter ? ' checked' : '') + '></td><td><input type="checkbox" data-f="active"' + (p.active !== false ? ' checked' : '') + '></td><td><button class="btn sm ghost" data-rm="1" title="Remove">✕</button></td></tr>').join('')
         + '</tbody></table></div>'
-        + '<div class="row" style="flex-wrap:wrap"><button class="btn sm" data-add="1">＋ Add player</button><button class="btn sm" data-bulk="1">Bulk add</button><span class="tiny grow">Starters: ' + rows.filter((p) => p.starter && p.active !== false).length + '/5</span></div></div>';
+        + '<div class="row" style="flex-wrap:wrap"><button class="btn sm" data-add="1">＋ Add player</button><button class="btn sm" data-bulk="1">Bulk add</button><span class="tiny grow">Starters: ' + rows.filter((p) => p.starter && p.active !== false).length + '/5 · the scorer picks the starting five on the remote</span></div></div>';
     }).join('');
   }
   function paintRules() {
@@ -329,6 +335,7 @@
   $('teamCards').addEventListener('change', async (e) => {
     const card = e.target.closest('[data-team]'); if (!card) return; const t = card.dataset.team, el = e.target;
     if (el.dataset.k === 'color') return setColor(t, el.value);
+    if (el.dataset.steam) return pickSeasonTeam(t, el.value);
     if (el.dataset.logo && el.files[0]) { const f = el.files[0]; el.value = ''; try { draft[t].logo = await PBB.cropLogo(f); paintTeams(); sendDraft(); } catch (x) { if (x.message !== 'CANCELLED') toast(x.message || 'Could not read that image', true); } return; }
     const tr = el.closest('tr'); if (tr && el.dataset.f) {
       const p = findP(tr.dataset.pid);
@@ -406,8 +413,9 @@
     $('suSave').classList.add('busy'); $('suMsg').textContent = 'Saving…';
     try {
       if (!cur) {
-        const r = await rpc('bb_create', { p: { title: d.title, venue: d.venue, starts_at: d.when || '', home: d.home, away: d.away, config: d.config, broadcast: d.broadcast,
-          players: d.players.map((p) => ({ team: p.team, number: p.number, first: p.first, last: p.last, display: p.display, position: p.position, active: p.active !== false, starter: !!p.starter })) } });
+        if (d.season_id && (!d.home.sid || !d.away.sid) && !confirm('One of the teams is not picked from the season list, so its players will not count in the season stats. Create the game anyway?')) throw new Error('Pick both teams from the season (Teams & rosters tab).');
+        const r = await rpc('bb_create', { p: { season_id: d.season_id || '', title: d.title, venue: d.venue, starts_at: d.when || '', home: d.home, away: d.away, config: d.config, broadcast: d.broadcast,
+          players: d.players.map((p) => ({ team: p.team, number: p.number, first: p.first, last: p.last, display: p.display, position: p.position, active: p.active !== false, starter: !!p.starter, spid: p.spid || '', photo: p.photo || '' })) } });
         cur = r.code; draft = null; toast('Match created · ID ' + r.code); go('monitor');
       } else {
         H = await rpc('bb_update', { p_code: cur, p: { title: d.title, venue: d.venue, starts_at: d.when || '', home: d.home, away: d.away, config: d.config, broadcast: d.broadcast } });
@@ -417,6 +425,278 @@
     } catch (e) { toast(PBB.errText(e), true); $('suMsg').textContent = PBB.errText(e); }
     finally { $('suSave').classList.remove('busy'); if ($('suMsg').textContent === 'Saving…') $('suMsg').textContent = ''; }
   };
+
+  /* ---------------- seasons ---------------- */
+  const SS = { id: null, data: null, list: [], names: {}, pickCache: null, tab: 'teams', sort: 'pts', awards: null };
+  async function seasonNames() {
+    try { SS.list = await PBB.rpc(sb, 'bb_seasons_list', {}); SS.names = {}; SS.list.forEach((x) => { SS.names[x.id] = x.title; }); } catch (e) { SS.list = SS.list || []; }
+  }
+  const media = (url, anim, cls) => anim ? '<video class="' + (cls || '') + '" src="' + E(anim) + '" autoplay loop muted playsinline' + (url ? ' poster="' + E(url) + '"' : '') + '></video>' : url ? '<img class="' + (cls || '') + '" src="' + E(url) + '" alt="">' : '';
+  async function openSeasons() {
+    if (SS.id) return openSeason(SS.id);
+    $('ssDetail').classList.add('hidden'); $('ssListView').classList.remove('hidden');
+    await seasonNames();
+    $('ssList').innerHTML = SS.list.map((x) => '<button class="ss-card' + (x.status === 'ended' ? ' ended' : '') + '" data-sid="' + x.id + '">'
+      + '<span class="ss-c-lg">' + (media(x.logo, x.logo_anim) || '🏆') + '</span>'
+      + '<span class="ss-c-tx"><b>' + E(x.title) + '</b><small>' + x.teams + ' team' + (x.teams === 1 ? '' : 's') + ' · ' + x.players + ' players · ' + x.matches + ' game' + (x.matches === 1 ? '' : 's') + (x.final ? ' (' + x.final + ' final)' : '') + '</small></span>'
+      + '<span class="st ' + (x.status === 'ended' ? 'final' : 'live') + '">' + (x.status === 'ended' ? 'ENDED' : 'ACTIVE') + '</span></button>').join('')
+      || '<div class="p-card m-empty"><div style="font-size:34px">🏆</div><b>No seasons yet</b><span class="tiny">Create a season, add the teams and their players (up to 15 each), then start games inside it.</span></div>';
+  }
+  $('ssList').onclick = (e) => { const b = e.target.closest('[data-sid]'); if (!b) return; SS.id = b.dataset.sid; SS.tab = 'teams'; setHash(); openSeason(SS.id); };
+  $('ssNew').onclick = async () => {
+    if (!passOk) { toast('Your Basketball pass has ended', true); openDonate(); return; }
+    const t = prompt('Season title (e.g. SBAL SEASON 6 · 2026)'); if (!t || !t.trim()) return;
+    try { const r = await rpc('bb_season_save', { p: { title: t.trim() } }); SS.id = r.id; SS.tab = 'teams'; setHash(); paintSeason(r); toast('Season created · add the teams'); } catch (x) { toast(PBB.errText(x), true); }
+  };
+  async function openSeason(id) {
+    try { paintSeason(await PBB.rpc(sb, 'bb_season_get', { p_id: id })); }
+    catch (e) { toast(PBB.errText(e), true); SS.id = null; setHash(); openSeasons(); }
+  }
+  function paintSeason(d) {
+    SS.data = d; SS.awards = null;
+    $('ssListView').classList.add('hidden'); $('ssDetail').classList.remove('hidden');
+    const ended = d.status === 'ended';
+    $('ssDetail').classList.toggle('ss-ended', ended);
+    if (document.activeElement !== $('ssTitle')) $('ssTitle').value = d.title;
+    $('ssTitle').disabled = ended;
+    $('ssKicker').textContent = ended ? 'SEASON · ENDED ' + new Date(d.ended_at).toLocaleDateString() : 'SEASON · ACTIVE';
+    const np = d.teams.reduce((a, t) => a + t.players.length, 0);
+    $('ssMeta').textContent = d.teams.length + ' teams · ' + np + ' players · ' + d.matches.length + ' games';
+    $('ssLogoIn').innerHTML = media(d.logo, d.logo_anim) || '🏆';
+    $('ssEnd').textContent = ended ? 'Reopen season' : 'End season';
+    document.querySelectorAll('#ssTabs button').forEach((b) => b.classList.toggle('on', b.dataset.s === SS.tab));
+    document.querySelectorAll('#ssDetail [data-ss]').forEach((el) => el.classList.toggle('hidden', el.dataset.ss !== SS.tab));
+    paintSeasonTeams(); paintSeasonGames(); paintSeasonStats();
+  }
+  $('ssTabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; SS.tab = b.dataset.s; paintSeason(SS.data); };
+  $('ssBack').onclick = () => { SS.id = null; SS.data = null; setHash(); openSeasons(); };
+  $('ssTitle').onchange = async () => { const t = $('ssTitle').value.trim(); if (!t || !SS.data || t === SS.data.title) return; try { paintSeason(await rpc('bb_season_save', { p: { id: SS.data.id, title: t } })); toast('Season title saved'); } catch (x) { toast(PBB.errText(x), true); } };
+  $('ssEnd').onclick = async () => {
+    const d = SS.data; if (!d) return; const ending = d.status !== 'ended';
+    if (ending && !confirm('End "' + d.title + '"?\n\nThe season becomes read-only: no new games, teams or players. Its standings, stats and awards stay saved. You can reopen it later.')) return;
+    try { paintSeason(await rpc('bb_season_save', { p: { id: d.id, status: ending ? 'ended' : 'active' } })); toast(ending ? 'Season ended · stats saved' : 'Season reopened'); } catch (x) { toast(PBB.errText(x), true); }
+  };
+  // STRICT delete: type the season title
+  $('ssDel').onclick = () => {
+    const d = SS.data; if (!d) return;
+    const np = d.teams.reduce((a, t) => a + t.players.length, 0);
+    const m = document.createElement('div'); m.className = 'modal';
+    m.innerHTML = '<div class="sheet ss-delsheet"><h3 style="color:var(--danger)">Delete season permanently</h3>'
+      + '<p class="muted" style="margin:0">This erases <b>' + E(d.title) + '</b> and everything in it. It cannot be undone.</p>'
+      + '<ul class="ss-dl"><li><b>' + d.matches.length + '</b> games with all scores, play-by-play and stats</li><li><b>' + d.teams.length + '</b> teams and <b>' + np + '</b> players (photos too)</li><li>Standings and <b>' + (d.awards || []).length + '</b> awards</li><li>The season logo</li></ul>'
+      + '<label class="f">Type the season title to confirm<input class="in" id="ssDelIn" autocomplete="off" spellcheck="false" placeholder="' + E(d.title) + '"></label>'
+      + '<div class="g2"><button class="btn" data-x>Cancel</button><button class="btn danger" id="ssDelGo" disabled>Delete forever</button></div></div>';
+    document.body.appendChild(m);
+    const norm = (v) => String(v || '').trim().replace(/\s+/g, ' ').toUpperCase();
+    const inp = m.querySelector('#ssDelIn'), go2 = m.querySelector('#ssDelGo'); inp.focus();
+    inp.oninput = () => { go2.disabled = norm(inp.value) !== norm(d.title); };
+    m.onclick = async (e) => {
+      if (e.target === m || e.target.closest('[data-x]')) { m.remove(); return; }
+      if (e.target !== go2 || go2.disabled) return;
+      go2.classList.add('busy');
+      try {
+        const r = await rpc('bb_season_delete', { p_id: d.id, p_title: inp.value });
+        await PBB.removeFolder(sb, d.owner + '/s/' + d.id);
+        m.remove(); SS.id = null; SS.data = null; setHash(); toast('Season deleted · ' + r.matches + ' games removed'); openSeasons();
+      } catch (x) { toast(PBB.errText(x), true); go2.classList.remove('busy'); }
+    };
+  };
+  // season logo: image / GIF / video → WebP poster + WebM loop
+  $('ssLogo').onclick = () => { if (SS.data && SS.data.status === 'ended') { toast(PBB.errText('SEASON_ENDED'), true); return; } $('ssLogoIn2').click(); };
+  $('ssLogoIn2').onchange = async () => {
+    const f = $('ssLogoIn2').files[0]; $('ssLogoIn2').value = ''; const d = SS.data; if (!f || !d) return;
+    if (f.size > 60 * 1024 * 1024) { toast('That file is too big (max 60 MB)', true); return; }
+    const msg = $('ssLogoMsg'), old = msg.textContent; $('ssLogo').classList.add('busy');
+    try {
+      msg.textContent = /^video|gif/.test(f.type) ? 'Converting to WebM… keep this tab open' : 'Preparing the logo…';
+      const r = await PBB.seasonLogo(f, (p) => { msg.textContent = 'Converting to WebM… ' + Math.round(p * 100) + '%'; });
+      msg.textContent = 'Uploading…';
+      const poster = await PBB.upload(sb, 's/' + d.id + '/logo', r.poster);
+      const anim = r.anim ? await PBB.upload(sb, 's/' + d.id + '/logo-anim', r.anim) : null;
+      const prev = [d.logo, d.logo_anim];
+      paintSeason(await rpc('bb_season_save', { p: { id: d.id, logo: poster, logo_anim: anim } }));
+      PBB.removeMedia(sb, prev);
+      toast(r.anim ? 'Animated logo ready · ' + Math.round(r.anim.size / 1024) + ' KB WebM' : (/^video|gif/.test(f.type) ? 'This browser cannot make WebM — saved a still logo (use Chrome or Edge for animation)' : 'Season logo saved'));
+      msg.textContent = old;
+    } catch (x) { toast(x.message || PBB.errText(x), true); msg.textContent = old; }
+    finally { $('ssLogo').classList.remove('busy'); }
+  };
+
+  /* teams & players (max 15 per team; each change saves right away) */
+  function paintSeasonTeams() {
+    const d = SS.data, ro = d.status === 'ended';
+    $('ssTeamForm').classList.toggle('hidden', ro);
+    $('ssTeams').innerHTML = d.teams.map((t) => {
+      const full = t.players.length >= 15;
+      return '<div class="p-card ss-team" style="--c:' + E(t.color) + '" data-tid="' + t.id + '">'
+        + '<div class="sst-head"><label class="sst-lg' + (ro ? ' ro' : '') + '" title="Team logo">' + (t.logo ? '<img src="' + E(t.logo) + '" alt="">' : '<span>' + E(t.short || '?') + '</span>') + (ro ? '' : '<input type="file" accept="image/*" data-tlogo hidden>') + '</label>'
+        + '<input class="in sst-nm" data-tf="name" maxlength="15" value="' + E(t.name) + '"' + (ro ? ' disabled' : '') + '><input class="in sst-sh" data-tf="short" maxlength="5" value="' + E(t.short) + '"' + (ro ? ' disabled' : '') + '>'
+        + '<input type="color" class="ss-col" data-tf="color" value="' + E(t.color) + '"' + (ro ? ' disabled' : '') + '>'
+        + '<span class="sst-cnt' + (full ? ' full' : '') + '">' + t.players.length + '/15</span>' + (ro ? '' : '<button class="btn sm ghost" data-tdel title="Remove team">✕</button>') + '</div>'
+        + '<div class="sst-pl">' + t.players.map((p) => '<div class="ssp" data-pid="' + p.id + '">'
+          + '<label class="ssp-ph' + (ro ? ' ro' : '') + '" title="Player photo">' + (p.photo ? '<img src="' + E(p.photo) + '" alt="">' : '<span>📷</span>') + (ro ? '' : '<input type="file" accept="image/*" data-pphoto hidden>') + '</label>'
+          + '<input class="in ssp-no" data-pf="number" inputmode="numeric" maxlength="2" value="' + E(p.number) + '"' + (ro ? ' disabled' : '') + '>'
+          + '<input class="in" data-pf="first" placeholder="First name" value="' + E(p.first) + '"' + (ro ? ' disabled' : '') + '>'
+          + '<input class="in" data-pf="last" placeholder="Last name" value="' + E(p.last) + '"' + (ro ? ' disabled' : '') + '>'
+          + '<input class="in ssp-pos" data-pf="position" maxlength="4" placeholder="Pos" value="' + E(p.position) + '"' + (ro ? ' disabled' : '') + '>'
+          + (ro ? '' : '<button class="btn sm ghost" data-pdel title="Remove player">✕</button>') + '</div>').join('')
+        + (ro || full ? '' : '<form class="ssp new" data-padd autocomplete="off"><span class="ssp-ph ph0">＋</span><input class="in ssp-no" name="number" inputmode="numeric" maxlength="2" placeholder="#"><input class="in" name="first" placeholder="First name"><input class="in" name="last" placeholder="Last name"><input class="in ssp-pos" name="position" maxlength="4" placeholder="Pos"><button class="btn sm primary" type="submit">Add</button></form>')
+        + '</div>' + (full ? '<div class="tiny" style="margin-top:6px">Roster full (15 players).</div>' : '') + '</div>';
+    }).join('') || '<div class="p-card m-empty"><b>No teams yet</b><span class="tiny">Add every team of the season above, then their players (up to 15 each) with jersey number and an optional photo.</span></div>';
+  }
+  $('ssTeamForm').onsubmit = async (e) => {
+    e.preventDefault(); const d = SS.data; const name = $('ssTName').value.trim(); if (!name) { toast('Type the team name', true); return; }
+    try { paintSeason(await rpc('bb_season_team', { p: { season_id: d.id, name, short: $('ssTShort').value.trim(), color: $('ssTColor').value } }));
+      $('ssTName').value = ''; $('ssTShort').value = ''; $('ssTColor').value = PBB.ELECTRIC[(SS.data.teams.length) % PBB.ELECTRIC.length]; toast('Team added · now add its players');
+      const last = document.querySelector('#ssTeams .ss-team:last-child [data-padd] [name="number"]'); last && last.focus(); } catch (x) { toast(PBB.errText(x), true); }
+  };
+  const seasonTeamOf = (el) => SS.data.teams.find((t) => t.id === el.closest('[data-tid]').dataset.tid);
+  $('ssTeams').addEventListener('change', async (e) => {
+    const el = e.target, card = el.closest('[data-tid]'); if (!card) return; const t = seasonTeamOf(el);
+    try {
+      if (el.dataset.tf) { const v = el.dataset.tf === 'short' ? el.value.trim().toUpperCase() : el.value.trim(); SS.data = await rpc('bb_season_team', { p: { id: t.id, [el.dataset.tf]: v } }); if (el.dataset.tf === 'color') card.style.setProperty('--c', v); return; }
+      if (el.matches('[data-tlogo]') && el.files[0]) {
+        const f = el.files[0]; el.value = ''; toast('Uploading logo…');
+        const url = await PBB.upload(sb, 's/' + SS.data.id + '/team-' + t.id.slice(0, 8), await PBB.toWebp(f, { fit: 'contain', sizes: [384, 320, 256] }));
+        const prev = t.logo; paintSeason(await rpc('bb_season_team', { p: { id: t.id, logo: url } })); PBB.removeMedia(sb, [prev]); toast('Team logo saved'); return;
+      }
+      const row = el.closest('[data-pid]');
+      if (row && el.matches('[data-pphoto]') && el.files[0]) {
+        const f = el.files[0]; el.value = ''; row.classList.add('busy');
+        const blob = await PBB.toWebp(f, { fit: 'top', maxBytes: 500 * 1024 });
+        const url = await PBB.upload(sb, 's/' + SS.data.id + '/p-' + row.dataset.pid.slice(0, 8), blob);
+        const prev = (t.players.find((p) => p.id === row.dataset.pid) || {}).photo;
+        paintSeason(await rpc('bb_season_player', { p: { id: row.dataset.pid, photo: url } })); PBB.removeMedia(sb, [prev]);
+        toast('Photo saved · WebP ' + Math.round(blob.size / 1024) + ' KB'); return;
+      }
+      if (row && el.dataset.pf) {
+        let v = el.value.trim(); if (el.dataset.pf === 'number') { v = v.replace(/\D/g, ''); if (!/^\d{1,2}$/.test(v)) { toast('Jersey numbers are 0–99', true); return; } }
+        SS.data = await rpc('bb_season_player', { p: { id: row.dataset.pid, [el.dataset.pf]: v } }); el.classList.add('saved'); setTimeout(() => el.classList.remove('saved'), 900);
+      }
+    } catch (x) { toast(x.message && !/[A-Z_]{6,}/.test(x.message) ? x.message : PBB.errText(x), true); paintSeason(await PBB.rpc(sb, 'bb_season_get', { p_id: SS.data.id })); }
+  });
+  $('ssTeams').addEventListener('submit', async (e) => {
+    const fm = e.target.closest('[data-padd]'); if (!fm) return; e.preventDefault();
+    const t = seasonTeamOf(fm), v = (n) => fm.elements[n].value.trim();
+    const num = v('number').replace(/\D/g, ''); if (!/^\d{1,2}$/.test(num)) { toast('Type the jersey number (0–99)', true); fm.elements.number.focus(); return; }
+    if (!v('first') && !v('last')) { toast('Type the player name', true); fm.elements.first.focus(); return; }
+    try { paintSeason(await rpc('bb_season_player', { p: { team_id: t.id, number: num, first: v('first'), last: v('last'), position: v('position') } }));
+      const nf = document.querySelector('#ssTeams [data-tid="' + t.id + '"] [data-padd] [name="number"]'); nf && nf.focus(); } catch (x) { toast(PBB.errText(x), true); }
+  });
+  $('ssTeams').addEventListener('click', async (e) => {
+    const b = e.target.closest('button'); if (!b) return; const t = seasonTeamOf(b);
+    if (b.matches('[data-tdel]')) { if (!confirm('Remove ' + t.name + ' and its ' + t.players.length + ' players from the season?')) return;
+      try { paintSeason(await rpc('bb_season_team_delete', { p_id: t.id })); PBB.removeMedia(sb, [t.logo].concat(t.players.map((p) => p.photo))); toast('Team removed'); } catch (x) { toast(PBB.errText(x), true); } }
+    if (b.matches('[data-pdel]')) { const id = b.closest('[data-pid]').dataset.pid, p = t.players.find((x) => x.id === id);
+      if (!confirm('Remove #' + p.number + ' ' + (p.first + ' ' + p.last).trim() + ' from ' + t.name + '? Games already played keep their stats.')) return;
+      try { paintSeason(await rpc('bb_season_player_delete', { p_id: id })); PBB.removeMedia(sb, [p.photo]); } catch (x) { toast(PBB.errText(x), true); } }
+  });
+
+  /* games */
+  function paintSeasonGames() {
+    const d = SS.data;
+    $('ssNewGame').classList.toggle('hidden', d.status === 'ended');
+    $('ssGames').innerHTML = d.matches.map((m) => {
+      const sc = m.score || { home: 0, away: 0 }, when = new Date(m.starts_at || m.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+      return '<div class="mcard"><div class="tt"><span>' + E(m.round || m.title || 'Game') + (m.venue ? ' · ' + E(m.venue) : '') + '</span><span class="st ' + m.status + '">' + m.status.toUpperCase() + '</span></div>'
+        + '<div class="vs"><span style="color:' + E(m.home.color) + '">' + E(m.home.name) + '</span><b>' + sc.home + ' – ' + sc.away + '</b><span style="color:' + E(m.away.color) + '">' + E(m.away.name) + '</span></div>'
+        + '<div class="tiny">' + when + ' · ID ' + m.code + '</div>'
+        + '<div class="row" style="flex-wrap:wrap"><button class="btn sm cyan" data-o="monitor" data-c="' + m.code + '">OBS Monitor</button><button class="btn sm" data-o="setup" data-c="' + m.code + '">Setup</button><button class="btn sm" data-o="summary" data-c="' + m.code + '">Stats</button></div></div>';
+    }).join('') || '<div class="m-empty"><div style="font-size:34px">🏀</div><b>No games yet</b><span class="tiny">Start a game in this season: pick the two teams and their rosters load automatically.</span></div>';
+  }
+  $('ssGames').onclick = (e) => { const b = e.target.closest('button[data-c]'); if (!b) return; cur = b.dataset.c; H = null; go(b.dataset.o); };
+  $('ssNewGame').onclick = () => {
+    if (!passOk) { toast('Your Basketball pass has ended', true); openDonate(); return; }
+    const d = SS.data; if (d.teams.length < 2) { toast('Add at least two teams first', true); SS.tab = 'teams'; paintSeason(d); return; }
+    cur = null; H = null; draft = null; SS.newFor = d.id; go('setup');
+  };
+
+  /* standings, leaders, awards */
+  const LEAD = [['gp', 'GP'], ['pts', 'PTS'], ['ppg', 'PPG'], ['m2', '2PT'], ['m3', '3PT'], ['m1', 'FT'], ['f', 'FOULS'], ['reb', 'REB'], ['ast', 'AST']];
+  function seasonPlayers() {
+    const d = SS.data, st = (d.stats && d.stats.players) || {};
+    return d.teams.flatMap((t) => t.players.map((p) => { const s2 = Object.assign({ gp: 0, pts: 0, m1: 0, m2: 0, m3: 0, f: 0, reb: 0, ast: 0 }, st[p.id] || {}); s2.ppg = s2.gp ? Math.round(s2.pts / s2.gp * 10) / 10 : 0; return { p, t, s: s2 }; }));
+  }
+  function paintSeasonStats() {
+    const d = SS.data, ts = (d.stats && d.stats.teams) || {};
+    const rows = d.teams.map((t) => Object.assign({ t }, { gp: 0, w: 0, l: 0, pf: 0, pa: 0 }, ts[t.id] || {})).sort((a, b) => b.w - a.w || (b.pf - b.pa) - (a.pf - a.pa) || a.l - b.l);
+    $('ssStand').innerHTML = rows.length ? '<table class="bx-t ss-tbl"><thead><tr><th>#</th><th class="pl">Team</th><th>GP</th><th>W</th><th>L</th><th>PF</th><th>PA</th><th>DIFF</th></tr></thead><tbody>'
+      + rows.map((r, i) => '<tr><td class="no">' + (i + 1) + '</td><td class="pl"><i class="ss-dot" style="background:' + E(r.t.color) + '"></i>' + E(r.t.name) + '</td><td>' + r.gp + '</td><td class="pt">' + r.w + '</td><td>' + r.l + '</td><td>' + r.pf + '</td><td>' + r.pa + '</td><td>' + (r.pf - r.pa > 0 ? '+' : '') + (r.pf - r.pa) + '</td></tr>').join('') + '</tbody></table>'
+      : '<div class="empty-s">Add teams to see the standings.</div>';
+    const list = seasonPlayers().sort((a, b) => (b.s[SS.sort] || 0) - (a.s[SS.sort] || 0) || b.s.pts - a.s.pts);
+    $('ssLead').innerHTML = list.length ? '<table class="bx-t ss-tbl"><thead><tr><th>#</th><th class="pl">Player</th><th class="pl">Team</th>' + LEAD.map(([k, l]) => '<th data-sort="' + k + '" class="srt' + (SS.sort === k ? ' on' : '') + '">' + l + '</th>').join('') + '</tr></thead><tbody>'
+      + list.map((x) => '<tr><td class="no">' + E(x.p.number) + '</td><td class="pl">' + (x.p.photo ? '<i class="rt-ph" style="background-image:url(' + E(x.p.photo) + ')"></i>' : '') + E(PBB.playerName(x.p)) + '</td><td class="pl" style="color:' + E(x.t.color) + '">' + E(x.t.short || x.t.name) + '</td>'
+        + LEAD.map(([k]) => '<td class="' + (k === SS.sort ? 'pt' : '') + (x.s[k] ? '' : ' z') + '">' + (x.s[k] || 0) + '</td>').join('') + '</tr>').join('') + '</tbody></table>'
+      : '<div class="empty-s">No players yet.</div>';
+    paintAwards();
+  }
+  $('ssLead').onclick = (e) => { const th = e.target.closest('[data-sort]'); if (!th) return; SS.sort = th.dataset.sort; paintSeasonStats(); };
+  const AWARD_IDEAS = ['MVP', 'Finals MVP', 'Best Scorer', 'Best Defensive Player', 'Rookie of the Season', 'Most Improved Player', 'Sixth Man', 'Mythical Five', 'Sportsmanship Award', 'Champion Team'];
+  function paintAwards() {
+    const d = SS.data; if (!SS.awards) SS.awards = JSON.parse(JSON.stringify(d.awards || []));
+    const pls = seasonPlayers().sort((a, b) => b.s.pts - a.s.pts);
+    const opt = (a) => '<option value="">— pick player or team —</option>' + d.teams.map((t) => '<optgroup label="' + E(t.name) + '"><option value="t:' + t.id + '"' + (a.team === t.id && !a.player ? ' selected' : '') + '>🏀 ' + E(t.name) + ' (team)</option>'
+      + pls.filter((x) => x.t.id === t.id).map((x) => '<option value="p:' + x.p.id + '"' + (a.player === x.p.id ? ' selected' : '') + '>#' + E(x.p.number) + ' ' + E(PBB.playerName(x.p)) + ' · ' + x.s.pts + ' pts / ' + x.s.gp + ' gp</option>').join('') + '</optgroup>').join('');
+    const who = (a) => { const pl = a.player && pls.find((x) => x.p.id === a.player), tm = d.teams.find((t) => t.id === (a.team || (pl && pl.t.id))); return pl ? { ph: pl.p.photo, nm: PBB.playerName(pl.p), sub: '#' + pl.p.number + ' · ' + (tm ? tm.name : ''), c: tm ? tm.color : '' } : tm ? { ph: tm.logo, nm: tm.name, sub: 'Team', c: tm.color } : null; };
+    $('ssAwards').innerHTML = '<div class="aw-list">' + SS.awards.map((a, i) => { const w = who(a);
+      return '<div class="aw" data-i="' + i + '" style="--c:' + (w && w.c ? E(w.c) : 'var(--line2)') + '"><span class="aw-ph">' + (w && w.ph ? '<img src="' + E(w.ph) + '" alt="">' : '🏆') + '</span>'
+        + '<span class="aw-f"><input class="in aw-t" data-af="title" maxlength="40" value="' + E(a.title) + '" placeholder="Award"><select class="in" data-af="who">' + opt(a) + '</select><input class="in" data-af="note" maxlength="80" value="' + E(a.note || '') + '" placeholder="Note (optional) e.g. 21.4 PPG"></span>'
+        + '<button class="btn sm ghost" data-arm title="Remove">✕</button></div>'; }).join('') + '</div>'
+      + '<div class="aw-ideas">' + AWARD_IDEAS.filter((x) => !SS.awards.some((a) => a.title === x)).map((x) => '<button class="chip" data-aidea="' + E(x) + '">＋ ' + E(x) + '</button>').join('') + '<button class="chip" data-aidea="">＋ Custom award</button></div>'
+      + '<div class="row"><span class="tiny grow" id="awMsg">' + (SS.awards.length ? '' : 'Add awards, then pick the winners from the season stats.') + '</span><button class="btn primary sm" id="awSave">Save awards</button></div>';
+  }
+  $('ssAwards').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.aidea != null) { SS.awards.push({ title: b.dataset.aidea || 'Award' }); paintAwards(); const ins = $('ssAwards').querySelectorAll('.aw-t'); const t = ins[ins.length - 1]; if (!b.dataset.aidea && t) { t.select(); t.focus(); } $('awMsg').textContent = 'Not saved yet'; return; }
+    if (b.matches('[data-arm]')) { SS.awards.splice(Number(b.closest('[data-i]').dataset.i), 1); paintAwards(); $('awMsg').textContent = 'Not saved yet'; return; }
+    if (b.id === 'awSave') saveAwards();
+  });
+  $('ssAwards').addEventListener('change', (e) => {
+    const el = e.target, row = el.closest('[data-i]'); if (!row) return; const a = SS.awards[Number(row.dataset.i)];
+    if (el.dataset.af === 'who') { const v = el.value; a.player = v.startsWith('p:') ? v.slice(2) : undefined; a.team = v.startsWith('t:') ? v.slice(2) : (a.player ? (seasonPlayers().find((x) => x.p.id === a.player) || { t: {} }).t.id : undefined); paintAwards(); }
+    else a[el.dataset.af] = el.value;
+    $('awMsg').textContent = 'Not saved yet';
+  });
+  async function saveAwards() {
+    try { const r = await rpc('bb_season_save', { p: { id: SS.data.id, awards: SS.awards } }); SS.data = r; SS.awards = null; paintAwards(); toast('Awards saved'); } catch (x) { toast(PBB.errText(x), true); }
+  }
+
+  /* match setup: pick the season, then each team from the season list (roster + photos load) */
+  async function paintSeasonPick() {
+    if (!SS.list.length) await seasonNames();
+    if (SS.newFor && !cur && draft && !draft.season_id) { draft.season_id = SS.newFor; SS.newFor = null; }
+    const sel = $('fSeason');
+    if (cur) {
+      const t = H && H.season ? H.season.title : '';
+      sel.innerHTML = '<option value="">' + (t ? '🏆 ' + E(t) : 'No season · single game') + '</option>'; sel.disabled = true;
+    } else {
+      sel.disabled = false;
+      sel.innerHTML = '<option value="">No season · single game</option>' + SS.list.filter((x) => x.status !== 'ended').map((x) => '<option value="' + x.id + '"' + (draft.season_id === x.id ? ' selected' : '') + '>🏆 ' + E(x.title) + ' · ' + x.teams + ' teams</option>').join('');
+    }
+    SS.pickCache = null;
+    if (!cur && draft.season_id) {
+      try { SS.pickCache = await PBB.rpc(sb, 'bb_season_get', { p_id: draft.season_id }); if (!draft.title) { draft.title = SS.pickCache.title; $('fTitle').value = draft.title; bnPrev(); } } catch (e) { draft.season_id = ''; }
+    }
+  }
+  $('fSeason').onchange = async () => {
+    if (!draft || cur) return;
+    const prev = draft.season_id; draft.season_id = $('fSeason').value;
+    if (!draft.season_id && prev) { ['home', 'away'].forEach((t) => { delete draft[t].sid; }); }
+    if (draft.season_id) { const t = SS.list.find((x) => x.id === draft.season_id); if (t && (!draft.title || draft.title === (SS.pickCache && SS.pickCache.title))) draft.title = t.title; $('fTitle').value = draft.title; }
+    await paintSeasonPick(); paintTeams(); sendDraft();
+    if (draft.season_id) toast('Now pick both teams in Teams & rosters');
+  };
+  function pickSeasonTeam(t, id) {
+    const st = SS.pickCache; if (!st) return;
+    const x = st.teams.find((y) => y.id === id);
+    if (!x) { delete draft[t].sid; paintTeams(); return; }
+    const other = draft[t === 'home' ? 'away' : 'home'];
+    let color = x.color;
+    if (PBB.colorDist(color, other.color) < PBB.MIN_DIST) { color = PBB.ELECTRIC.slice().sort((a, b) => PBB.colorDist(b, other.color) - PBB.colorDist(a, other.color))[0]; toast(x.name + ' uses ' + color + ' in this game (its colour is too close to the other team)'); }
+    draft[t] = { name: x.name, short: x.short, color, logo: x.logo || '', sid: x.id };
+    draft.players = draft.players.filter((p) => p.team !== t).concat(x.players.map((p) => ({ _tmp: 'n' + Math.random().toString(36).slice(2), team: t, number: p.number, first: p.first, last: p.last, display: '', position: p.position, photo: p.photo || '', spid: p.id, active: true, starter: false, _dirty: true })));
+    paintTeams(); sendDraft();
+  }
 
   /* ---------------- monitor ---------------- */
   async function openMonitor() {

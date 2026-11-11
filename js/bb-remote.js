@@ -238,6 +238,8 @@
     $('selTxt').innerHTML = p ? 'Selected <b>#' + E(p.number) + ' ' + E(PBB.playerName(p)) + '</b> · ' + (st(p.id).pts || 0) + ' pts · ' + (st(p.id).fouls || 0) + ' F'
       : selP === 'team' || teamOnly ? '<b>' + E(team(selT).name) + '</b> · team-only' : 'Pick a player, then the points';
     $('teamOnly').textContent = 'Team-only: ' + (teamOnly ? 'ON' : 'off');
+    { const miss = ['home', 'away'].find((t) => activeOf(t).length && !onOf(t).length); const ln = $('lnNeed');
+      ln.classList.toggle('hidden', !miss || S.config.player_scoring === false || role === 'clock'); if (miss) { ln.dataset.t = miss; $('lnNeedT').textContent = team(miss).short || team(miss).name; } }
     $('fkind').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.k === fKind));
   }
   $('teamSw').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; selT = b.dataset.t; selP = null; buzz(15); renderScore(); };
@@ -369,39 +371,82 @@
     const s = await act('final', {}); if (s) toast('Final saved');
   };
 
-  /* PLAYERS view: substitutions + explicit stats (never invented from scoring) */
+  /* PLAYERS view: starting five, substitutions (one player or the whole five) + explicit stats */
   const STATS = [['reb', 'REB'], ['ast', 'AST'], ['stl', 'STL'], ['blk', 'BLK'], ['tov', 'TOV'], ['fta', 'FTA'], ['fga', 'FGA']];
+  let lnForce = null;   // team whose lineup is being re-picked
+  const capOf = () => (S && S.config && S.config.format === '3x3' ? 3 : 5);
+  const onOf = (t) => ((S.derived.oncourt || {})[t] || []).filter((id) => P(id));
+  const activeOf = (t) => (S.players || []).filter((p) => p.team === t && p.active);
+  const lineupMode = (t) => !onOf(t).length || lnForce === t;
   function renderPlayers() {
     if (!S) return;
     $('plSw').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === plT));
     $('vPlayers').style.setProperty('--c', team(plT).color);
-    const on = (S.derived.oncourt || {})[plT] || [];
-    if (!pending || pending.t !== plT) pending = { t: plT, set: new Set(on) };
-    const list = (S.players || []).filter((p) => p.team === plT && p.active);
-    $('plList').innerHTML = list.length ? list.map((p) => { const s2 = st(p.id), isOn = pending.set.has(p.id), changed = isOn !== on.includes(p.id);
-      return '<div class="pl-row' + (isOn ? ' on-court' : '') + '" data-p="' + p.id + '" style="' + (statP === p.id ? 'background:var(--card2)' : '') + '"><span class="n">' + E(p.number) + '</span>'
-        + '<span class="nm" data-sel="1">' + E(PBB.playerName(p)) + '<small>' + s2.pts + ' PTS · ' + s2.fouls + ' F · ' + s2.reb + ' REB · ' + s2.ast + ' AST' + (s2.out ? ' · OUT' : '') + '</small></span>'
-        + '<button class="btn sm ' + (isOn ? 'primary' : '') + '" data-tog="1">' + (isOn ? 'IN' : 'OUT') + (changed ? ' •' : '') + '</button></div>'; }).join('')
-      : '<div class="tiny">No players on this roster. The host can add players in the Basketball portal.</div>';
+    const on = onOf(plT), act = activeOf(plT), cap = capOf(), need = Math.min(cap, act.length), lm = lineupMode(plT);
+    if (!pending || pending.t !== plT || pending.lm !== lm) pending = lm
+      ? { t: plT, lm, set: new Set(on.length ? on : act.filter((p) => p.starter).map((p) => p.id).slice(0, cap)) }
+      : { t: plT, lm, outs: new Set(), ins: new Set() };
+    $('lnBox').classList.toggle('lm', lm);
+    $('subAll').textContent = 'Change all ' + cap; $('subAll').classList.toggle('hidden', lm || !on.length);
+    $('lnReset').classList.toggle('hidden', lm || !on.length || S.status === 'final');
+    const row = (p, kind) => { const s2 = st(p.id), sel = statP === p.id;
+      let btn = '', cls = '';
+      if (kind === 'pick') { const on2 = pending.set.has(p.id); cls = on2 ? ' pk' : ''; btn = '<button class="ln-b' + (on2 ? ' pk' : '') + '" data-tog="1">' + (on2 ? 'STARTER ✓' : 'START') + '</button>'; }
+      else if (kind === 'court') { const o = pending.outs.has(p.id); cls = ' court' + (o ? ' going-out' : ''); btn = '<button class="ln-b' + (o ? ' out' : '') + '" data-tog="1">' + (o ? 'OUT ▼' : 'SUB OUT') + '</button>'; }
+      else { const i2 = pending.ins.has(p.id); cls = i2 ? ' going-in' : ''; btn = s2.out ? '<span class="ln-x">' + (s2.dq ? 'DISQUALIFIED' : 'FOULED OUT') + '</span>' : '<button class="ln-b' + (i2 ? ' in' : '') + '" data-tog="1">' + (i2 ? 'IN ▲' : 'SUB IN') + '</button>'; }
+      return '<div class="pl-row' + cls + (sel ? ' stat-sel' : '') + (s2.out ? ' fo' : '') + '" data-p="' + p.id + '">' + (p.photo ? '<span class="n ph" style="background-image:url(' + E(p.photo) + ')"><b>' + E(p.number) + '</b></span>' : '<span class="n">' + E(p.number) + '</span>')
+        + '<span class="nm" data-sel="1">' + E(PBB.playerName(p)) + '<small>' + s2.pts + ' PTS · ' + s2.fouls + ' F' + (s2.reb ? ' · ' + s2.reb + ' REB' : '') + (s2.ast ? ' · ' + s2.ast + ' AST' : '') + '</small></span>' + btn + '</div>'; };
+    if (!act.length) { $('plList').innerHTML = '<div class="tiny">No players on this roster. The host can add players in the Basketball portal.</div>'; $('lnHint').textContent = ''; $('subApply').disabled = true; }
+    else if (lm) {
+      $('lnTitle').textContent = 'Starting ' + (cap === 5 ? 'five' : cap);
+      const n = pending.set.size;
+      $('lnHint').innerHTML = '<b class="' + (n === need ? 'ok' : '') + '">' + n + ' / ' + need + '</b> picked · tap START on the players who begin the game' + (lnForce ? ' · this replaces the players on court' : '');
+      $('plList').innerHTML = act.map((p) => row(p, 'pick')).join('');
+      $('subApply').textContent = n === need ? 'Confirm starting ' + (cap === 5 ? 'five' : cap) : 'Pick ' + (need - n > 0 ? need - n + ' more' : n - need + ' fewer');
+      $('subApply').disabled = n !== need; $('subClear').textContent = lnForce ? 'Cancel' : 'Clear';
+    } else {
+      $('lnTitle').textContent = 'Substitution';
+      const outs = [...pending.outs], ins = [...pending.ins], num = (id) => '#' + (P(id) || {}).number;
+      $('lnHint').innerHTML = outs.length || ins.length
+        ? '<span class="o">OUT ' + (outs.map(num).join(' ') || '—') + '</span> <span class="i">IN ' + (ins.map(num).join(' ') || '—') + '</span>' + (outs.length !== ins.length ? ' · pick ' + Math.abs(outs.length - ins.length) + ' more ' + (outs.length > ins.length ? 'IN' : 'OUT') : '')
+        : 'Tap <b>SUB OUT</b> on court and <b>SUB IN</b> on the bench (one player or several), then apply.';
+      const bench = act.filter((p) => !on.includes(p.id));
+      $('plList').innerHTML = '<div class="ln-sec">ON COURT · ' + on.length + '</div>' + on.map((id) => row(P(id), 'court')).join('')
+        + '<div class="ln-sec">BENCH · ' + bench.length + '</div>' + (bench.map((p) => row(p, 'bench')).join('') || '<div class="tiny">Nobody on the bench.</div>');
+      const ok = outs.length && outs.length === ins.length;
+      $('subApply').textContent = ok ? 'Apply substitution (' + outs.length + ' ⇄ ' + ins.length + ')' : 'Apply substitution';
+      $('subApply').disabled = !ok; $('subClear').textContent = 'Clear';
+    }
     const sp = statP && P(statP) && P(statP).team === plT ? P(statP) : null;
-    $('statSel').innerHTML = sp ? 'Stats for <b>#' + E(sp.number) + ' ' + E(PBB.playerName(sp)) + '</b>' : 'Select a player below, then tap a stat.';
+    $('statSel').innerHTML = sp ? 'Stats for <b>#' + E(sp.number) + ' ' + E(PBB.playerName(sp)) + '</b>' : 'Tap a player name above, then a stat.';
     $('statGrid').innerHTML = STATS.map(([k, l]) => '<button class="btn" data-k="' + k + '"' + (sp ? '' : ' disabled') + '>' + l + '<small>' + (sp ? st(sp.id)[k] || 0 : '–') + '</small></button>').join('');
-    const diff = [...pending.set].filter((x) => !on.includes(x)).length + on.filter((x) => !pending.set.has(x)).length;
-    $('subApply').textContent = diff ? 'Apply substitution (' + diff + ')' : 'Apply substitution';
-    $('subApply').disabled = !diff;
   }
-  $('plSw').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; plT = b.dataset.t; pending = null; renderPlayers(); };
+  $('plSw').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; plT = b.dataset.t; pending = null; lnForce = null; renderPlayers(); };
   $('plList').onclick = (e) => {
-    const row = e.target.closest('.pl-row'); if (!row) return;
-    if (e.target.closest('[data-tog]')) { const id = row.dataset.p; pending.set.has(id) ? pending.set.delete(id) : pending.set.add(id); buzz(15); }
-    else { statP = statP === row.dataset.p ? null : row.dataset.p; }
+    const r = e.target.closest('.pl-row'); if (!r || !S) return; const id = r.dataset.p; if (!pending) renderPlayers();
+    if (e.target.closest('[data-tog]')) {
+      buzz(15);
+      if (pending.lm) { if (pending.set.has(id)) pending.set.delete(id); else if (pending.set.size < Math.min(capOf(), activeOf(plT).length)) pending.set.add(id); else { toast('Already ' + pending.set.size + ' starters — tap one to remove it first', true); return; } }
+      else if (onOf(plT).includes(id)) { pending.outs.has(id) ? pending.outs.delete(id) : pending.outs.add(id); }
+      else { pending.ins.has(id) ? pending.ins.delete(id) : pending.ins.add(id); }
+    } else statP = statP === id ? null : id;
     renderPlayers();
   };
+  $('subAll').onclick = () => { if (!pending || pending.lm) return; buzz(20); const on = onOf(plT); const all = on.every((id) => pending.outs.has(id)); pending.outs = new Set(all ? [] : on); renderPlayers(); if (!all) toast('All ' + on.length + ' marked OUT · now tap ' + on.length + ' players IN'); };
+  $('lnReset').onclick = () => { lnForce = plT; pending = null; renderPlayers(); };
+  $('subClear').onclick = () => { if (pending && pending.lm && lnForce) lnForce = null; pending = null; renderPlayers(); };
   $('subApply').onclick = async () => {
-    const on = (S.derived.oncourt || {})[plT] || [], ins = [...pending.set].filter((x) => !on.includes(x)), outs = on.filter((x) => !pending.set.has(x));
-    const s = on.length ? await act('sub', { team: plT, in: ins, out: outs }) : await act('lineup', { team: plT, ids: [...pending.set] });
-    if (s) { pending = null; toast(on.length ? 'Substitution saved' : 'Starting lineup saved'); renderPlayers(); }
+    if (!pending) return;
+    if (pending.lm) {
+      const s = await act('lineup', { team: plT, ids: [...pending.set] });
+      if (s) { lnForce = null; pending = null; toast('Starting ' + (capOf() === 5 ? 'five' : capOf()) + ' set · ' + team(plT).short); renderPlayers(); renderScore(); }
+    } else {
+      const s = await act('sub', { team: plT, in: [...pending.ins], out: [...pending.outs] });
+      if (s) { const n = pending.ins.size; pending = null; toast('Substitution · ' + n + ' player' + (n === 1 ? '' : 's') + ' in'); renderPlayers(); renderScore(); }
+    }
   };
+  $('subQuick').onclick = () => { plT = selT; pending = null; lnForce = null; go('players'); };
+  $('lnNeedGo').onclick = () => { plT = $('lnNeed').dataset.t || selT; pending = null; go('players'); };
   $('statSign').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; statSign = Number(b.dataset.v); [...$('statSign').children].forEach((x) => x.classList.toggle('on', x === b)); };
   $('statGrid').onclick = async (e) => { const b = e.target.closest('button'); if (!b || !statP) return; buzz(25); await act('stat', { team: plT, player: statP, key: b.dataset.k, value: statSign }); };
 
@@ -503,6 +548,7 @@
     document.querySelectorAll('.r-nav button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
     ['score', 'clock', 'players', 'events', 'settings'].forEach((k) => $('v' + k[0].toUpperCase() + k.slice(1)).classList.toggle('hidden', k !== v));
     if (v === 'events') loadEvents();
+    if (v === 'players' && S) renderPlayers();
   }
   document.querySelector('.r-nav').onclick = (e) => { const b = e.target.closest('button'); if (b) { buzz(10); go(b.dataset.v); } };
 

@@ -54,11 +54,20 @@
     const rnd = String(b.round || '').trim(), evt = String(s.title || '').trim();
     // event logo: on the banner, or on its own in a top corner (tl / tr) with its own size
     const evLogo = /^data:image\//.test(b.rb_logo || '') ? b.rb_logo : '', corner = (b.logo_pos === 'tl' || b.logo_pos === 'tr') ? b.logo_pos : '';
+    // a season game shows the season logo (looping WebM, transparent) in the corner; otherwise the event logo can sit there
+    const ssn = s.season && b.season_logo !== false && (s.season.logo_anim || s.season.logo) ? s.season : null;
     const cl = $('cornerLogo');
     if (cl) {
-      cl.className = 'corner-logo' + (corner && evLogo ? ' on ' + corner : '');
+      const pos = ssn ? (corner || 'tl') : corner, on = ssn || (corner && evLogo);
+      cl.className = 'corner-logo' + (on ? ' on ' + pos : '');
       cl.style.setProperty('--cls', b.cl_size == null ? 1 : Number(b.cl_size));
-      const ci = cl.querySelector('img'); if (evLogo && ci.getAttribute('src') !== evLogo) ci.src = evLogo;
+      const key = ssn ? 's:' + (ssn.logo_anim || '') + '|' + (ssn.logo || '') : 'e:' + evLogo.length + evLogo.slice(-40);
+      if (cl.dataset.k !== key) {
+        cl.dataset.k = key;
+        if (ssn && ssn.logo_anim) cl.innerHTML = '<video src="' + PBB.esc(ssn.logo_anim) + '"' + (ssn.logo ? ' poster="' + PBB.esc(ssn.logo) + '"' : '') + ' autoplay loop muted playsinline></video>';
+        else { cl.innerHTML = '<img alt="">'; const src = ssn ? ssn.logo : evLogo; if (src) cl.querySelector('img').src = src; }
+        const v = cl.querySelector('video'); if (v) { v.muted = true; const p = v.play(); p && p.catch && p.catch(() => {}); }
+      }
     }
     const rb = $('rbn'), rbLogo = corner ? '' : evLogo, rbOn = b.show_round !== false && !!(rnd || evt || rbLogo);
     root.classList.toggle('show-round', !!rbOn);
@@ -143,16 +152,25 @@
       const p = playerById(e.player), T = teamOf(e.team);
       if (b.show_player === false) return;
       push({ kind: 'score', team: e.team, hold, prio: 1,
-        jer: p ? p.number : (T.short || ''), name: p ? PBB.playerName(p) : T.name, sub: p ? (T.short || T.name) + (S.derived.players[p.id] ? ' · ' + S.derived.players[p.id].pts + ' PTS' : '') : 'TEAM POINTS',
-        val: '+' + e.value, valTxt: e.value === 1 ? 'POINT' : 'POINTS', photo: p && p.photo });
+        jer: p ? p.number : (T.short || ''), name: p ? PBB.playerName(p) : T.name, sub: p ? (T.short || T.name) : 'TEAM POINTS',
+        val: '+' + e.value, valTxt: e.value === 1 ? 'POINT' : 'POINTS', photo: p && p.photo, chips: p ? gameChips(p.id, e.value === 1 ? 'm1' : 'm' + e.value) : null });
     } else if (e.type === 'foul') {
       const p = playerById(e.player), T = teamOf(e.team), st = p ? S.derived.players[p.id] : null, kind = (e.data || {}).kind || 'P';
       const out = st && st.out;
       push({ kind: 'foul', team: e.team, hold, prio: 1, out,
         jer: p ? p.number : (T.short || ''), name: p ? PBB.playerName(p) : T.name + (kind === 'B' ? ' BENCH' : ''),
         sub: PBB.FOUL[kind] + (st ? ' (' + st.fouls + ')' : '') + (out ? (st.dq ? ' · DISQUALIFIED' : ' · FOULED OUT') : ''),
-        val: String((S.derived.fouls || {})[e.team] || 0), valPre: 'TEAM', valTxt: (S.derived.penalty || {})[e.team] ? 'FOULS · PENALTY' : 'FOULS', photo: p && p.photo });
+        val: String((S.derived.fouls || {})[e.team] || 0), valPre: 'TEAM', valTxt: (S.derived.penalty || {})[e.team] ? 'FOULS · PENALTY' : 'FOULS', photo: p && p.photo, chips: p ? gameChips(p.id, 'f') : null });
+    } else if (e.type === 'sub') {
+      const d = e.data || {}, ins = (d.in || []).map(playerById).filter(Boolean), outs = (d.out || []).map(playerById).filter(Boolean);
+      if (b.show_player === false || !ins.length) return;
+      push({ kind: 'sub', team: e.team, hold: Math.max(hold, 3500), prio: 1, ins, outs });
     }
+  }
+  // this game's numbers for one player: 2PT · 3PT · FT (made) · FOULS — the one that just changed glows
+  function gameChips(id, hot) {
+    const st = (S.derived.players || {})[id] || {};
+    return [['m2', '2PT', st.m2], ['m3', '3PT', st.m3], ['m1', 'FT', st.m1], ['f', 'FOULS', st.fouls]].map(([k, l, v]) => ({ k, l, v: v || 0, hot: k === hot }));
   }
   function push(item) {
     if (S && S.broadcast && S.broadcast.reduced_motion) item.hold = Math.max(item.hold || 3000, 2500);
@@ -188,6 +206,7 @@
     if (bn && bn.until && bn.kind !== 'timeout' && conn.serverNow() > bn.until + 4000 && shown && shown.persistent) { bannerId = null; hideCard(); setTimeout(next, 380); }
   }, 1000);
 
+  const cssUrl = (u) => "'" + String(u).replace(/['"\\\n<>]/g, '') + "'";
   let cardEl = null;
   function hideCard(instant) {
     shown = null; const el = cardEl; cardEl = null; if (!el) return;
@@ -212,9 +231,19 @@
     } else if (it.kind === 'break') {
       el.className = 'card banner'; el.style.setProperty('--c', 'var(--brand)');
       el.innerHTML = '<div class="cacc"></div><div class="txt"><b>' + E(it.text) + '</b></div>';
+    } else if (it.kind === 'sub') {
+      const many = Math.max(it.ins.length, it.outs.length) > 2;
+      el.classList.toggle('many', many);
+      const T = teamOf(it.team);
+      const pl = (p) => '<span class="sb-p"><i' + (p.photo ? ' class="pic" style="background-image:url(' + cssUrl(p.photo) + ')"' : '') + '>' + (p.photo ? '<b>' + E(p.number) + '</b>' : E(p.number)) + '</i><span>' + E(PBB.playerName(p, true)) + '</span></span>';
+      el.innerHTML = '<div class="cacc"></div><div class="sb-tag"><small>SUBSTITUTION</small><b>' + E(T.short || T.name) + '</b></div><div class="sb-wrap">'
+        + '<div class="sb-col sb-in"><span class="sb-h">▲ IN</span><div class="sb-l">' + it.ins.map(pl).join('') + '</div></div>'
+        + '<div class="sb-col sb-out"><span class="sb-h">▼ OUT</span><div class="sb-l">' + it.outs.map(pl).join('') + '</div></div></div>';
     } else {
-      el.innerHTML = '<div class="cacc"></div><div class="jer">' + E(it.jer) + '</div>' + (it.photo ? '<div class="ph" style="background-image:url(' + JSON.stringify(it.photo).slice(1, -1) + ')"></div>' : '')
-        + '<div class="txt"><b>' + E(it.name) + '</b><small>' + E(it.sub) + '</small></div>'
+      const chips = it.chips ? '<div class="chips">' + it.chips.map((c) => '<span class="' + c.k + (c.hot ? ' hot' : '') + '">' + c.l + '<i>' + c.v + '</i></span>').join('') + '</div>' : '';
+      if (it.photo) el.classList.add('has-ph');
+      el.innerHTML = '<div class="cacc"></div>' + (it.photo ? '<div class="phx" style="background-image:url(' + cssUrl(it.photo) + ')"><b>' + E(it.jer) + '</b></div>' : '<div class="jer">' + E(it.jer) + '</div>')
+        + '<div class="txt"><b>' + E(it.name) + '</b><small>' + E(it.sub) + '</small>' + chips + '</div>'
         + (it.valPre ? '<div class="val vf"><small class="vp">' + E(it.valPre) + '</small><span class="vn">' + E(it.val) + '<small>' + E(it.valTxt) + '</small></span></div>'
           : '<div class="val">' + E(it.val) + '<small>' + E(it.valTxt) + '</small></div>');
     }
