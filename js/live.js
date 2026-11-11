@@ -472,6 +472,7 @@
     nextCall();
   }
   function liveAnnounce(st, ev) {
+    if (window.PBVoice) PBVoice.setPack((st.settings && st.settings.voicePack) || 'classic');
     const V = PBVoice, call = V.callItems(E.callout(st)), gap = { gap: .3 }, s = st.settings;
     const isDef = (t) => /^TEAM [AB]$/i.test(String(s.names[t] || '').trim()) || !String(s.names[t] || '').trim() || s.names[t] === 'TBD';
     const nameItem = (t) => isDef(t) ? (t ? 'teamb' : 'teama') : { tts: titleCase(s.names[t]), fallback: t ? 'teamb' : 'teama' };

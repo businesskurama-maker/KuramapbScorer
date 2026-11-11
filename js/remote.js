@@ -550,7 +550,7 @@
       const sel = document.createElement('select'); sel.className = 'rs-sel'; sel.dataset.k = seg.dataset.k;
       seg.querySelectorAll('button').forEach((b) => { const o = document.createElement('option'); o.value = b.dataset.v; o.textContent = b.textContent; sel.appendChild(o); });
       sel.onchange = () => { const b = seg.querySelector('button[data-v="' + sel.value + '"]'); if (b) b.click(); };
-      const SHORT = { target: 'Points to win', timeouts: 'Timeouts', tags: 'Rally reasons', voice: 'Voice calls', courtChange: 'Court change' };
+      const SHORT = { target: 'Points to win', timeouts: 'Timeouts', tags: 'Rally reasons', voice: 'Voice calls', voicePack: 'Announcer', courtChange: 'Court change' };
       const sp = document.createElement('span'); sp.textContent = SHORT[seg.dataset.k] || label;
       cell.appendChild(sp); cell.appendChild(sel); grid.appendChild(cell);
       f.classList.add('as-select');
@@ -584,6 +584,7 @@
     draft[k] = /^\d+$/.test(v) ? Number(v) : v; paintSheet();
     if (['winBy', 'timeouts', 'tags'].includes(k) && st && send({ a: 'rules', rules: { [k]: draft[k] } })) flash('Updated');
     if (k === 'voice' && st && send({ a: 'voice', on: draft.voice === 1 })) flash(draft.voice ? 'Voice calls on' : 'Voice calls off');
+    if (k === 'voicePack' && st && send({ a: 'voice', pack: draft.voicePack })) flash({ classic: 'Classic voice', anime: 'Anime Hype voice', mc: 'Hype MC voice' }[draft.voicePack] + ' · listen to the TV');
     if (k === 'courtChange' && st && send({ a: 'midswap', on: draft.courtChange === 1 })) flash(draft.courtChange ? 'Court change at half: on' : 'No court change at half');
   }));
   ['nA', 'nB'].forEach((id) => $(id).addEventListener('input', paintSheet));

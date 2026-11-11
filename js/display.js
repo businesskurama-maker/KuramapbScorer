@@ -124,6 +124,7 @@
   }
   function announce(ev) {
     if (!window.PBVoice || state.settings.voice === 0) return;
+    PBVoice.setPack(state.settings.voicePack || 'classic');
     const V = PBVoice, call = V.callItems(E.callout(state)), gap = { gap: .3 };
     const isDef = (t) => /^TEAM [AB]$/i.test(String(state.settings.names[t] || '').trim()) || !String(state.settings.names[t] || '').trim();
     let items = null;
@@ -159,7 +160,7 @@
   }
   if ($('soundChip')) {
     $('soundChip').onclick = () => { if (window.PBVoice) { PBVoice.unlock(); setTimeout(() => { PBVoice.say(PBVoice.callItems(E.callout(state))); updateSoundChip(); }, 150); } };
-    if (window.PBVoice) { PBVoice.load(); PBVoice.onState(updateSoundChip); }
+    if (window.PBVoice) { PBVoice.setPack((state && state.settings && state.settings.voicePack) || 'classic'); PBVoice.load(); PBVoice.onState(updateSoundChip); }
     setInterval(updateSoundChip, 2000); setTimeout(updateSoundChip, 300);
   }
 
@@ -348,6 +349,11 @@
     state = E.apply(state, action);
     save(); render();
     if (link) link.broadcast(E.publicState(state));
+    // new announcer voice chosen on the phone: switch now and let the venue hear it
+    if (action && action.a === 'voice' && action.pack && window.PBVoice && state.settings.voice !== 0) {
+      PBVoice.setPack(action.pack);
+      PBVoice.load().then(() => PBVoice.say(['sideout', { gap: .25 }].concat(PBVoice.callItems(E.callout(state)))));
+    }
   }
 
   /* ---------- QR / pairing ---------- */

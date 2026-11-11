@@ -2,15 +2,23 @@
  * Numbers and phrases are pre-recorded clips (sounds/voice/*.mp3) so it sounds the same on every TV, laptop and tablet.
  * Custom team names are spoken with the device's own speech voice (a female one when available). */
 (function () {
-  const BASE = 'sounds/voice/';
+  // Voice packs: classic (default) · anime (anime-style hype announcer) · mc (deep hip-hop / arena MC)
+  const PACKS = { classic: 'sounds/voice/', anime: 'sounds/voice-anime/', mc: 'sounds/voice-mc/' };
+  // device speech for custom team names, tuned to sit near each pack
+  const TTS_STYLE = { classic: { pitch: 1.08, rate: .86, male: false }, anime: { pitch: 1.45, rate: 1.02, male: false }, mc: { pitch: .7, rate: .9, male: true } };
+  let pack = 'classic', BASE = PACKS.classic;
   const KEYS = Array.from({ length: 31 }, (_, n) => 'n' + n).concat(['g2', 'g3', 'g4', 'g5', 'sideout', 'second', 'game', 'match', 'winsgame', 'winsmatch', 'teama', 'teamb', 'servesfirst', 'pfs', 'wg_a', 'wg_b', 'wm_a', 'wm_b', 'sf_a', 'sf_b', 'timeout', 'timein', 'toss', 'to_a', 'to_b', 'gp', 'mp']);
   // Whole score calls ("four, two, one") are single natural recordings, fetched the first time they are needed
   const pending = {};
+  // a clip missing from the chosen voice pack falls back to the classic voice (never silence)
+  function getAudio(path) {
+    return fetch(BASE + path).then((r) => (r.ok ? r : BASE !== PACKS.classic ? fetch(PACKS.classic + path) : r)).then((r) => { if (!r.ok) throw 0; return r.arrayBuffer(); });
+  }
   function fetchClip(k) {
     if (bufs[k]) return Promise.resolve(bufs[k]);
     if (pending[k]) return pending[k];
     if (!ensureCtx()) return Promise.resolve(null);
-    return (pending[k] = fetch(BASE + (k[0] === 'c' ? 'c/' + k.slice(1) : k) + '.mp3').then((r) => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+    return (pending[k] = getAudio((k[0] === 'c' ? 'c/' + k.slice(1) : k) + '.mp3')
       .then((a) => new Promise((res, rej) => ctx.decodeAudioData(a, res, rej))).then((b) => (bufs[k] = b)).catch(() => null).then((b) => { if (!b) delete pending[k]; return b; }));
   }
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -70,7 +78,7 @@
     if (loading) return loading;
     loadedAt = Date.now();
     if (!ensureCtx()) return (loading = Promise.resolve());
-    loading = Promise.all(KEYS.map((k) => fetch(BASE + k + '.mp3').then((r) => r.arrayBuffer())
+    loading = Promise.all(KEYS.map((k) => getAudio(k + '.mp3')
       .then((a) => new Promise((res, rej) => ctx.decodeAudioData(a, res, rej))).then((b) => { bufs[k] = b; }).catch(() => {})));
     return loading;
   }
@@ -89,9 +97,11 @@
 
   // Female speech voice for team names (device voices differ, so pick by common female voice names)
   const FEMALE = /female|woman|samantha|victoria|karen|moira|tessa|fiona|serena|ava|allison|susan|zira|aria|jenny|michelle|hazel|libby|sonia|natasha|catherine|kate|google us english|google uk english female/i;
+  const MALE = /\bmale\b|david|mark|daniel|alex|fred|george|guy|ryan|christopher|eric|james|google uk english male/i;
   function pickVoice() {
     if (!window.speechSynthesis) return null;
     const vs = speechSynthesis.getVoices().filter((v) => /^en/i.test(v.lang));
+    if (TTS_STYLE[pack].male) { const m = vs.find((v) => /google uk english male/i.test(v.name)) || vs.find((v) => MALE.test(v.name) && !/female/i.test(v.name)); if (m) return m; }
     // Chrome's "Google US/UK English" voices are the clearest and loudest at full volume — use them first
     return vs.find((v) => /google (us|uk) english/i.test(v.name) && !/\bmale\b/i.test(v.name)) || vs.find((v) => FEMALE.test(v.name) && !/male(?!.*female)/i.test(v.name.replace(/female/i, ''))) || vs.find((v) => FEMALE.test(v.name)) || vs[0] || null;
   }
@@ -103,7 +113,7 @@
       if (!window.speechSynthesis) return resolve(false);
       try {
         const u = new SpeechSynthesisUtterance(text); const v = pickVoice();
-        if (v) u.voice = v; u.lang = (v && v.lang) || 'en-US'; u.rate = it_rate || .86; u.pitch = 1.08; u.volume = 1;   // speech volume is capped at 1 by browsers
+        if (v) u.voice = v; u.lang = (v && v.lang) || 'en-US'; u.rate = it_rate || TTS_STYLE[pack].rate; u.pitch = TTS_STYLE[pack].pitch; u.volume = 1;   // speech volume is capped at 1 by browsers
         let done = false; const fin = (ok) => { if (!done) { done = true; resolve(ok); } };
         u.onend = () => fin(true); u.onerror = () => fin(false);
         const go = () => { try { speechSynthesis.resume(); speechSynthesis.speak(u); } catch (e) { fin(false); } };
@@ -152,7 +162,14 @@
   const callItems = (call) => { const p = String(call || '').split('-').filter((x) => x !== '').map(Number); if (!p.length) return []; if (p.every((x) => x >= 0 && x <= 21) && (p.length === 2 || (p.length === 3 && p[2] >= 1 && p[2] <= 2))) return ['c' + p.join('-')]; return p.map(num); };
   const prefetch = (call) => { const it = callItems(call); if (it.length === 1) fetchClip(it[0]); };
 
-  window.PBVoice = {
+  // switch voice pack: drop the old clips, load the new ones (each pack is its own folder)
+  function setPack(p) {
+    p = PACKS[p] ? p : 'classic'; if (p === pack) return;
+    pack = p; BASE = PACKS[p]; stopAll();
+    bufs = {}; for (const k in pending) delete pending[k]; loading = null; loadedAt = 0;
+    if (ctx) load();
+  }
+  window.PBVoice = { setPack, get pack() { return pack; }, PACKS: Object.keys(PACKS),
     say, num, callItems, unlock, load, prefetch,
     ready: () => !!ctx && ctx.state === 'running',
     supported: !!AC,
