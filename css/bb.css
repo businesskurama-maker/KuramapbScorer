@@ -820,3 +820,21 @@ table.rt td.num { white-space: nowrap; }
 .to-live .tl-btns .btn { min-height: 42px; }
 .to-live .tl-btns .btn.hidden + .btn, .to-live .tl-btns .btn:only-child { grid-column: 1 / -1; }
 @keyframes toPulse { 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c, var(--brand)) 18%, transparent); } }
+
+/* ---------- remote: this game's scoring record ---------- */
+.gs-box h4 b { font-weight: 800; }
+.gs-wrap { overflow-x: auto; margin: 0 -4px; }
+.gs-t { width: 100%; border-collapse: collapse; font-size: 13px; }
+.gs-t th { font-size: 10.5px; font-weight: 800; letter-spacing: .12em; color: var(--ink3); padding: 6px 6px; text-align: center; border-bottom: 1px solid var(--line2); }
+.gs-t td { padding: 9px 6px; text-align: center; font-family: var(--digit); font-weight: 700; color: var(--ink); border-bottom: 1px solid var(--line); }
+.gs-t .no { width: 34px; color: var(--ink2); }
+.gs-t .pl { text-align: left; font-family: var(--ui, inherit); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; text-transform: uppercase; }
+.gs-t td.pl i { font-style: normal; font-size: 9.5px; font-weight: 800; letter-spacing: .08em; color: var(--danger); margin-left: 4px; }
+.gs-t td.gp { font-size: 16px; color: var(--c, var(--brand)); }
+.gs-t td.z { color: var(--ink3); opacity: .55; }
+.gs-t td.warn { color: var(--warn); opacity: 1; }
+.gs-t tr.oc td.no { color: var(--c, var(--brand)); }
+.gs-t tr.oc td.no::before { content: '●'; font-size: 7px; vertical-align: 2px; margin-right: 3px; }
+.gs-t tr.fo td { opacity: .55; }
+.gs-t tr.tot td { border-bottom: 0; border-top: 1px solid var(--line2); font-weight: 800; color: var(--ink); }
+.gs-t tr.tot td.pl { font-size: 11px; letter-spacing: .14em; color: var(--ink2); }

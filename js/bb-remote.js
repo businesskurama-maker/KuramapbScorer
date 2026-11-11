@@ -406,7 +406,7 @@
       else if (kind === 'court') { const o = pending.outs.has(p.id); cls = ' court' + (o ? ' going-out' : ''); btn = '<button class="ln-b' + (o ? ' out' : '') + '" data-tog="1">' + (o ? 'OUT ▼' : 'SUB OUT') + '</button>'; }
       else { const i2 = pending.ins.has(p.id); cls = i2 ? ' going-in' : ''; btn = s2.out ? '<span class="ln-x">' + (s2.dq ? 'DISQUALIFIED' : 'FOULED OUT') + '</span>' : '<button class="ln-b' + (i2 ? ' in' : '') + '" data-tog="1">' + (i2 ? 'IN ▲' : 'SUB IN') + '</button>'; }
       return '<div class="pl-row' + cls + (sel ? ' stat-sel' : '') + (s2.out ? ' fo' : '') + '" data-p="' + p.id + '">' + (p.photo ? '<span class="n ph" style="background-image:url(' + E(p.photo) + ')"><b>' + E(p.number) + '</b></span>' : '<span class="n">' + E(p.number) + '</span>')
-        + '<span class="nm" data-sel="1">' + E(PBB.playerName(p)) + '<small>' + s2.pts + ' PTS · ' + s2.fouls + ' F' + (s2.reb ? ' · ' + s2.reb + ' REB' : '') + (s2.ast ? ' · ' + s2.ast + ' AST' : '') + '</small></span>' + btn + '</div>'; };
+        + '<span class="nm" data-sel="1">' + E(PBB.playerName(p)) + '<small>' + (s2.pts || 0) + ' PTS · 2PT ' + (s2.m2 || 0) + ' · 3PT ' + (s2.m3 || 0) + ' · FT ' + (s2.m1 || 0) + ' · ' + (s2.fouls || 0) + ' F</small></span>' + btn + '</div>'; };
     if (!act.length) { $('plList').innerHTML = '<div class="tiny">No players on this roster. The host can add players in the Basketball portal.</div>'; $('lnHint').textContent = ''; $('subApply').disabled = true; }
     else if (lm) {
       $('lnTitle').textContent = 'Starting ' + (cap === 5 ? 'five' : cap);
@@ -428,9 +428,16 @@
       $('subApply').textContent = ok ? 'Apply substitution (' + outs.length + ' ⇄ ' + ins.length + ')' : 'Apply substitution';
       $('subApply').disabled = !ok; $('subClear').textContent = 'Clear';
     }
-    const sp = statP && P(statP) && P(statP).team === plT ? P(statP) : null;
-    $('statSel').innerHTML = sp ? 'Stats for <b>#' + E(sp.number) + ' ' + E(PBB.playerName(sp)) + '</b>' : 'Tap a player name above, then a stat.';
-    $('statGrid').innerHTML = STATS.map(([k, l]) => '<button class="btn" data-k="' + k + '"' + (sp ? '' : ' disabled') + '>' + l + '<small>' + (sp ? st(sp.id)[k] || 0 : '–') + '</small></button>').join('');
+    // this game's scoring record for the team: points, 2PT, 3PT, FT made, fouls
+    $('gsTeam').textContent = team(plT).short || team(plT).name; $('gsTeam').style.color = team(plT).color;
+    const rec = (S.players || []).filter((p) => p.team === plT && (p.active || st(p.id).pts || st(p.id).fouls)).map((p) => ({ p, s: st(p.id) }))
+      .sort((a, b) => (b.s.pts || 0) - (a.s.pts || 0) || (b.s.fouls || 0) - (a.s.fouls || 0) || Number(a.p.number) - Number(b.p.number));
+    const oc = onOf(plT), tot = rec.reduce((a, x) => { ['pts', 'm2', 'm3', 'm1', 'fouls'].forEach((k) => { a[k] += x.s[k] || 0; }); return a; }, { pts: 0, m2: 0, m3: 0, m1: 0, fouls: 0 });
+    const c = (v, cls) => '<td class="' + (cls || '') + (v ? '' : ' z') + '">' + (v || 0) + '</td>';
+    $('gsBody').innerHTML = rec.map((x) => '<tr class="' + (oc.includes(x.p.id) ? 'oc' : '') + (x.s.out ? ' fo' : '') + '"><td class="no">' + E(x.p.number) + '</td><td class="pl">' + E(PBB.playerName(x.p)) + (x.s.out ? ' <i>' + (x.s.dq ? 'DQ' : 'OUT') + '</i>' : '') + '</td>'
+      + c(x.s.pts, 'gp') + c(x.s.m2) + c(x.s.m3) + c(x.s.m1) + c(x.s.fouls, (x.s.fouls || 0) >= 4 ? 'warn' : '') + '</tr>').join('')
+      + '<tr class="tot"><td></td><td class="pl">TEAM</td><td class="gp">' + tot.pts + '</td><td>' + tot.m2 + '</td><td>' + tot.m3 + '</td><td>' + tot.m1 + '</td><td>' + tot.fouls + '</td></tr>';
+    $('gsTot').textContent = ((S.derived.score || {})[plT] || 0) + ' pts on the board';
   }
   $('plSw').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; plT = b.dataset.t; pending = null; lnForce = null; renderPlayers(); };
   $('plList').onclick = (e) => {
@@ -440,7 +447,7 @@
       if (pending.lm) { if (pending.set.has(id)) pending.set.delete(id); else if (pending.set.size < Math.min(capOf(), activeOf(plT).length)) pending.set.add(id); else { toast('Already ' + pending.set.size + ' starters — tap one to remove it first', true); return; } }
       else if (onOf(plT).includes(id)) { pending.outs.has(id) ? pending.outs.delete(id) : pending.outs.add(id); }
       else { pending.ins.has(id) ? pending.ins.delete(id) : pending.ins.add(id); }
-    } else statP = statP === id ? null : id;
+    } else return;
     renderPlayers();
   };
   $('subAll').onclick = () => { if (!pending || pending.lm) return; buzz(20); const on = onOf(plT); const all = on.every((id) => pending.outs.has(id)); pending.outs = new Set(all ? [] : on); renderPlayers(); if (!all) toast('All ' + on.length + ' marked OUT · now tap ' + on.length + ' players IN'); };
@@ -458,8 +465,6 @@
   };
   $('subQuick').onclick = () => { plT = selT; pending = null; lnForce = null; go('players'); };
   $('lnNeedGo').onclick = () => { plT = $('lnNeed').dataset.t || selT; pending = null; go('players'); };
-  $('statSign').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; statSign = Number(b.dataset.v); [...$('statSign').children].forEach((x) => x.classList.toggle('on', x === b)); };
-  $('statGrid').onclick = async (e) => { const b = e.target.closest('button'); if (!b || !statP) return; buzz(25); await act('stat', { team: plT, player: statP, key: b.dataset.k, value: statSign }); };
 
   /* EVENTS view */
   let evT = null, evCache = [];

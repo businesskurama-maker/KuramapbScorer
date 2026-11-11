@@ -106,10 +106,9 @@
         <div id="plList" class="ln-list"></div>
         <div class="ln-foot"><button class="btn ghost" id="subClear">Clear</button><button class="btn primary needs-live" id="subApply">Apply substitution</button></div>
       </div>
-      <div class="box needs-live">
-        <h4>Stats <span class="seg" id="statSign" style="padding:2px"><button data-v="1" class="on">+1</button><button data-v="-1">−1</button></span></h4>
-        <div class="tiny" id="statSel">Select a player below, then tap a stat.</div>
-        <div class="stat-grid" id="statGrid"></div>
+      <div class="box gs-box">
+        <h4><span>This game · <b id="gsTeam">HOME</b></span><span class="tiny" id="gsTot"></span></h4>
+        <div class="gs-wrap"><table class="gs-t"><thead><tr><th class="no">#</th><th class="pl">Player</th><th>PTS</th><th>2PT</th><th>3PT</th><th>FT</th><th>F</th></tr></thead><tbody id="gsBody"></tbody></table></div>
       </div>
     </section>
 
