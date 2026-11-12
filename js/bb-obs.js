@@ -35,7 +35,7 @@
     const nsz = Number(b.name_size) || 1, dsz = Number(b.digit_size) || 1;
     root.style.setProperty('--nsz', nsz); root.style.setProperty('--psz', Number(b.per_size) || Number(b.label_size) || 1); root.style.setProperty('--lsz', Number(b.label_size) || 1); root.style.setProperty('--rsz', Number(b.rb_size) || 1);
     // scoreboard height is its own setting now (bigger text no longer makes the bar taller)
-    root.style.setProperty('--bhs', Number(b.bar_h) || 1); root.style.setProperty('--edge', b.edge == null ? 1 : Number(b.edge)); root.style.setProperty('--lgs', Number(b.logo_size) || 1); root.style.setProperty('--pps', 2 * (Number(b.pop_size) || 1));
+    root.style.setProperty('--bhs', Number(b.bar_h) || 1); root.style.setProperty('--edge', b.edge == null ? 1 : Number(b.edge)); root.style.setProperty('--lgs', Number(b.logo_size) || 1); root.style.setProperty('--pps', 2 * (Number(b.pop_size) || 1)); renderTicker(b);
     root.classList.add('rb-' + (['split', 'ribbon', 'stack', 'pill'].includes(b.rb_tpl) ? b.rb_tpl : 'split'));
     if (b.show_logos === false) root.classList.add('no-logos');
     const hex = (v) => /^#[0-9a-f]{6}$/i.test(v || '') ? v : '';
@@ -206,6 +206,26 @@
     if (bn && bn.until && conn.serverNow() > bn.until + (bn.kind === 'timeout' ? 900 : 4000) && shown && shown.persistent) { bannerId = null; hideCard(); setTimeout(next, 380); }
   }, 250);
 
+  // looping ticker: starts just off the right edge, scrolls until the text has left on the left, repeats
+  let tkKey = '';
+  function renderTicker(b) {
+    const tk = $('tick'); if (!tk) return;
+    const txt = String(b.tk_text || '').trim(), on = !!b.tk_on && !!txt;
+    tk.classList.toggle('on', on);
+    document.body.style.setProperty('--tks', Number(b.tk_size) || 1);
+    if (/^#[0-9a-f]{6}$/i.test(b.tk_bg || '')) document.body.style.setProperty('--tk-bg', b.tk_bg); else document.body.style.removeProperty('--tk-bg');
+    if (/^#[0-9a-f]{6}$/i.test(b.tk_fg || '')) document.body.style.setProperty('--tk-fg', b.tk_fg); else document.body.style.removeProperty('--tk-fg');
+    if (!on) { tkKey = ''; return; }
+    const key = txt + '|' + (Number(b.tk_speed) || 1) + '|' + (Number(b.tk_size) || 1) + '|' + (Number(b.scale) || 1);
+    if (key === tkKey) return; tkKey = key;
+    const inn = $('tkIn'); inn.innerHTML = '<span>' + PBB.esc(txt) + '</span>';
+    requestAnimationFrame(() => {
+      const cw = tk.clientWidth, w = inn.scrollWidth, pxs = 110 * (Number(b.tk_speed) || 1) * (Number(b.tk_size) || 1);
+      inn.style.setProperty('--tk0', cw + 'px'); inn.style.setProperty('--tk1', -w + 'px'); inn.style.setProperty('--tkd', Math.max(4, (cw + w) / pxs) + 's');
+      inn.style.animation = 'none'; void inn.offsetWidth; inn.style.animation = '';
+    });
+  }
+  window.addEventListener('resize', () => { tkKey = ''; if (S) renderTicker(S.broadcast || {}); });
   const cssUrl = (u) => "'" + String(u).replace(/['"\\\n<>]/g, '') + "'";
   let cardEl = null;
   function hideCard(instant) {

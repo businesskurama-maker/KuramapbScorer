@@ -341,10 +341,10 @@
   const LOOK_TPL = [['split', 'Split', 'Category tab + title'], ['ribbon', 'Ribbon', 'One coloured ribbon'], ['stack', 'Stacked', 'Small category, big title'], ['pill', 'Pill', 'Compact floating pill']];
   const LOOK_SL = [['scale', 'Overall size', 0.6, 1.5], ['bar_h', 'Scoreboard height', 0.7, 1.4], ['edge', 'Distance from screen edge', 0, 2.5], ['rb_size', 'Category / title banner', 0.6, 1.8], ['name_size', 'Team names', 0.7, 1.5],
     ['label_size', 'Labels (fouls, period, tabs)', 0.7, 1.6], ['digit_size', 'Numbers (score, clock)', 0.7, 1.4], ['per_size', 'Quarter / period status', 0.7, 2], ['logo_size', 'Team logos', 0.6, 1.3], ['pop_size', 'Player pop-up (photo / score / foul)', 0.5, 1.5]];
-  const LOOK_COL = [['rb_bg', 'Banner', '#0a0d16'], ['rnd_color', 'Category', '#39ff14'], ['evt_color', 'Event title', '#f4f6fb'], ['bar_color', 'Scoreboard', '#0a0d16']];
+  const LOOK_COL = [['rb_bg', 'Banner', '#0a0d16'], ['rnd_color', 'Category', '#39ff14'], ['evt_color', 'Event title', '#f4f6fb'], ['bar_color', 'Scoreboard', '#0a0d16'], ['tk_bg', 'Ticker background', '#0a0d16'], ['tk_fg', 'Ticker text', '#f4f6fb']];
   const LOOK_KEYS = ['rb_tpl', 'show_logos', 'rb_logo', 'logo_pos', 'cl_size', 'season_logo'].concat(LOOK_SL.map((x) => x[0]), LOOK_COL.map((x) => x[0]));
   function lookPanel(el, getB, send) {
-    el.innerHTML = '<div class="seg seg-sm lk-tabs"><button type="button" data-lt="tpl" class="on">Template</button><button type="button" data-lt="size">Size</button><button type="button" data-lt="col">Colour</button><button type="button" data-lt="logo">Logo</button></div>'
+    el.innerHTML = '<div class="seg seg-sm lk-tabs"><button type="button" data-lt="tpl" class="on">Template</button><button type="button" data-lt="size">Size</button><button type="button" data-lt="col">Colour</button><button type="button" data-lt="logo">Logo</button><button type="button" data-lt="tk">Ticker</button></div>'
       + '<div class="lk-pane" data-lp="tpl"><div class="lk-tpl">' + LOOK_TPL.map(([k, l, d]) => '<button type="button" data-tpl="' + k + '"><i class="lk-ic lk-' + k + '"><b></b><s></s></i><b>' + l + '</b><small>' + d + '</small></button>').join('') + '</div>'
       + '<div class="lk-nm"><span><b>Team names</b><small>On the scoreboard</small></span><div class="seg seg-sm" data-nmseg><button type="button" data-nm="short">Initials</button><button type="button" data-nm="full">Full name (max 20)</button></div></div></div>'
       + '<div class="lk-pane hidden" data-lp="size"><div class="lk-sl">' + LOOK_SL.map(([k, l, a, z]) => '<label class="lk-r"><span>' + l + '<em data-v="' + k + '">100%</em></span><input type="range" min="' + a + '" max="' + z + '" step="0.05" data-lk="' + k + '"></label>').join('') + '</div></div>'
@@ -355,6 +355,12 @@
       + '<label class="lk-t"><input type="checkbox" data-slg> Season logo in the top corner <span class="tiny">(season games · animated WebM)</span></label>'
       + '<label class="lk-r lk-cl"><span>Corner logo size<em data-v="cl_size">100%</em></span><input type="range" min="0.4" max="2.5" step="0.05" data-lk="cl_size"></label>'
       + '<label class="lk-t lk-tl"><input type="checkbox" data-lg> Show team logos beside team names</label><p class="tiny" style="margin:6px 0 0">Team logos are uploaded in Match setup → Teams &amp; rosters.</p></div>'
+      + '<div class="lk-pane hidden" data-lp="tk"><label class="lk-t"><input type="checkbox" data-tkon> Show the scrolling ticker under the scoreboard</label>'
+      + '<textarea class="in lk-tktx" data-tktx maxlength="400" rows="3" placeholder="e.g. WELCOME TO SBAL SEASON 6 · NEXT GAME 7PM: KONGS VS HAWKS · FOLLOW US @DINKYKONG"></textarea>'
+      + '<div class="lk-tkrow"><span class="tiny" data-tkn>0 / 400</span><button type="button" class="btn sm primary" data-tksave>Save ticker text</button></div>'
+      + '<label class="lk-r"><span>Scroll speed<em data-v="tk_speed">100%</em></span><input type="range" min="0.4" max="2.5" step="0.05" data-lk="tk_speed"></label>'
+      + '<label class="lk-r"><span>Ticker text size<em data-v="tk_size">100%</em></span><input type="range" min="0.6" max="1.8" step="0.05" data-lk="tk_size"></label>'
+      + '<p class="tiny" style="margin:6px 0 0">The text loops non-stop. Colours: Colour tab → Ticker background / Ticker text.</p></div>'
       + '<div class="lk-foot"><span class="tiny">Saved when you let go of a slider or pick a colour.</span><button type="button" class="btn sm ghost" data-lreset>Reset look</button></div>';
     const pct = (v) => Math.round(v * 100) + '%';
     function paint() {
@@ -370,6 +376,9 @@
       const lg = /^data:image\//.test(b.rb_logo || '') ? b.rb_logo : '';
       el.querySelector('[data-lth]').innerHTML = lg ? '<img src="' + lg + '" alt="">' : '🏆';
       el.querySelector('[data-rbx]').classList.toggle('hidden', !lg);
+      el.querySelector('[data-tkon]').checked = !!b.tk_on;
+      const tx = el.querySelector('[data-tktx]'); if (document.activeElement !== tx && !tx._dirty) tx.value = b.tk_text || '';
+      el.querySelector('[data-tkn]').textContent = tx.value.length + ' / 400' + (tx._dirty ? ' · not saved' : '');
     }
     el.addEventListener('click', (e) => {
       const tb = e.target.closest('[data-lt]'); if (tb) { el.querySelectorAll('[data-lt]').forEach((x) => x.classList.toggle('on', x === tb)); el.querySelectorAll('[data-lp]').forEach((x) => x.classList.toggle('hidden', x.dataset.lp !== tb.dataset.lt)); return; }
@@ -378,14 +387,16 @@
       const t = e.target.closest('[data-tpl]'); if (t) { send({ rb_tpl: t.dataset.tpl }); return; }
       const x = e.target.closest('[data-cx]'); if (x) { e.preventDefault(); send({ [x.dataset.cx]: null }); return; }
       if (e.target.closest('[data-rbx]')) { send({ rb_logo: null }); return; }
+      if (e.target.closest('[data-tksave]')) { const tx = el.querySelector('[data-tktx]'); const v = tx.value.replace(/\s+/g, ' ').trim().slice(0, 400); tx.value = v; tx._dirty = false; send(v && !(getB() || {}).tk_on ? { tk_text: v, tk_on: true } : { tk_text: v }); paint(); return; }
       if (e.target.closest('[data-lreset]')) { const p = {}; LOOK_KEYS.forEach((k) => { if (k !== 'rb_logo') p[k] = null; }); send(p); }
     });
-    el.addEventListener('input', (e) => { const r = e.target.closest('[data-lk]'); if (r) { r._drag = true; el.querySelector('[data-v="' + r.dataset.lk + '"]').textContent = pct(Number(r.value)); } });
+    el.addEventListener('input', (e) => { if (e.target.matches('[data-tktx]')) { e.target._dirty = true; el.querySelector('[data-tkn]').textContent = e.target.value.length + ' / 400 · not saved'; return; } const r = e.target.closest('[data-lk]'); if (r) { r._drag = true; el.querySelector('[data-v="' + r.dataset.lk + '"]').textContent = pct(Number(r.value)); } });
     el.addEventListener('change', (e) => {
       const r = e.target.closest('[data-lk]'); if (r) { r._drag = false; send({ [r.dataset.lk]: Number(r.value) }); return; }
       const c = e.target.closest('[data-lc]'); if (c) { send({ [c.dataset.lc]: c.value }); return; }
       if (e.target.matches('[data-lg]')) { send({ show_logos: e.target.checked }); return; }
       if (e.target.matches('[data-slg]')) { send({ season_logo: e.target.checked }); return; }
+      if (e.target.matches('[data-tkon]')) { send({ tk_on: e.target.checked }); return; }
       if (e.target.matches('[data-rblogo]') && e.target.files[0]) {
         const f = e.target.files[0]; e.target.value = '';
         cropLogo(f).then((d) => send({ rb_logo: d })).catch((x) => { if (x && x.message !== 'CANCELLED') alert(x.message || 'Could not read that image'); });

@@ -878,3 +878,5 @@ table.rt td.num { white-space: nowrap; }
 .gs-t tr.gs-adj div { display: grid; grid-template-columns: minmax(0, 1fr) 44px 52px 44px; gap: 8px; align-items: center; text-align: left; font-family: inherit; }
 .gs-t tr.gs-adj span { font-size: 13px; font-weight: 700; text-transform: uppercase; }
 .gs-t tr.gs-adj small { grid-column: 1 / -1; font-size: 11px; color: var(--ink3); font-weight: 600; }
+.lk-tktx { width: 100%; min-height: 76px; margin-top: 8px; padding: 10px 12px; resize: vertical; font-size: 13px; line-height: 1.45; text-transform: uppercase; }
+.lk-tkrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0 10px; }
