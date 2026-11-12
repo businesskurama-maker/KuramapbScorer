@@ -261,6 +261,7 @@
   }
   .bb-gen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
   .bb-gen .big-btn { min-height: 0; height: 44px; padding: 0 8px; }
+  .bb-gen-m .big-btn { border-color: rgba(255,153,51,.55); color: #ffb366; }
   @media (max-width: 720px) { .o-tabs button span { font-size: 8.5px; } }
 </style>
 </head>
@@ -386,6 +387,7 @@
       <details class="how"><summary>How pass codes work</summary><p class="note">New users get a <b>1-day free</b> Basketball LIVE OBS pass. After that, give a code to extend someone’s pass. They tap <b>Enter pass code</b> on the Basketball page while signed in. Each code works <b>once</b> and must be used within 30 days.</p></details>
       <input class="text-in" id="bbNote" maxlength="40" placeholder="Who is it for? (optional)" style="text-transform:none;margin-bottom:8px">
       <div class="bb-gen"><button class="big-btn" data-days="1">1 day</button><button class="big-btn" data-days="3">3 days</button><button class="big-btn" data-days="7">1 week</button></div>
+      <div class="bb-gen bb-gen-m"><button class="big-btn" data-days="30">1 month</button><button class="big-btn" data-days="90">3 months</button><button class="big-btn" data-days="150">5 months</button></div>
       <div class="trial-new hidden" id="bbNew">
         <div><span class="eyebrow" id="bbNewLbl">New code</span><b id="bbCode"></b><small id="bbFor"></small></div>
         <div class="trial-btns"><button class="btn primary" id="bbCopy">Copy code</button><button class="btn" id="bbShare">Copy message</button></div>
@@ -409,7 +411,7 @@
   const esc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = (d) => new Date(d).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   const fmtC = (c) => c.replace(/^(..)(....)(....)$/, '$1-$2-$3');
-  const label = (d) => d === 7 ? '1 week' : d + ' day' + (d === 1 ? '' : 's');
+  const label = (d) => ({ 7: '1 week', 30: '1 month', 90: '3 months', 150: '5 months' })[d] || d + ' day' + (d === 1 ? '' : 's');
   let last = null, old = [];
   async function load() {
     if (!window.PBAuth || !PBAuth.client || !PBAuth.user) return;
@@ -425,7 +427,7 @@
     const heads = [...document.querySelectorAll('#bbCodes')[0].closest('table').querySelectorAll('thead th')].map((x) => x.textContent);
     $('bbCodes').querySelectorAll('tr').forEach((tr) => [...tr.children].forEach((td, i) => td.setAttribute('data-label', heads[i] || '')));
   }
-  document.querySelector('.bb-gen').onclick = async (e) => {
+  const genCode = async (e) => {
     const b = e.target.closest('[data-days]'); if (!b) return;
     b.disabled = true;
     try {
@@ -438,6 +440,7 @@
     } catch (x) { alert('Could not generate a code: ' + x.message); }
     finally { b.disabled = false; }
   };
+  document.querySelectorAll('.bb-gen').forEach((g) => { g.onclick = genCode; });
   async function del(codes, msg) {
     if (!codes.length || !confirm(msg)) return;
     const { data, error } = await PBAuth.client.rpc('admin_delete_bb_codes', { p_codes: codes });

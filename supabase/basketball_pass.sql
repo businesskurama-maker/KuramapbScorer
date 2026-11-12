@@ -115,7 +115,7 @@ create or replace function public.admin_create_bb_code(p_days int, p_note text d
 declare alphabet text := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; c text;
 begin
   if not public.is_admin() then raise exception 'NOT_ADMIN'; end if;
-  if p_days not in (1, 3, 7) then raise exception 'BAD_DAYS'; end if;
+  if p_days not in (1, 3, 7, 30, 90, 150) then raise exception 'BAD_DAYS'; end if;
   loop
     c := 'BB';
     for i in 1..8 loop c := c || substr(alphabet, 1 + (get_byte(gen_random_bytes(1), 0) % length(alphabet)), 1); end loop;
@@ -173,3 +173,7 @@ begin
 end $$;
 revoke all on function public.admin_delete_bb_codes(text[]) from public, anon;
 grant execute on function public.admin_delete_bb_codes(text[]) to authenticated;
+
+-- monthly pass codes: 1 month (30 days), 3 months (90), 5 months (150)
+alter table public.bb_codes drop constraint if exists bb_codes_days_check;
+alter table public.bb_codes add constraint bb_codes_days_check check (days = any (array[1, 3, 7, 30, 90, 150]));
