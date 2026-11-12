@@ -579,6 +579,12 @@
     $('sheet').classList.remove('hidden');
   }
   function closeSheet() { $('sheet').classList.add('hidden'); }
+  // referee call buttons: the scoreboard speaks OUT / POINT / KITCHEN (score unchanged)
+  $('callRow').onclick = (e) => {
+    const b = e.target.closest('[data-call]'); if (!b) return;
+    if (st && st.settings && st.settings.voice === 0) { flash('Sound is off · turn SOUND ON first'); buzz([20, 40, 20]); return; }
+    if (send({ a: 'call', w: b.dataset.call })) { buzz(25); b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 350); }
+  };
   $('lblForm').onsubmit = (e) => {   // match name / category: saved right away, no score reset
     e.preventDefault(); const v = $('lblIn').value.replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 40); $('lblIn').value = v;
     if (draft) draft.label = v;

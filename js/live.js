@@ -43,6 +43,13 @@
       onAction: (action, reply) => {
         if (!liveOK()) { reply({ t: 'denied', reason: 'LIVE_ENDED' }); return; }
         if (action && action.a === 'rally' && action.side != null) action = { a: 'rally', team: c.state.swapped ? 1 - action.side : action.side };
+        if (action && action.a === 'call') {   // referee call buttons: spoken on the LIVE screen, score unchanged
+          if (/^(out|point|kitchen)$/.test(action.w || '')) {
+            toast('COURT ' + (c.i + 1) + ' · ' + action.w.toUpperCase() + '!');
+            if (window.PBVoice && liveVoice() && c.state.settings.voice !== 0) { PBVoice.setPack(c.state.settings.voicePack || 'classic'); PBVoice.say(['call_' + action.w]); }
+          }
+          return;
+        }
         if (action && action.a === 'new' && tour) { tourNext(c); return; }   // tournament court: "New match" loads the next scheduled match
         c.state = E.apply(c.state, action);
         if (action && action.a === 'new') setTimeout(() => courtCall(c, ''), 50);   // announce who plays on this court

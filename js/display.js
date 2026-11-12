@@ -342,9 +342,16 @@
     act(action);
   }
 
+  function refCall(w) {
+    if (!/^(out|point|kitchen)$/.test(w || '')) return;
+    toast(w.toUpperCase() + '!');
+    if (window.PBVoice && state.settings.voice !== 0) { PBVoice.setPack(state.settings.voicePack || 'classic'); PBVoice.say(['call_' + w]); }
+  }
   /* ---------- Actions ---------- */
   function act(action) {
     if (!licensed()) { toast('SCAN TO SIGN IN'); showPair(true); return; }
+    // referee call buttons: OUT / POINT / KITCHEN are spoken (and flashed), the score does not change
+    if (action && action.a === 'call') { refCall(action.w); return; }
     if (action && action.a === 'rally' && action.side != null) action = { a: 'rally', team: sideTeam(action.side) };
     state = E.apply(state, action);
     save(); render();

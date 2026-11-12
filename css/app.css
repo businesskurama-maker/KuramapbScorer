@@ -1278,3 +1278,11 @@ body.mode-act .act-done { min-height: 0; flex: 1 1 auto; overflow-y: auto; -webk
 .lbl-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
 .lbl-row .mini-btn { min-height: 46px; padding: 0 16px; }
 .lbl-sec .eb-note { display: block; margin-top: 2px; font-weight: 500; letter-spacing: .02em; text-transform: none; }
+
+/* remote: referee call buttons (spoken on the scoreboard) */
+.call-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.call-row button { min-height: 52px; border-radius: 14px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: #fff; font-family: inherit; font-size: 17px; font-weight: 800; letter-spacing: .14em; cursor: pointer; transition: transform .1s, background .15s; }
+.call-row button[data-call="out"] { color: #ff6b7a; border-color: rgba(255,107,122,.45); }
+.call-row button[data-call="point"] { color: #39ff14; border-color: rgba(57,255,20,.45); }
+.call-row button[data-call="kitchen"] { color: #ffd400; border-color: rgba(255,212,0,.45); }
+.call-row button:active, .call-row button.hit { transform: scale(.95); background: rgba(255,255,255,.14); }
