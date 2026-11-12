@@ -1273,3 +1273,8 @@ body.mode-act .act-done { min-height: 0; flex: 1 1 auto; overflow-y: auto; -webk
 .mini-btn.danger { color: #ff8a9b; border-color: rgba(255,77,106,.45); }
 .bb-clean { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 10px 0 12px; padding: 10px 14px; border-radius: 14px; border: 1px dashed rgba(255,77,106,.35); color: var(--ink-2); font-size: 13px; }
 .bb-clean span { flex: 1; min-width: 200px; }
+
+/* remote: match name / category */
+.lbl-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.lbl-row .mini-btn { min-height: 46px; padding: 0 16px; }
+.lbl-sec .eb-note { display: block; margin-top: 2px; font-weight: 500; letter-spacing: .02em; text-transform: none; }

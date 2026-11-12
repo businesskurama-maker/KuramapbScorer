@@ -47,3 +47,7 @@
 .lt-brand[style*="--acc"] { background: linear-gradient(160deg, color-mix(in srgb, var(--acc) 80%, #000), color-mix(in srgb, var(--acc) 22%, #05030c)); }
 .lt-brand[style*="--acc"] b { color: #fff; }
 .lt-sp { max-width: 13cqw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78cqw; font-weight: 700; letter-spacing: .14em; color: rgba(255,255,255,.85); text-transform: uppercase; }
+/* COURT # - MATCH NAME: name may be long, the meta on the right shrinks first */
+.lt-head b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; }
+.lt-head span { flex: 0 100 auto; min-width: 0; }
+.lt-court { grid-template-columns: minmax(0, 1fr); }   /* a long COURT # - NAME header never pushes the scores out */

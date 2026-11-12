@@ -6,7 +6,7 @@
   function summary(state, index, remotes) {
     const s = state.settings;
     return {
-      n: index + 1,
+      n: index + 1, label: s.label || '',
       names: s.names.slice(0, 2), colors: s.colors.slice(0, 2),
       score: state.score.slice(0, 2), games: state.games.slice(0, 2),
       serving: state.matchOver || state.playForServe ? -1 : state.serving,
@@ -33,7 +33,7 @@
         '<span class="lt-ball" aria-hidden="true"></span><span class="lt-score">' + esc(c.score[t]) + '</span></div>';
     };
     const call = flash && c.call ? '<div class="lt-call" aria-live="polite">' + esc(c.call) + '</div>' : '';
-    return '<div class="lt-court' + (call ? ' flash' : '') + '"><div class="lt-head"><b>COURT ' + c.n + '</b><span>' + meta + '</span></div>' + row(0) + row(1) + call + '</div>';
+    return '<div class="lt-court' + (call ? ' flash' : '') + '"><div class="lt-head"><b>COURT ' + c.n + (c.label ? ' - ' + esc(c.label) : '') + '</b><span>' + meta + '</span></div>' + row(0) + row(1) + call + '</div>';
   }
 
   // The 3-number call replaces both scores for 3 s after a score or serve change (per court, per strip)

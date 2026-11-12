@@ -75,7 +75,7 @@
     const el = document.createElement('article');
     el.className = 'lv-court';
     el.innerHTML =
-      '<div class="lvc-head"><b>COURT ' + (c.i + 1) + '</b><span class="lvc-meta"></span><button class="lvc-ref" title="Show this court\'s QR code"><span class="dot"></span><span class="lvc-ref-txt"></span></button></div>' +
+      '<div class="lvc-head"><b>COURT ' + (c.i + 1) + '</b><button class="lvc-lbl" title="Match name / category on the lower third"></button><span class="lvc-meta"></span><button class="lvc-ref" title="Show this court\'s QR code"><span class="dot"></span><span class="lvc-ref-txt"></span></button></div>' +
       '<div class="lvc-body">' +
       '<div class="lvc-team" data-t="0"><div class="lvc-name"></div><div class="lvc-score"></div><div class="lvc-foot"><span class="lvc-srv"></span><span class="lvc-pips"></span></div></div>' +
       '<div class="lvc-mid"><div class="lvc-call"></div></div>' +
@@ -85,6 +85,14 @@
       '<div class="lvc-flash"><span class="lvc-flash-lbl"></span><div class="lvc-flash-call"></div></div>' +
       '<div class="lvc-final hidden"><span class="eyebrow">Match winner</span><b class="lvc-winner"></b><small class="lvc-games"></small></div>';
     el.querySelector('.lvc-ref').onclick = () => showQrs(c.i);
+    el.querySelector('.lvc-lbl').onclick = () => {
+      const v = prompt('Court ' + (c.i + 1) + ' · match name or category on the lower third\n(e.g. MEN\'S DOUBLES · SEMIFINAL). Leave empty to show only the court.', c.state.settings.label || '');
+      if (v == null) return;
+      c.state = E.apply(c.state, { a: 'label', text: v });
+      save(); renderCourt(c); pushObs();
+      if (c.link) c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, courtNo: c.i + 1, tour1: !!(tour && cfg.n === 1) }));
+      toast('COURT ' + (c.i + 1) + (c.state.settings.label ? ' - ' + c.state.settings.label : ' · NAME CLEARED'));
+    };
     c.el = el;
     return el;
   }
@@ -96,6 +104,7 @@
     const pub = E.publicState(st);
     const tm = tour && c.tm ? tour.matches.find((m) => m.id === c.tm) : null;
     el.classList.toggle('tour', !!tour);
+    { const lb = el.querySelector('.lvc-lbl'); lb.textContent = s.label ? '- ' + s.label + ' ✎' : '＋ Match name'; lb.classList.toggle('empty', !s.label); }
     el.querySelector('.lvc-meta').textContent = (tm ? tm.label + ' · ' : tour && !st.matchOver && st.score[0] + st.score[1] === 0 && !c.tm ? 'WAITING FOR NEXT MATCH · ' : '') + (s.bestOf > 1 ? 'GAME ' + st.gameNo + ' · BEST OF ' + s.bestOf : 'TO ' + s.target) + ' · ' + (s.scoring === 'rally' ? 'RALLY' : (s.mode === 'doubles' ? 'DOUBLES' : 'SINGLES'));
     el.querySelectorAll('.lvc-team').forEach((tEl, side) => {
       const t = side === 0 ? left : 1 - left;
@@ -379,14 +388,14 @@
     save(); renderCourt(c); pushObs();
     if (c.link) c.link.broadcast(Object.assign(E.publicState(c.state), { liveCourt: true, courtNo: c.i + 1, tour1: !!(tour && cfg.n === 1) }));
   }
-  function matchSettings(names, players) {
+  function matchSettings(names, players, label) {
     const r = tour.rules, pl = (players || [[], []]).map((p) => [p[0] || '', p[1] || '']);
-    return { names, target: r.target, bestOf: r.bestOf, scoring: r.scoring, mode: r.mode, courtChange: r.courtChange ? 1 : 0, players: pl, firstServer: 0 };
+    return { names, target: r.target, bestOf: r.bestOf, scoring: r.scoring, mode: r.mode, courtChange: r.courtChange ? 1 : 0, players: pl, firstServer: 0, label: label || '' };
   }
   function loadMatch(c, m) {
     clearTimeout(c.tourT); c.tourT = null;
     m.status = 'live'; m.court = c.i; c.tm = m.id;
-    c.state = E.newMatch(matchSettings([tname(m.a), tname(m.b)], [T.teamPlayers(tour, m.a), T.teamPlayers(tour, m.b)]));
+    c.state = E.newMatch(matchSettings([tname(m.a), tname(m.b)], [T.teamPlayers(tour, m.a), T.teamPlayers(tour, m.b)], ((tour.name ? tour.name + ' · ' : '') + (m.label || '')).toUpperCase().slice(0, 40)));
     saveTour(); courtPush(c);
     courtCall(c, m.label);
   }

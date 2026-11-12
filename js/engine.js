@@ -5,6 +5,7 @@
 (function (root) {
   const DEFAULT_SETTINGS = {
     mode: 'doubles',        // 'doubles' | 'singles'
+    label: '',              // match name / category shown after the court number (e.g. MEN'S DOUBLES · SEMIFINAL)
     scoring: 'sideout',     // 'sideout' | 'rally'
     target: 11,             // 11 | 15 | 21
     winBy: 2,
@@ -358,6 +359,7 @@
         if (r.tags === 0 || r.tags === 1) st.settings.tags = r.tags;
         return st;
       }
+      case 'label': st.settings.label = String(action.text == null ? '' : action.text).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 40); st.updatedAt = Date.now(); return st;   // match name / category, no reset
       case 'midswap': st.settings.courtChange = action.on ? 1 : 0; return st;   // change court at half: on/off, no reset
       case 'new': return newMatch(Object.assign({}, st.settings, action.settings || {}, { players: cleanPlayers((action.settings || st.settings).players) }));
       default: return st;

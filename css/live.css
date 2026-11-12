@@ -441,3 +441,9 @@
 @media (max-width: 900px) { .act-codes { grid-template-columns: 1fr; } .act-codebox .code { font-size: min(7vh, 9vw); } }
 .act-codebox .eyebrow, .lv-act .trial-box .eyebrow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: clamp(9px, 1.2dvh, 12px); }
 @media (max-width: 900px), (orientation: portrait) { .act-prices { justify-content: center; } }
+
+/* court card: match name / category (tap to edit) */
+.lvc-lbl { flex: 0 1 auto; min-width: 0; max-width: 55%; border: 0; background: none; padding: 0; cursor: pointer; color: #fff; font-family: var(--font-score); font-size: clamp(11px, 5.4cqh, 5.4cqw); letter-spacing: .08em; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.lvc-lbl.empty { font-family: inherit; font-size: clamp(10px, 3.2cqh, 3.2cqw); letter-spacing: .06em; color: rgba(255,255,255,.45); border: 1px dashed rgba(255,255,255,.25); border-radius: 8px; padding: .5cqh 1.4cqw; }
+.lvc-lbl:hover { color: #00E5FF; }
+.lvc-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

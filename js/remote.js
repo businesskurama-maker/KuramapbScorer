@@ -571,7 +571,7 @@
   function openSheet() {
     const base = st ? st.settings : PBEngine.DEFAULT_SETTINGS;
     draft = JSON.parse(JSON.stringify(base));
-    $('nA').value = draft.names[0]; $('nB').value = draft.names[1];
+    $('nA').value = draft.names[0]; $('nB').value = draft.names[1]; $('lblIn').value = draft.label || '';
     const pls = (draft.players || [['', ''], ['', '']]);
     $('pA0').value = pls[0][0] || ''; $('pA1').value = pls[0][1] || ''; $('pB0').value = pls[1][0] || ''; $('pB1').value = pls[1][1] || '';
     swatches($('swA'), 0); swatches($('swB'), 1);
@@ -579,6 +579,11 @@
     $('sheet').classList.remove('hidden');
   }
   function closeSheet() { $('sheet').classList.add('hidden'); }
+  $('lblForm').onsubmit = (e) => {   // match name / category: saved right away, no score reset
+    e.preventDefault(); const v = $('lblIn').value.replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 40); $('lblIn').value = v;
+    if (draft) draft.label = v;
+    if (st && send({ a: 'label', text: v })) flash(v ? 'Match name saved' : 'Match name cleared');
+  };
   document.querySelectorAll('.seg[data-k]').forEach((seg) => seg.querySelectorAll('button').forEach((b) => b.onclick = () => {
     const k = seg.dataset.k; const v = b.dataset.v;
     draft[k] = /^\d+$/.test(v) ? Number(v) : v; paintSheet();
