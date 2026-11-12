@@ -33,7 +33,7 @@
     TEXT_REQUIRED: 'Type the announcement first.', BAD_PERIOD: 'Invalid period.',
     NO_SEASON: 'Season not found.', SEASON_ENDED: 'This season has ended. Reopen it to make changes.', SEASON_TITLE_REQUIRED: 'Type a season title.',
     TITLE_MISMATCH: 'The title you typed does not match the season title.', OWNER_ONLY: 'Only the account that created the season can delete it.',
-    ROSTER_FULL: 'This team already has 15 players.', TEAM_HAS_MATCHES: 'This team already played in a season match, so it cannot be removed.',
+    ROSTER_FULL: 'This team already has 25 players.', TEAM_HAS_MATCHES: 'This team already played in a season match, so it cannot be removed.',
     SAME_TEAM: 'Pick two different teams.', TOO_MANY_TEAMS: 'A season can have up to 64 teams.', BAD_JERSEY: 'Jersey numbers are 0–99.',
     LINEUP_SIZE: 'Pick the right number of starters.', BAD_LINEUP: 'That lineup is not valid.', SUB_COUNT: 'Pick the same number of players going IN and OUT.',
     SUB_NOT_ON_COURT: 'A player going OUT is not on court any more. Refresh and try again.', SUB_ALREADY_ON: 'A player going IN is already on court.'

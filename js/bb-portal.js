@@ -440,7 +440,7 @@
       + '<span class="ss-c-lg">' + (media(x.logo, x.logo_anim) || '🏆') + '</span>'
       + '<span class="ss-c-tx"><b>' + E(x.title) + '</b><small>' + x.teams + ' team' + (x.teams === 1 ? '' : 's') + ' · ' + x.players + ' players · ' + x.matches + ' game' + (x.matches === 1 ? '' : 's') + (x.final ? ' (' + x.final + ' final)' : '') + '</small></span>'
       + '<span class="st ' + (x.status === 'ended' ? 'final' : 'live') + '">' + (x.status === 'ended' ? 'ENDED' : 'ACTIVE') + '</span></button>').join('')
-      || '<div class="p-card m-empty"><div style="font-size:34px">🏆</div><b>No seasons yet</b><span class="tiny">Create a season, add the teams and their players (up to 15 each), then start games inside it.</span></div>';
+      || '<div class="p-card m-empty"><div style="font-size:34px">🏆</div><b>No seasons yet</b><span class="tiny">Create a season, add the teams and their players (up to 25 each), then start games inside it.</span></div>';
   }
   $('ssList').onclick = (e) => { const b = e.target.closest('[data-sid]'); if (!b) return; SS.id = b.dataset.sid; SS.tab = 'teams'; setHash(); openSeason(SS.id); };
   $('ssNew').onclick = async () => {
@@ -522,17 +522,17 @@
     finally { $('ssLogo').classList.remove('busy'); }
   };
 
-  /* teams & players (max 15 per team; each change saves right away) */
+  /* teams & players (max 25 per team; each change saves right away) */
   function paintSeasonTeams() {
     const d = SS.data, ro = d.status === 'ended';
     $('ssTeamForm').classList.toggle('hidden', ro);
     $('ssTeams').innerHTML = d.teams.map((t) => {
-      const full = t.players.length >= 15;
+      const full = t.players.length >= 25;
       return '<div class="p-card ss-team" style="--c:' + E(t.color) + '" data-tid="' + t.id + '">'
         + '<div class="sst-head"><label class="sst-lg' + (ro ? ' ro' : '') + '" title="Team logo">' + (t.logo ? '<img src="' + E(t.logo) + '" alt="">' : '<span>' + E(t.short || '?') + '</span>') + (ro ? '' : '<input type="file" accept="image/*" data-tlogo hidden>') + '</label>'
         + '<input class="in sst-nm" data-tf="name" maxlength="20" value="' + E(t.name) + '"' + (ro ? ' disabled' : '') + '><input class="in sst-sh" data-tf="short" maxlength="5" value="' + E(t.short) + '"' + (ro ? ' disabled' : '') + '>'
         + '<input type="color" class="ss-col" data-tf="color" value="' + E(t.color) + '"' + (ro ? ' disabled' : '') + '>'
-        + '<span class="sst-cnt' + (full ? ' full' : '') + '">' + t.players.length + '/15</span>' + (ro ? '' : '<button class="btn sm ghost" data-tdel title="Remove team">✕</button>') + '</div>'
+        + '<span class="sst-cnt' + (full ? ' full' : '') + '">' + t.players.length + '/25</span>' + (ro ? '' : '<button class="btn sm ghost" data-tdel title="Remove team">✕</button>') + '</div>'
         + '<div class="sst-pl">' + t.players.map((p) => '<div class="ssp" data-pid="' + p.id + '">'
           + '<label class="ssp-ph' + (ro ? ' ro' : '') + '" title="Player photo">' + (p.photo ? '<img src="' + E(p.photo) + '" alt="">' : '<span>📷</span>') + (ro ? '' : '<input type="file" accept="image/*" data-pphoto hidden>') + '</label>'
           + '<input class="in ssp-no" data-pf="number" inputmode="numeric" maxlength="2" value="' + E(p.number) + '"' + (ro ? ' disabled' : '') + '>'
@@ -541,8 +541,8 @@
           + '<input class="in ssp-pos" data-pf="position" maxlength="4" placeholder="Pos" value="' + E(p.position) + '"' + (ro ? ' disabled' : '') + '>'
           + (ro ? '' : '<button class="btn sm ghost" data-pdel title="Remove player">✕</button>') + '</div>').join('')
         + (ro || full ? '' : '<form class="ssp new" data-padd autocomplete="off"><span class="ssp-ph ph0">＋</span><input class="in ssp-no" name="number" inputmode="numeric" maxlength="2" placeholder="#"><input class="in" name="first" placeholder="First name"><input class="in" name="last" placeholder="Last name"><input class="in ssp-pos" name="position" maxlength="4" placeholder="Pos"><button class="btn sm primary" type="submit">Add</button></form>')
-        + '</div>' + (full ? '<div class="tiny" style="margin-top:6px">Roster full (15 players).</div>' : '') + '</div>';
-    }).join('') || '<div class="p-card m-empty"><b>No teams yet</b><span class="tiny">Add every team of the season above, then their players (up to 15 each) with jersey number and an optional photo.</span></div>';
+        + '</div>' + (full ? '<div class="tiny" style="margin-top:6px">Roster full (25 players).</div>' : '') + '</div>';
+    }).join('') || '<div class="p-card m-empty"><b>No teams yet</b><span class="tiny">Add every team of the season above, then their players (up to 25 each) with jersey number and an optional photo.</span></div>';
   }
   $('ssTeamForm').onsubmit = async (e) => {
     e.preventDefault(); const d = SS.data; const name = $('ssTName').value.trim(); if (!name) { toast('Type the team name', true); return; }

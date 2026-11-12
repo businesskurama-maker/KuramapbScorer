@@ -186,7 +186,7 @@ begin
       select * into t from bb_season_teams where id = (p ->> 'team_id')::uuid;
       if t.id is null then raise exception 'NO_TEAM'; end if;
       s := bb__season(t.season_id);
-      if (select count(*) from bb_season_players where team_id = t.id) >= 15 then raise exception 'ROSTER_FULL'; end if;
+      if (select count(*) from bb_season_players where team_id = t.id) >= 25 then raise exception 'ROSTER_FULL'; end if;
       insert into bb_season_players (season_id, team_id, number, first_name, last_name, position, photo)
       values (s.id, t.id, p ->> 'number', left(btrim(coalesce(p ->> 'first', '')), 40), left(btrim(coalesce(p ->> 'last', '')), 40),
         upper(left(btrim(coalesce(p ->> 'position', '')), 4)), bb__media(p ->> 'photo')) returning id into pid;

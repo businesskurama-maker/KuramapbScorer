@@ -479,6 +479,10 @@ table.rt td .in { min-height: 32px; }
   #vSetup .su-foot { position: static; margin-top: auto; flex: none; }
   #vSetup > .su-tabs { flex: none; }
 
+  /* Seasons: long rosters (2+ teams x 25 players) scroll inside the page */
+  #vSeasons:not(.hidden) { display: block !important; overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; scrollbar-width: thin; scrollbar-color: #2a3550 transparent; }
+  #vSeasons #ssTabs { position: sticky; top: 0; z-index: 6; box-shadow: 0 8px 16px rgba(5,8,18,.7); }
+
   /* OBS Monitor: columns side by side, each scrolls on its own */
   #vMonitor .mon { flex: 1 1 auto; min-height: 0; height: 100%; align-items: stretch; }
   #vMonitor .mo-left { min-height: 0; overflow: hidden; }
@@ -776,9 +780,12 @@ table.rt td.num { white-space: nowrap; }
   .ss-at-row .btn { grid-column: 1 / -1; }
   .sst-head { grid-template-columns: 46px minmax(0, 1fr) 64px 40px; }
   .sst-cnt { grid-row: 2; grid-column: 2; padding: 0; } .sst-head [data-tdel] { grid-row: 2; grid-column: 4; }
-  .ssp { grid-template-columns: 40px 50px minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "ph no fi la" "ph po po bt"; row-gap: 5px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
-  .ssp > .ssp-ph { grid-area: ph; align-self: center; } .ssp > .ssp-no { grid-area: no; } .ssp > [data-pf="first"], .ssp > [name="first"] { grid-area: fi; } .ssp > [data-pf="last"], .ssp > [name="last"] { grid-area: la; }
-  .ssp > .ssp-pos { grid-area: po; text-align: left; } .ssp > button { grid-area: bt; justify-self: end; }
+  .ssp { grid-template-columns: 32px 38px minmax(0, 1fr) minmax(0, 1fr) 40px 28px; gap: 4px; }
+  .ssp .in { min-height: 34px; font-size: 12px; padding: 0 6px; border-radius: 8px; }
+  .ssp-ph { width: 32px; height: 32px; font-size: 13px; }
+  .ssp > button { min-height: 32px; min-width: 28px; padding: 0; }
+  .ssp.new { grid-template-columns: 32px 38px minmax(0, 1fr) minmax(0, 1fr) 40px; }
+  .ssp.new > button { grid-column: 1 / -1; min-height: 38px; }
   .ss-hero { gap: 12px; }
   .ss-logo { width: 76px; height: 76px; }
   .aw-f { grid-template-columns: 1fr; }
@@ -838,3 +845,6 @@ table.rt td.num { white-space: nowrap; }
 .gs-t tr.fo td { opacity: .55; }
 .gs-t tr.tot td { border-bottom: 0; border-top: 1px solid var(--line2); font-weight: 800; color: var(--ink); }
 .gs-t tr.tot td.pl { font-size: 11px; letter-spacing: .14em; color: var(--ink2); }
+
+/* Seasons on any screen: tabs stay reachable while scrolling a long roster */
+#ssTabs { position: sticky; top: -12px; z-index: 6; background: var(--bg2); }
