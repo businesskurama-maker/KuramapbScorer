@@ -738,8 +738,21 @@ table.rt td .in { min-height: 32px; }
 .sst-lg img { width: 100%; height: 100%; object-fit: contain; }
 .sst-nm { font-weight: 800; color: var(--c); }
 .sst-sh { text-transform: uppercase; text-align: center; font-weight: 700; }
-.sst-cnt { font-family: var(--digit); font-size: 13px; color: var(--ink2); padding: 0 4px; }
-.sst-cnt.full { color: var(--warn); }
+.sst-tg { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line2); background: var(--bg2); color: var(--ink2); font-family: var(--digit); font-size: 13px; cursor: pointer; white-space: nowrap; }
+.sst-tg i { font-style: normal; font-size: 13px; transition: transform .2s; color: var(--c); }
+.sst-tg.full span { color: var(--warn); }
+.ss-team.closed .sst-tg i { transform: rotate(-90deg); }
+.sst-head { cursor: pointer; }
+.sst-sum { display: none; flex-wrap: wrap; gap: 4px; cursor: pointer; }
+.sst-sum span { min-width: 26px; height: 22px; padding: 0 5px; border-radius: 6px; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); font-family: var(--digit); font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; }
+.sst-sum em { font-style: normal; font-size: 12px; color: var(--ink3); }
+.ss-team.closed { gap: 8px; padding-bottom: 10px; }
+.ss-team.closed .sst-sum { display: flex; }
+.ss-team.closed .sst-pl, .ss-team.closed > .tiny { display: none; }
+.ss-tbar { display: flex; align-items: center; gap: 8px; margin: 0 2px 10px; }
+.ss-tbar .tiny { flex: 1; min-width: 0; }
+.ss-tbar .btn:disabled { opacity: .4; }
+.ss-teams { align-items: start; }
 .sst-pl { display: flex; flex-direction: column; gap: 6px; }
 .ssp { display: grid; grid-template-columns: 40px 54px minmax(0, 1fr) minmax(0, 1fr) 60px auto; gap: 6px; align-items: center; }
 .ssp .in { min-height: 36px; font-size: 13px; padding: 0 9px; border-radius: 9px; }
@@ -779,7 +792,8 @@ table.rt td.num { white-space: nowrap; }
   .ss-at-row { grid-template-columns: minmax(0, 1fr) 80px 46px; }
   .ss-at-row .btn { grid-column: 1 / -1; }
   .sst-head { grid-template-columns: 46px minmax(0, 1fr) 64px 40px; }
-  .sst-cnt { grid-row: 2; grid-column: 2; padding: 0; } .sst-head [data-tdel] { grid-row: 2; grid-column: 4; }
+  .sst-tg { grid-row: 2; grid-column: 2 / 4; justify-self: start; min-height: 32px; } .sst-head [data-tdel] { grid-row: 2; grid-column: 4; }
+  .ss-tbar { flex-wrap: wrap; } .ss-tbar .tiny { flex-basis: 100%; }
   .ssp { grid-template-columns: 32px 38px minmax(0, 1fr) minmax(0, 1fr) 40px 28px; gap: 4px; }
   .ssp .in { min-height: 34px; font-size: 12px; padding: 0 6px; border-radius: 8px; }
   .ssp-ph { width: 32px; height: 32px; font-size: 13px; }

@@ -523,16 +523,41 @@
   };
 
   /* teams & players (max 25 per team; each change saves right away) */
+  // which team cards are open (tap a team to fold / unfold it); remembered per season on this device
+  const openKey = () => 'dk.bb.ssopen.' + (SS.data && SS.data.id);
+  function openSet() {
+    if (SS.openFor !== (SS.data && SS.data.id)) {
+      SS.openFor = SS.data && SS.data.id; let a = null;
+      try { a = JSON.parse(localStorage.getItem(openKey()) || 'null'); } catch (e) {}
+      SS.open = new Set(Array.isArray(a) ? a : (SS.data && SS.data.teams.length === 1 ? [SS.data.teams[0].id] : []));
+    }
+    return SS.open;
+  }
+  function saveOpen() { try { localStorage.setItem(openKey(), JSON.stringify([...SS.open])); } catch (e) {} }
+  function toggleTeam(id, force) {
+    const o = openSet(), on = force == null ? !o.has(id) : force; on ? o.add(id) : o.delete(id); saveOpen();
+    const card = document.querySelector('#ssTeams [data-tid="' + id + '"]'); if (card) card.classList.toggle('closed', !on);
+    paintTeamBar();
+  }
+  function paintTeamBar() {
+    const d = SS.data, o = openSet(), n = d.teams.length, np = d.teams.reduce((a, t) => a + t.players.length, 0), open = d.teams.filter((t) => o.has(t.id)).length;
+    $('ssTBar').classList.toggle('hidden', !n);
+    $('ssTCount').textContent = n + ' team' + (n === 1 ? '' : 's') + ' · ' + np + ' players · tap a team to open or fold it';
+    $('ssExpAll').disabled = open === n; $('ssColAll').disabled = !open;
+  }
+  $('ssExpAll').onclick = () => { SS.data.teams.forEach((t) => openSet().add(t.id)); saveOpen(); paintSeasonTeams(); };
+  $('ssColAll').onclick = () => { openSet().clear(); saveOpen(); paintSeasonTeams(); };
   function paintSeasonTeams() {
-    const d = SS.data, ro = d.status === 'ended';
+    const d = SS.data, ro = d.status === 'ended', o = openSet();
     $('ssTeamForm').classList.toggle('hidden', ro);
     $('ssTeams').innerHTML = d.teams.map((t) => {
-      const full = t.players.length >= 25;
-      return '<div class="p-card ss-team" style="--c:' + E(t.color) + '" data-tid="' + t.id + '">'
+      const full = t.players.length >= 25, open = o.has(t.id);
+      return '<div class="p-card ss-team' + (open ? '' : ' closed') + '" style="--c:' + E(t.color) + '" data-tid="' + t.id + '">'
         + '<div class="sst-head"><label class="sst-lg' + (ro ? ' ro' : '') + '" title="Team logo">' + (t.logo ? '<img src="' + E(t.logo) + '" alt="">' : '<span>' + E(t.short || '?') + '</span>') + (ro ? '' : '<input type="file" accept="image/*" data-tlogo hidden>') + '</label>'
         + '<input class="in sst-nm" data-tf="name" maxlength="20" value="' + E(t.name) + '"' + (ro ? ' disabled' : '') + '><input class="in sst-sh" data-tf="short" maxlength="5" value="' + E(t.short) + '"' + (ro ? ' disabled' : '') + '>'
         + '<input type="color" class="ss-col" data-tf="color" value="' + E(t.color) + '"' + (ro ? ' disabled' : '') + '>'
-        + '<span class="sst-cnt' + (full ? ' full' : '') + '">' + t.players.length + '/25</span>' + (ro ? '' : '<button class="btn sm ghost" data-tdel title="Remove team">✕</button>') + '</div>'
+        + '<button type="button" class="sst-tg' + (full ? ' full' : '') + '" data-ttog title="Open / fold this team"><span>' + t.players.length + '/25</span><i>▾</i></button>' + (ro ? '' : '<button class="btn sm ghost" data-tdel title="Remove team">✕</button>') + '</div>'
+        + '<div class="sst-sum" data-ttog>' + (t.players.length ? t.players.slice(0, 25).map((p) => '<span>' + E(p.number) + '</span>').join('') : '<em>No players yet · tap to add</em>') + '</div>'
         + '<div class="sst-pl">' + t.players.map((p) => '<div class="ssp" data-pid="' + p.id + '">'
           + '<label class="ssp-ph' + (ro ? ' ro' : '') + '" title="Player photo">' + (p.photo ? '<img src="' + E(p.photo) + '" alt="">' : '<span>📷</span>') + (ro ? '' : '<input type="file" accept="image/*" data-pphoto hidden>') + '</label>'
           + '<input class="in ssp-no" data-pf="number" inputmode="numeric" maxlength="2" value="' + E(p.number) + '"' + (ro ? ' disabled' : '') + '>'
@@ -543,12 +568,14 @@
         + (ro || full ? '' : '<form class="ssp new" data-padd autocomplete="off"><span class="ssp-ph ph0">＋</span><input class="in ssp-no" name="number" inputmode="numeric" maxlength="2" placeholder="#"><input class="in" name="first" placeholder="First name"><input class="in" name="last" placeholder="Last name"><input class="in ssp-pos" name="position" maxlength="4" placeholder="Pos"><button class="btn sm primary" type="submit">Add</button></form>')
         + '</div>' + (full ? '<div class="tiny" style="margin-top:6px">Roster full (25 players).</div>' : '') + '</div>';
     }).join('') || '<div class="p-card m-empty"><b>No teams yet</b><span class="tiny">Add every team of the season above, then their players (up to 25 each) with jersey number and an optional photo.</span></div>';
+    paintTeamBar();
   }
   $('ssTeamForm').onsubmit = async (e) => {
     e.preventDefault(); const d = SS.data; const name = $('ssTName').value.trim(); if (!name) { toast('Type the team name', true); return; }
-    try { paintSeason(await rpc('bb_season_team', { p: { season_id: d.id, name, short: $('ssTShort').value.trim(), color: $('ssTColor').value } }));
+    try { const r = await rpc('bb_season_team', { p: { season_id: d.id, name, short: $('ssTShort').value.trim(), color: $('ssTColor').value } });
+      SS.data = r; const nt = r.teams[r.teams.length - 1]; openSet().clear(); if (nt) SS.open.add(nt.id); saveOpen(); paintSeason(r);
       $('ssTName').value = ''; $('ssTShort').value = ''; $('ssTColor').value = PBB.ELECTRIC[(SS.data.teams.length) % PBB.ELECTRIC.length]; toast('Team added · now add its players');
-      const last = document.querySelector('#ssTeams .ss-team:last-child [data-padd] [name="number"]'); last && last.focus(); } catch (x) { toast(PBB.errText(x), true); }
+      const last = document.querySelector('#ssTeams .ss-team:last-child [data-padd] [name="number"]'); if (last) { last.closest('.ss-team').scrollIntoView({ behavior: 'smooth', block: 'start' }); last.focus({ preventScroll: true }); } } catch (x) { toast(PBB.errText(x), true); }
   };
   const seasonTeamOf = (el) => SS.data.teams.find((t) => t.id === el.closest('[data-tid]').dataset.tid);
   $('ssTeams').addEventListener('change', async (e) => {
@@ -584,6 +611,8 @@
       const nf = document.querySelector('#ssTeams [data-tid="' + t.id + '"] [data-padd] [name="number"]'); nf && nf.focus(); } catch (x) { toast(PBB.errText(x), true); }
   });
   $('ssTeams').addEventListener('click', async (e) => {
+    const tg = e.target.closest('[data-ttog]'), hd = e.target.closest('.sst-head');
+    if (tg || (hd && !e.target.closest('input, label, button'))) { toggleTeam(e.target.closest('[data-tid]').dataset.tid); return; }
     const b = e.target.closest('button'); if (!b) return; const t = seasonTeamOf(b);
     if (b.matches('[data-tdel]')) { if (!confirm('Remove ' + t.name + ' and its ' + t.players.length + ' players from the season?')) return;
       try { paintSeason(await rpc('bb_season_team_delete', { p_id: t.id })); PBB.removeMedia(sb, [t.logo].concat(t.players.map((p) => p.photo))); toast('Team removed'); } catch (x) { toast(PBB.errText(x), true); } }
