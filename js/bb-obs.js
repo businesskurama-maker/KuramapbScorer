@@ -30,6 +30,9 @@
     if (b.show_title || b.theme === 'tournament') root.classList.add('show-title');
     if (b.reduced_motion) root.classList.add('reduced');
     root.style.setProperty('--home', s.home.color); root.style.setProperty('--away', s.away.color);
+    // swap sides: AWAY on the left, HOME on the right (the left/right styling follows the position, the colours follow the team)
+    { const sw = !!b.swap, sh = $('sH'), sa = $('sA'), mid = $('mid');
+      if (sh && sa) { sh.classList.toggle('home', !sw); sh.classList.toggle('away', sw); sa.classList.toggle('away', !sw); sa.classList.toggle('home', sw); sh.style.order = sw ? 3 : 1; sa.style.order = sw ? 1 : 3; if (mid) mid.style.order = 2; } }
     root.style.setProperty('--scale', b.scale || 1); root.style.setProperty('--dsz', b.digit_size || 1);
     // lower-third designer
     const nsz = Number(b.name_size) || 1, dsz = Number(b.digit_size) || 1;
@@ -239,10 +242,11 @@
     el.style.setProperty('--c', col);
     const E = PBB.esc;
     if (it.kind === 'banner' && it.bkind === 'final') {
-      const h = S.derived.score.home, a = S.derived.score.away;
+      const sw = !!(S.broadcast || {}).swap, L = sw ? S.away : S.home, R = sw ? S.home : S.away;
+      const h = S.derived.score[sw ? 'away' : 'home'], a = S.derived.score[sw ? 'home' : 'away'];
       el.innerHTML = '<div class="cacc" style="--c:var(--brand)"></div><div class="txt"><div class="fin-tag">FINAL</div><div class="fin">'
-        + '<span class="' + (h >= a ? 'w' : 'l') + '" style="color:' + S.home.color + '">' + E(S.home.name) + '</span><span class="sc ' + (h >= a ? 'w' : 'l') + '">' + h + '</span>'
-        + '<span style="opacity:.5">—</span><span class="sc ' + (a >= h ? 'w' : 'l') + '">' + a + '</span><span class="' + (a >= h ? 'w' : 'l') + '" style="color:' + S.away.color + '">' + E(S.away.name) + '</span></div></div>';
+        + '<span class="' + (h >= a ? 'w' : 'l') + '" style="color:' + L.color + '">' + E(L.name) + '</span><span class="sc ' + (h >= a ? 'w' : 'l') + '">' + h + '</span>'
+        + '<span style="opacity:.5">—</span><span class="sc ' + (a >= h ? 'w' : 'l') + '">' + a + '</span><span class="' + (a >= h ? 'w' : 'l') + '" style="color:' + R.color + '">' + E(R.name) + '</span></div></div>';
     } else if (it.kind === 'banner') {
       const T = it.team ? teamOf(it.team) : null;
       const big = it.bkind === 'timeout' ? 'TIMEOUT — ' + (T ? T.name : '') : it.text;

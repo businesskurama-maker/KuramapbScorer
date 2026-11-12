@@ -551,7 +551,7 @@
     paintingSettings = false;
   }
   const bcast = (data) => act('broadcast', data, { force: true });
-  const look = PBB.lookPanel($('lookPanel'), () => S && S.broadcast, (patch) => bcast({ patch }).then((s) => s && buzz(15)));
+  const look = PBB.lookPanel($('lookPanel'), () => S && S.broadcast, (patch) => bcast({ patch }).then((s) => s && buzz(15)), () => S && { home: S.home, away: S.away });
   $('theme').onclick = (e) => { const b = e.target.closest('button'); if (b) bcast({ patch: { theme: b.dataset.v, show_title: b.dataset.v === 'tournament' ? true : (S.broadcast.show_title || false) } }); };
   document.querySelectorAll('[data-b]').forEach((el) => el.addEventListener('change', () => { const v = el.value; bcast({ patch: { [el.dataset.b]: isNaN(Number(v)) ? v : Number(v) } }); }));
   document.querySelectorAll('input[data-t]').forEach((el) => el.addEventListener('change', () => bcast({ patch: { [el.dataset.t]: el.checked } })));

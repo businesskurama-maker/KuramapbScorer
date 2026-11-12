@@ -343,10 +343,11 @@
     ['label_size', 'Labels (fouls, period, tabs)', 0.7, 1.6], ['digit_size', 'Numbers (score, clock)', 0.7, 1.4], ['per_size', 'Quarter / period status', 0.7, 2], ['logo_size', 'Team logos', 0.6, 1.3], ['pop_size', 'Player pop-up (photo / score / foul)', 0.5, 1.5]];
   const LOOK_COL = [['rb_bg', 'Banner', '#0a0d16'], ['rnd_color', 'Category', '#39ff14'], ['evt_color', 'Event title', '#f4f6fb'], ['bar_color', 'Scoreboard', '#0a0d16'], ['tk_bg', 'Ticker background', '#0a0d16'], ['tk_fg', 'Ticker text', '#f4f6fb']];
   const LOOK_KEYS = ['rb_tpl', 'show_logos', 'rb_logo', 'logo_pos', 'cl_size', 'season_logo'].concat(LOOK_SL.map((x) => x[0]), LOOK_COL.map((x) => x[0]));
-  function lookPanel(el, getB, send) {
+  function lookPanel(el, getB, send, getTeams) {
     el.innerHTML = '<div class="seg seg-sm lk-tabs"><button type="button" data-lt="tpl" class="on">Template</button><button type="button" data-lt="size">Size</button><button type="button" data-lt="col">Colour</button><button type="button" data-lt="logo">Logo</button><button type="button" data-lt="tk">Ticker</button></div>'
       + '<div class="lk-pane" data-lp="tpl"><div class="lk-tpl">' + LOOK_TPL.map(([k, l, d]) => '<button type="button" data-tpl="' + k + '"><i class="lk-ic lk-' + k + '"><b></b><s></s></i><b>' + l + '</b><small>' + d + '</small></button>').join('') + '</div>'
-      + '<div class="lk-nm"><span><b>Team names</b><small>On the scoreboard</small></span><div class="seg seg-sm" data-nmseg><button type="button" data-nm="short">Initials</button><button type="button" data-nm="full">Full name (max 20)</button></div></div></div>'
+      + '<div class="lk-nm"><span><b>Team names</b><small>On the scoreboard</small></span><div class="seg seg-sm" data-nmseg><button type="button" data-nm="short">Initials</button><button type="button" data-nm="full">Full name (max 20)</button></div></div>'
+      + '<div class="lk-nm"><span><b>Team sides</b><small>Which team is on the left of OBS &amp; the venue scoreboard</small></span><div class="seg seg-sm"><button type="button" data-sw="0">Home left</button><button type="button" data-sw="1">⇄ Away left</button></div></div></div>'
       + '<div class="lk-pane hidden" data-lp="size"><div class="lk-sl">' + LOOK_SL.map(([k, l, a, z]) => '<label class="lk-r"><span>' + l + '<em data-v="' + k + '">100%</em></span><input type="range" min="' + a + '" max="' + z + '" step="0.05" data-lk="' + k + '"></label>').join('') + '</div></div>'
       + '<div class="lk-pane hidden" data-lp="col"><div class="lk-col">' + LOOK_COL.map(([k, l, d]) => '<label class="lk-c"><input type="color" data-lc="' + k + '" value="' + d + '"><span>' + l + '<small data-cv="' + k + '">Auto</small></span><button type="button" class="lk-x" data-cx="' + k + '" title="Back to theme colour">↺</button></label>').join('') + '</div></div>'
       + '<div class="lk-pane hidden" data-lp="logo"><div class="lk-logo"><span class="lk-lth" data-lth></span><span class="lk-lt"><b>Event logo</b><small>Optional · league or tournament logo</small></span>'
@@ -370,6 +371,7 @@
       el.querySelector('.lk-cl').classList.toggle('dim', !(b.logo_pos === 'tl' || b.logo_pos === 'tr') && b.season_logo === false);
       el.querySelector('[data-slg]').checked = b.season_logo !== false;
       el.querySelectorAll('[data-nm]').forEach((x) => x.classList.toggle('on', x.dataset.nm === (b.names === 'full' ? 'full' : 'short')));
+      el.querySelectorAll('[data-sw]').forEach((x) => { x.classList.toggle('on', x.dataset.sw === (b.swap ? '1' : '0')); const g = getTeams && getTeams(); if (g) x.textContent = x.dataset.sw === '1' ? '⇄ ' + (g.away.short || 'AWAY') + ' left' : (g.home.short || 'HOME') + ' left'; });
       el.querySelectorAll('[data-lk]').forEach((x) => { if (document.activeElement === x && x._drag) return; const v = b[x.dataset.lk] == null || b[x.dataset.lk] === '' ? 1 : Number(b[x.dataset.lk]); x.value = v; el.querySelector('[data-v="' + x.dataset.lk + '"]').textContent = pct(v); });
       LOOK_COL.forEach(([k, , d]) => { const v = /^#[0-9a-f]{6}$/i.test(b[k] || '') ? b[k] : ''; const inp = el.querySelector('[data-lc="' + k + '"]'); if (document.activeElement !== inp) inp.value = v || d; el.querySelector('[data-cv="' + k + '"]').textContent = v ? v.toUpperCase() : 'Theme'; el.querySelector('[data-cx="' + k + '"]').classList.toggle('hidden', !v); });
       el.querySelector('[data-lg]').checked = b.show_logos !== false;
@@ -384,6 +386,7 @@
       const tb = e.target.closest('[data-lt]'); if (tb) { el.querySelectorAll('[data-lt]').forEach((x) => x.classList.toggle('on', x === tb)); el.querySelectorAll('[data-lp]').forEach((x) => x.classList.toggle('hidden', x.dataset.lp !== tb.dataset.lt)); return; }
       const lp = e.target.closest('[data-lpos]'); if (lp) { send({ logo_pos: lp.dataset.lpos }); return; }
       const nm = e.target.closest('[data-nm]'); if (nm) { send({ names: nm.dataset.nm }); return; }
+      const sw = e.target.closest('[data-sw]'); if (sw) { send({ swap: sw.dataset.sw === '1' }); return; }
       const t = e.target.closest('[data-tpl]'); if (t) { send({ rb_tpl: t.dataset.tpl }); return; }
       const x = e.target.closest('[data-cx]'); if (x) { e.preventDefault(); send({ [x.dataset.cx]: null }); return; }
       if (e.target.closest('[data-rbx]')) { send({ rb_logo: null }); return; }

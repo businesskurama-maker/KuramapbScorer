@@ -788,7 +788,7 @@
   $('devs').onclick = async (e) => { const b = e.target.closest('[data-rv]'); if (!b) return; if (!confirm('Remove this device? It can no longer control the match.')) return; try { H = await rpc('bb_revoke', { p_code: cur, p_device: b.dataset.rv }); paintDevices(); toast('Device removed'); } catch (x) { toast(PBB.errText(x), true); } };
   $('revokeAll').onclick = async () => { if (!confirm('Remove ALL paired phones from this match?')) return; try { H = await rpc('bb_revoke', { p_code: cur, p_device: null }); paintDevices(); toast('All devices removed'); } catch (x) { toast(PBB.errText(x), true); } };
   const hostAct = async (type, data, msg) => { try { await conn.act(type, data); msg && toast(msg); } catch (e) { toast(e.message === 'OFFLINE' ? 'Not connected' : PBB.errText(e), true); } };
-  const look = PBB.lookPanel($('moLook'), () => conn && conn.snap && conn.snap.broadcast, (patch) => hostAct('broadcast', { patch }));
+  const look = PBB.lookPanel($('moLook'), () => conn && conn.snap && conn.snap.broadcast, (patch) => hostAct('broadcast', { patch }), () => conn && conn.snap && { home: conn.snap.home, away: conn.snap.away });
   $('moReset').onclick = () => hostAct('overlay', { op: 'reset' }, 'Overlay reset');
   $('moHide').onclick = () => hostAct('overlay', { op: 'hide' }, 'Overlay hidden');
   $('moShow').onclick = () => hostAct('overlay', { op: 'show' }, 'Overlay visible');
