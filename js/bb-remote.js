@@ -208,6 +208,7 @@
       case 'period': return 'Period → ' + PBB.periodLabel(d.to, S.config.periods);
       case 'possession': return 'Possession ' + (T ? T.short : 'cleared');
       case 'stat': return who + ' ' + (e.value > 0 ? '+' : '−') + String(d.key || '').toUpperCase();
+      case 'adjust': return (d.k === 'pf' ? who + ' personal foul ' : (team(e.team).short || '') + (d.k === 'to' ? ' timeouts ' : ' team fouls ')) + (e.value > 0 ? '+1' : '−1') + ' (corrected)';
       case 'sub': return (T ? T.short : '') + ' sub · IN ' + (d.in || []).map((id) => (P(id) || {}).number).join(',') + ' · OUT ' + (d.out || []).map((id) => (P(id) || {}).number).join(',');
       case 'lineup': return (T ? T.short : '') + ' lineup set';
       case 'undo': return 'Undo · ' + (d.what || '') + (T ? ' ' + T.short : '');
@@ -434,11 +435,32 @@
       .sort((a, b) => (b.s.pts || 0) - (a.s.pts || 0) || (b.s.fouls || 0) - (a.s.fouls || 0) || Number(a.p.number) - Number(b.p.number));
     const oc = onOf(plT), tot = rec.reduce((a, x) => { ['pts', 'm2', 'm3', 'm1', 'fouls'].forEach((k) => { a[k] += x.s[k] || 0; }); return a; }, { pts: 0, m2: 0, m3: 0, m1: 0, fouls: 0 });
     const c = (v, cls) => '<td class="' + (cls || '') + (v ? '' : ' z') + '">' + (v || 0) + '</td>';
-    $('gsBody').innerHTML = rec.map((x) => '<tr class="' + (oc.includes(x.p.id) ? 'oc' : '') + (x.s.out ? ' fo' : '') + '"><td class="no">' + E(x.p.number) + '</td><td class="pl">' + E(PBB.playerName(x.p)) + (x.s.out ? ' <i>' + (x.s.dq ? 'DQ' : 'OUT') + '</i>' : '') + '</td>'
+    $('gsBody').innerHTML = rec.map((x) => '<tr data-gp="' + x.p.id + '" class="' + (oc.includes(x.p.id) ? 'oc' : '') + (x.s.out ? ' fo' : '') + '"><td class="no">' + E(x.p.number) + '</td><td class="pl">' + E(PBB.playerName(x.p)) + (x.s.out ? ' <i>' + (x.s.dq ? 'DQ' : 'OUT') + '</i>' : '') + '</td>'
       + c(x.s.pts, 'gp') + c(x.s.m2) + c(x.s.m3) + c(x.s.m1) + c(x.s.fouls, (x.s.fouls || 0) >= 4 ? 'warn' : '') + '</tr>').join('')
       + '<tr class="tot"><td></td><td class="pl">TEAM</td><td class="gp">' + tot.pts + '</td><td>' + tot.m2 + '</td><td>' + tot.m3 + '</td><td>' + tot.m1 + '</td><td>' + tot.fouls + '</td></tr>';
     $('gsTot').textContent = ((S.derived.score || {})[plT] || 0) + ' pts on the board';
+    // team counters
+    const tos = S.derived.tos || {}, fl = S.derived.fouls || {}, lim = Number(S.config.tf_limit) || 4;
+    $('adjTeam').textContent = team(plT).short || team(plT).name; $('adjTeam').style.color = team(plT).color;
+    $('adjTo').textContent = tos[plT] || 0; $('adjToSub').textContent = (tos.allow != null ? 'of ' + tos.allow + ' allowed now' : '');
+    $('adjTf').textContent = fl[plT] || 0; $('adjTf').classList.toggle('warn', (fl[plT] || 0) >= lim);
+    $('adjTfSub').textContent = (fl[plT] || 0) >= lim ? 'PENALTY · ' + lim + '+ this period' : 'this period · penalty at ' + lim;
+    // personal-foul editor under the tapped player
+    if (gsPick && P(gsPick) && P(gsPick).team === plT) {
+      const row = $('gsBody').querySelector('tr[data-gp="' + gsPick + '"]');
+      if (row) { const x = st(gsPick); row.classList.add('sel'); row.insertAdjacentHTML('afterend', '<tr class="gs-adj"><td colspan="7"><div><span>#' + E(P(gsPick).number) + ' personal fouls</span><button class="adj-b" data-adj="pf" data-v="-1">−</button><b class="adj-n' + ((x.fouls || 0) >= 4 ? ' warn' : '') + '">' + (x.pf || 0) + '</b><button class="adj-b" data-adj="pf" data-v="1">+</button><small>' + (x.fouls || 0) + ' total fouls' + (x.out ? ' · ' + (x.dq ? 'DQ' : 'FOULED OUT') : '') + '</small></div></td></tr>'); }
+    }
   }
+  let gsPick = null;
+  $('gsBody').onclick = (e) => { const r = e.target.closest('tr[data-gp]'); if (!r) return; gsPick = gsPick === r.dataset.gp ? null : r.dataset.gp; renderPlayers(); };
+  document.querySelector('#vPlayers').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-adj]'); if (!b || !S) return; buzz(20);
+    const k = b.dataset.adj, v = Number(b.dataset.v);
+    const p = k === 'pf' ? { team: plT, player: gsPick, k, value: v } : { team: plT, k, value: v };
+    if (k === 'pf' && !gsPick) return;
+    const s = await act('adjust', p);
+    if (s) { renderPlayers(); renderScore(); toast((k === 'to' ? 'Timeouts' : k === 'tf' ? 'Team fouls' : 'Personal fouls') + ' ' + (v > 0 ? '+1' : '−1')); }
+  });
   $('plSw').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; plT = b.dataset.t; pending = null; lnForce = null; renderPlayers(); };
   $('plList').onclick = (e) => {
     const r = e.target.closest('.pl-row'); if (!r || !S) return; const id = r.dataset.p; if (!pending) renderPlayers();

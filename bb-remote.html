@@ -100,6 +100,12 @@
     <!-- PLAYERS -->
     <section class="view hidden" id="vPlayers">
       <div class="tsw" id="plSw"><button data-t="home" style="--c:var(--home)">HOME</button><button data-t="away" style="--c:var(--away)">AWAY</button></div>
+      <div class="box adj-box needs-live">
+        <h4><span>Correct counts · <b id="adjTeam">HOME</b></span><span class="tiny">every change is logged · Undo works</span></h4>
+        <div class="adj-row"><span class="adj-l">Timeouts used<small id="adjToSub"></small></span><button class="adj-b" data-adj="to" data-v="-1">−</button><b class="adj-n" id="adjTo">0</b><button class="adj-b" data-adj="to" data-v="1">+</button></div>
+        <div class="adj-row"><span class="adj-l">Team fouls<small id="adjTfSub">this period</small></span><button class="adj-b" data-adj="tf" data-v="-1">−</button><b class="adj-n" id="adjTf">0</b><button class="adj-b" data-adj="tf" data-v="1">+</button></div>
+        <div class="tiny">Personal fouls: tap a player in the table below.</div>
+      </div>
       <div class="box ln-box" id="lnBox">
         <h4><span id="lnTitle">On court</span><span class="row" style="gap:6px"><button class="btn sm" id="subAll">Change all 5</button><button class="btn sm ghost" id="lnReset">Re-pick lineup</button></span></h4>
         <div class="ln-hint" id="lnHint"></div>

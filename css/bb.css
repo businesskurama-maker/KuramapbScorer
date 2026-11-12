@@ -862,3 +862,19 @@ table.rt td.num { white-space: nowrap; }
 
 /* Seasons on any screen: tabs stay reachable while scrolling a long roster */
 #ssTabs { position: sticky; top: -12px; z-index: 6; background: var(--bg2); }
+
+/* ---------- remote: correct timeouts / team fouls / personal fouls ---------- */
+.adj-box h4 b { font-weight: 800; }
+.adj-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px 52px 44px; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.adj-l { font-size: 13.5px; font-weight: 700; display: flex; flex-direction: column; gap: 2px; }
+.adj-l small { font-size: 11px; font-weight: 600; color: var(--ink3); }
+.adj-b { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line2); background: var(--bg2); color: var(--ink); font-size: 22px; font-weight: 800; line-height: 1; cursor: pointer; }
+.adj-b:active { transform: scale(.94); background: var(--card); }
+.adj-n { font-family: var(--digit); font-size: 26px; font-weight: 800; text-align: center; color: var(--c, var(--ink)); }
+.adj-n.warn { color: var(--warn); }
+.gs-t tr[data-gp] { cursor: pointer; }
+.gs-t tr.sel td { background: color-mix(in srgb, var(--c, var(--brand)) 10%, transparent); }
+.gs-t tr.gs-adj td { padding: 6px 4px 10px; background: color-mix(in srgb, var(--c, var(--brand)) 10%, transparent); }
+.gs-t tr.gs-adj div { display: grid; grid-template-columns: minmax(0, 1fr) 44px 52px 44px; gap: 8px; align-items: center; text-align: left; font-family: inherit; }
+.gs-t tr.gs-adj span { font-size: 13px; font-weight: 700; text-transform: uppercase; }
+.gs-t tr.gs-adj small { grid-column: 1 / -1; font-size: 11px; color: var(--ink3); font-weight: 600; }

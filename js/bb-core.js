@@ -24,7 +24,7 @@
     NOT_AUTHORIZED: 'Not allowed.', READ_ONLY: 'Read-only device.', CLOCK_ONLY: 'Clock operators can only run the clock.',
     NO_CLOCK_RIGHTS: 'The host turned off clock control for scorekeepers.', HOST_ONLY: 'Only the host can do that.',
     SETTINGS_LOCKED: 'Broadcast settings are locked by the host.', MATCH_FINAL: 'The match is final. The host can reopen it.',
-    BAD_PLAYER: 'That player is not on this team.', NEGATIVE_SCORE: 'A score cannot go below zero.', NEGATIVE_STAT: 'That stat is already 0.',
+    BAD_PLAYER: 'That player is not on this team.', NEGATIVE_SCORE: 'A score cannot go below zero.', NEGATIVE_STAT: 'That is already 0.', BAD_ADJUST: 'That correction is not valid.',
     NO_TIMEOUTS_LEFT: 'No timeouts left in this period.', NOTHING_TO_UNDO: 'Nothing to undo.', NOTHING_TO_REDO: 'Nothing to redo.',
     CLOCK_AT_ZERO: 'The clock is at 0:00. Set the time or go to the next period.', COLORS_TOO_CLOSE: 'The two score colours are too similar. Pick clearly different colours.',
     DUPLICATE_JERSEY: 'That jersey number is already used on this team.', LIVE_PASS_REQUIRED: 'Your Basketball pass has ended. Donate or enter a pass code to create matches.', BAD_CODE: 'That pass code is not valid.', USED_CODE: 'That pass code was already used.', EXPIRED_CODE: 'That pass code expired.', BAD_REFERENCE: 'Enter the last 6 digits of the reference number.', DUPLICATE_REFERENCE: 'That reference number was already sent.', TOO_MANY_PENDING: 'You already have 3 donations waiting for confirmation.',
