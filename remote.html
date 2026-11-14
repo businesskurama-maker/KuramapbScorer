@@ -233,15 +233,38 @@
       <button class="mini-btn rt-btn" id="refTourRestart" type="button">↻ Restart tournament</button></div>
     </section>
     <section class="setup-sec q-sec tab-off" id="qSec" data-tab="queue">
-      <h3 class="sec-title">Open play · paddle queue <small class="eb-note">After each game everyone on court goes to the back of the line and the next players are called.</small></h3>
-      <div class="q-stat hidden" id="qStat"></div>
-      <div class="field" id="qKindF"><span class="eyebrow">Queue by</span><div class="seg" id="qKind"><button type="button" data-v="players">Single players</button><button type="button" data-v="teams">Teams</button></div><small class="hint-sm" id="qKindHint"></small></div>
-      <form class="q-add" id="qAdd" autocomplete="off"><input class="text-in" id="qName" maxlength="18" placeholder="Player name"><input class="text-in q-tp hidden" id="qP1" maxlength="16" placeholder="Player 1"><input class="text-in q-tp hidden" id="qP2" maxlength="16" placeholder="Player 2"><button class="mini-btn" type="submit">＋ Add</button></form>
-      <div class="q-list" id="qList"></div>
-      <div class="q-tools"><span class="hint-sm" id="qCount"></span><button class="mini-btn" type="button" id="qShuffle">Shuffle</button><button class="mini-btn" type="button" id="qClear">Clear</button></div>
-      <div class="field"><span class="eyebrow">Open play time</span><div class="seg" id="qMin"><button type="button" data-v="60">1 h</button><button type="button" data-v="90">1.5 h</button><button type="button" data-v="120">2 h</button><button type="button" data-v="180">3 h</button><button type="button" data-v="0">No limit</button></div><small class="hint-sm">When time is up the game on court finishes, then open play ends.</small></div>
-      <button class="big-btn wide" type="button" id="qStart">▶ Start open play</button>
-      <div class="q-run hidden" id="qRun"><button class="mini-btn" type="button" id="qSkip">Call next players now</button><button class="mini-btn danger" type="button" id="qEndBtn">End open play</button></div>
+      <div class="q-head">
+        <div class="q-ttl"><span class="q-k">Open play</span><b>Paddle queue</b><small>After every game, all 4 go to the back of the line.</small></div>
+        <span class="q-pill" id="qPill">SETUP</span>
+      </div>
+      <div class="q-kpis hidden" id="qStat"><div><small>Game</small><b id="qkGame">1</b></div><div><small>Time left</small><b id="qkTime">—</b></div><div><small>Waiting</small><b id="qkWait">0</b></div></div>
+
+      <div class="q-card" id="qSetupCard">
+        <div class="q-row"><span class="q-lbl">Queue by</span><div class="seg seg-sm" id="qKind"><button type="button" data-v="players">Players</button><button type="button" data-v="teams">Teams</button></div></div>
+        <div class="q-row"><span class="q-lbl">Duration</span><div class="seg seg-sm" id="qMin"><button type="button" data-v="60">1h</button><button type="button" data-v="90">1.5h</button><button type="button" data-v="120">2h</button><button type="button" data-v="180">3h</button><button type="button" data-v="0">∞</button></div></div>
+        <p class="q-note" id="qKindHint"></p>
+      </div>
+
+      <div class="q-card">
+        <form class="q-add" id="qAdd" autocomplete="off">
+          <input class="q-in" id="qName" maxlength="18" placeholder="Add player">
+          <input class="q-in q-tp hidden" id="qP1" maxlength="16" placeholder="Player 1">
+          <input class="q-in q-tp hidden" id="qP2" maxlength="16" placeholder="Player 2">
+          <button class="q-addbtn" type="submit" aria-label="Add">＋</button>
+        </form>
+        <div class="q-saved hidden" id="qSaved">
+          <div class="q-listhead"><span id="qSavedTtl">Saved players · tap to add</span><span class="q-lh-btns"><button type="button" class="q-link" id="qSavedAll">Add all</button><button type="button" class="q-link" id="qSavedEdit">Edit</button></span></div>
+          <div class="q-chips" id="qChips"></div>
+        </div>
+        <div class="q-listhead"><span id="qCount">0 in line</span><span class="q-lh-btns"><button type="button" class="q-link" id="qShuffle">Shuffle</button><button type="button" class="q-link danger" id="qClear">Clear</button></span></div>
+        <div class="q-list" id="qList"></div>
+      </div>
+
+      <div class="q-foot">
+        <button class="q-start" type="button" id="qStart">Start open play</button>
+        <div class="q-run hidden" id="qRun"><button class="q-btn" type="button" id="qSkip">Call next now</button><button class="q-btn danger" type="button" id="qEndBtn">End open play</button></div>
+        <p class="q-note center">When time is up, the game on court finishes, then open play ends.</p>
+      </div>
     </section>
     <section class="setup-sec club-sec tab-off" id="clubSec" data-tab="club">
       <h3 class="sec-title">Club branding <span class="club-badge">LIVE pass</span></h3>

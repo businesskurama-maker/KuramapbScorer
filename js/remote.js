@@ -597,27 +597,93 @@
     { const tb = document.querySelector('.sheet-tabs [data-tab="queue"]'); if (tb) tb.classList.toggle('hidden', !!st.liveCourt); }
     if (!$('qSec')) return;
     $('qKind').querySelectorAll('button').forEach((b) => { b.classList.toggle('on', b.dataset.v === q.kind); b.disabled = q.on; });
-    $('qKindHint').textContent = q.kind === 'teams' ? 'Each entry is a pair. 2 teams per game.' : (st.settings.mode === 'singles' ? 'Singles: 2 players per game (change in Match setup).' : 'Doubles: 4 players per game, paired by the queue (change in Match setup).');
+    $('qKind').parentElement.classList.toggle('hidden', !!q.on);
     const teams = q.kind === 'teams';
-    $('qName').placeholder = teams ? 'Team name' : 'Player name';
+    $('qKindHint').textContent = teams ? 'Each entry is a pair · 2 teams per game.' : (st.settings.mode === 'singles' ? 'Singles · 2 players per game.' : 'Doubles · 4 players per game, paired by the queue.') + ' Singles/doubles is set in Match setup.';
+    $('qName').placeholder = teams ? 'Team name' : 'Add player';
     document.querySelectorAll('.q-tp').forEach((x) => x.classList.toggle('hidden', !teams));
     $('qAdd').classList.toggle('teams', teams);
-    const row = (e, i, on) => '<div class="q-it' + (on ? ' on' : '') + '" data-id="' + e.id + '"><i>' + (on ? '●' : i + 1) + '</i><span><b>' + esc(e.name) + '</b>' + (teams && (e.p1 || e.p2) ? '<small>' + esc([e.p1, e.p2].filter(Boolean).join(' · ')) + '</small>' : '') + '</span>'
-      + (on ? '<em>ON COURT</em>' : '<button type="button" data-qm="-1" aria-label="Up">↑</button><button type="button" data-qm="1" aria-label="Down">↓</button><button type="button" data-qx aria-label="Remove">✕</button>') + '</div>';
-    $('qList').innerHTML = (q.court || []).map((e, i) => row(e, i, true)).join('') + q.line.map((e, i) => row(e, i, false)).join('') || '<div class="hint-sm q-empty">Add the ' + (teams ? 'teams' : 'players') + ' in arrival order (first paddle first).</div>';
-    $('qCount').textContent = q.line.length + ' waiting' + ((q.court || []).length ? ' · ' + q.court.length + ' on court' : '');
+    const tag = (k) => { // pairing preview for the next game: A A B B (doubles), A B (singles / teams)
+      if (need === 4) return k < 2 ? 'A' : 'B'; return k === 0 ? 'A' : 'B'; };
+    const row = (e, n, cls, side) => '<div class="q-it ' + cls + '" data-id="' + e.id + '">'
+      + '<i class="q-no' + (side ? ' s' + side : '') + '">' + (side || n) + '</i>'
+      + '<span class="q-nm"><b>' + esc(e.name) + '</b>' + (teams && (e.p1 || e.p2) ? '<small>' + esc([e.p1, e.p2].filter(Boolean).join(' · ')) + '</small>' : '') + '</span>'
+      + (cls === 'court' ? '' : '<span class="q-acts"><button type="button" data-qm="-1" aria-label="Move up">▲</button><button type="button" data-qm="1" aria-label="Move down">▼</button><button type="button" data-qx aria-label="Remove">✕</button></span>') + '</div>';
+    const court = q.court || [], nxt = q.line.slice(0, need), rest = q.line.slice(need);
+    let html = '';
+    if (court.length) html += '<div class="q-grp"><span>On court</span></div>' + court.map((e, k) => row(e, k + 1, 'court', tag(k))).join('');
+    if (q.line.length) {
+      html += '<div class="q-grp"><span>' + (court.length ? 'Up next' : 'First game') + '</span>' + (nxt.length < need ? '<em>needs ' + (need - nxt.length) + ' more</em>' : '') + '</div>' + nxt.map((e, k) => row(e, k + 1, 'next', nxt.length === need ? tag(k) : '')).join('');
+      if (rest.length) html += '<div class="q-grp"><span>Waiting</span></div>' + rest.map((e, k) => row(e, need + k + 1, '', '')).join('');
+    }
+    $('qList').innerHTML = html || '<div class="q-empty"><b>No one in line yet</b><span>Add the ' + (teams ? 'teams' : 'players') + ' in arrival order: first paddle first.</span></div>';
+    $('qCount').textContent = q.line.length + ' in line' + (court.length ? ' · ' + court.length + ' on court' : '');
     $('qMin').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === Number(q.minutes)));
     $('qStart').classList.toggle('hidden', q.on); $('qRun').classList.toggle('hidden', !q.on); $('qClear').disabled = q.on;
-    $('qStart').disabled = q.line.length < need; $('qStart').textContent = q.line.length < need ? 'Add at least ' + need + (teams ? ' teams' : ' players') + ' to start' : '▶ Start open play (' + q.line.length + (teams ? ' teams' : ' players') + ')';
-    const stEl = $('qStat'); stEl.classList.toggle('hidden', !q.on && !q.done);
-    stEl.innerHTML = q.on ? '<b>RUNNING</b> · game ' + q.games + ' · ' + (q.endsAt ? qFmt(q.endsAt - Date.now()) + ' left' : 'no time limit') : q.done ? '<b>FINISHED</b> · ' + q.games + ' games played' : '';
+    $('qStart').disabled = q.line.length < need;
+    $('qStart').textContent = q.line.length < need ? 'Add ' + (need - q.line.length) + ' more to start' : 'Start open play · ' + q.line.length + (teams ? ' teams' : ' players');
+    renderQSaved(q);
+    $('qPill').textContent = q.on ? 'LIVE' : q.done ? 'FINISHED' : 'SETUP'; $('qPill').className = 'q-pill' + (q.on ? ' live' : q.done ? ' done' : '');
+    $('qStat').classList.toggle('hidden', !q.on && !q.done);
+    $('qkGame').textContent = q.games || 0; $('qkTime').textContent = q.on ? (q.endsAt ? qFmt(q.endsAt - Date.now()) : '∞') : '—'; $('qkWait').textContent = q.line.length;
   }
   setInterval(() => { if (st && st.queue && st.queue.on) renderQueueUI(); }, 15000);
   const qSend = (a) => { if (send(a)) buzz(15); };
+  // Saved roster: every player / team added to open play goes into this phone's saved library (shared with Match setup)
+  const qUp = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().toUpperCase().slice(0, n);
+  const qsGet = () => ({ players: (store.get('aopb.savedPlayers', []) || []).map((x) => qUp(x, 16)).filter(Boolean),
+    teams: (store.get('aopb.savedTeams', []) || []).filter((x) => x && x.name).map((x) => ({ name: qUp(x.name, 18), p1: qUp((x.players || [])[0], 16), p2: qUp((x.players || [])[1], 16) })) });
+  const qsRemember = (kind, e) => {
+    if (kind === 'teams') {
+      const name = qUp(e.name, 18); if (!name) return;
+      const list = (store.get('aopb.savedTeams', []) || []).filter((x) => x && qUp(x.name, 18) !== name);
+      const old = (store.get('aopb.savedTeams', []) || []).find((x) => x && qUp(x.name, 18) === name);
+      list.unshift({ name, players: [qUp(e.p1, 16), qUp(e.p2, 16)], color: old && old.color });
+      store.set('aopb.savedTeams', list.slice(0, 60));
+      [e.p1, e.p2].forEach((n) => n && savePlayer(n, true));
+    } else savePlayer(e, true);
+    renderSaved();
+  };
+  let qsEdit = false;
+  function renderQSaved(q) {
+    const teams = q.kind === 'teams', s = qsGet(), list = teams ? s.teams : s.players;
+    const inUse = new Set([...(q.line || []), ...(q.court || [])].map((e) => e.name));
+    const avail = list.filter((x) => !inUse.has(teams ? x.name : x));
+    $('qSaved').classList.toggle('hidden', !list.length);
+    $('qSavedTtl').textContent = (teams ? 'Saved teams' : 'Saved players') + (qsEdit ? ' · tap ✕ to forget' : ' · tap to add');
+    $('qSavedEdit').textContent = qsEdit ? 'Done' : 'Edit';
+    $('qSavedAll').classList.toggle('hidden', qsEdit || !avail.length);
+    const shown = qsEdit ? list : avail;
+    $('qChips').innerHTML = shown.length ? shown.map((x) => { const n = teams ? x.name : x;
+      return '<button type="button" class="q-chip' + (qsEdit ? ' edit' : '') + '" data-n="' + esc(n) + '">' + esc(n)
+        + (teams && (x.p1 || x.p2) ? '<small>' + esc([x.p1, x.p2].filter(Boolean).join(' · ')) + '</small>' : '') + (qsEdit ? '<i>✕</i>' : '') + '</button>'; }).join('')
+      : '<span class="q-chips-empty">Everyone saved is already in line.</span>';
+  }
+  const qsAdd = (n) => {
+    const q = st.queue || {}, teams = q.kind === 'teams';
+    if (!teams) return qSend({ a: 'q_add', name: n });
+    const t = qsGet().teams.find((x) => x.name === n); if (t) qSend({ a: 'q_add', name: t.name, p1: t.p1, p2: t.p2 });
+  };
+  $('qChips').onclick = (e) => {
+    const b = e.target.closest('.q-chip'); if (!b || !st) return;
+    const n = b.dataset.n, teams = (st.queue || {}).kind === 'teams';
+    if (qsEdit) { if (teams) store.set('aopb.savedTeams', (store.get('aopb.savedTeams', []) || []).filter((x) => !x || qUp(x.name, 18) !== n)); else store.set('aopb.savedPlayers', (store.get('aopb.savedPlayers', []) || []).filter((x) => qUp(x, 16) !== n)); renderSaved(); renderQueueUI(); return; }
+    qsAdd(n);
+  };
+  $('qSavedEdit').onclick = () => { qsEdit = !qsEdit; renderQueueUI(); };
+  $('qSavedAll').onclick = () => {
+    const q = st.queue || {}, teams = q.kind === 'teams', s = qsGet();
+    const inUse = new Set([...(q.line || []), ...(q.court || [])].map((e) => e.name));
+    const avail = (teams ? s.teams.map((x) => x.name) : s.players).filter((n) => !inUse.has(n));
+    if (avail.length > 6 && !confirm('Add all ' + avail.length + ' saved ' + (teams ? 'teams' : 'players') + ' to the line?')) return;
+    avail.forEach(qsAdd);
+  };
   $('qKind').onclick = (e) => { const b = e.target.closest('button[data-v]'); if (!b || (st.queue && st.queue.on)) return; if ((st.queue || {}).line && st.queue.line.length && !confirm('Switching clears the current list. Continue?')) return; qSend({ a: 'q_kind', kind: b.dataset.v }); };
   $('qAdd').onsubmit = (e) => {
     e.preventDefault(); const nm = $('qName').value.trim(); if (!nm) { $('qName').focus(); return; }
+    const kind = (st && st.queue && st.queue.kind) || 'players';
     qSend({ a: 'q_add', name: nm, p1: $('qP1').value, p2: $('qP2').value });
+    qsRemember(kind, kind === 'teams' ? { name: nm, p1: $('qP1').value, p2: $('qP2').value } : nm);
     $('qName').value = ''; $('qP1').value = ''; $('qP2').value = ''; $('qName').focus();
   };
   $('qList').onclick = (e) => {
@@ -673,6 +739,7 @@
         || '<div class="lib-empty">No saved players yet — tap <b>☆</b> in a player box, or add one below.</div>');
     const pl = new Set(); teams.forEach((x) => (x.players || []).forEach((n) => n && pl.add(n))); plist.forEach((n) => pl.add(n));
     $('savedPl').innerHTML = [...pl].map((n) => '<option value="' + E(n) + '">').join('');
+    if (st && $('qChips')) renderQueueUI();
   }
   function savePlayer(name, quiet) {
     name = String(name || '').trim().toUpperCase().slice(0, 16); if (!name) { flash('Type a player name first'); return false; }
