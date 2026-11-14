@@ -460,6 +460,7 @@
     $('rallyBtns').classList.toggle('hidden', over || gated);
     $('nextBtn').classList.toggle('hidden', !over || gated);
     $('endBtns').classList.toggle('hidden', !st.matchOver || gated);
+    renderQueueUI();
     if (st.matchOver) maybeSaveMatch();
     $('nextBtn').classList.toggle('match-over', !!st.matchOver);
     if (st.matchOver) $('nextBtn').innerHTML = '🏆 ' + esc(s.names[st.winner]) + ' WINS!<small>' + (st.gameLog.length > 1 ? 'Games ' + st.games[st.winner] + '–' + st.games[1 - st.winner] + ' · ' : '') + 'Tap to change teams or rules</small>';
@@ -579,12 +580,59 @@
     $('sheet').classList.remove('hidden');
   }
   function closeSheet() { $('sheet').classList.add('hidden'); }
-  // referee call buttons: the scoreboard speaks OUT / POINT / KITCHEN (score unchanged)
-  $('callRow').onclick = (e) => {
-    const b = e.target.closest('[data-call]'); if (!b) return;
-    if (st && st.settings && st.settings.voice === 0) { flash('Sound is off · turn SOUND ON first'); buzz([20, 40, 20]); return; }
-    if (send({ a: 'call', w: b.dataset.call })) { buzz(25); b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 350); }
+
+  /* ---------- Open play: paddle queue (lives on the scoreboard, edited here) ---------- */
+  const qFmt = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60); return h ? h + 'h ' + String(m).padStart(2, '0') + 'm' : m + 'm'; };
+  function renderQueueUI() {
+    if (!st) return;
+    const q = st.queue || { on: false, kind: 'players', minutes: 120, line: [], court: [], need: st.settings.mode === 'singles' ? 2 : 4 };
+    const need = q.need || (q.kind === 'teams' ? 2 : st.settings.mode === 'singles' ? 2 : 4);
+    // main screen
+    $('qBar').classList.toggle('hidden', !q.on);
+    if (q.on) $('qBarTxt').textContent = 'Game ' + q.games + ' · ' + (q.endsAt ? qFmt(q.endsAt - Date.now()) + ' left' : 'no time limit') + ' · ' + q.line.length + ' waiting';
+    const qn = q.on && st.matchOver;
+    $('qNextBtn').classList.toggle('hidden', !qn); $('endNew').classList.toggle('hidden', qn);
+    if (qn) $('qNextTxt').textContent = q.endsAt && Date.now() >= q.endsAt ? 'Time is up · this ends open play' : q.next ? q.next.names[0] + ' vs ' + q.next.names[1] : 'Not enough players waiting';
+    // Open play tab (not on LIVE courts: the queue runs on a single scoreboard)
+    { const tb = document.querySelector('.sheet-tabs [data-tab="queue"]'); if (tb) tb.classList.toggle('hidden', !!st.liveCourt); }
+    if (!$('qSec')) return;
+    $('qKind').querySelectorAll('button').forEach((b) => { b.classList.toggle('on', b.dataset.v === q.kind); b.disabled = q.on; });
+    $('qKindHint').textContent = q.kind === 'teams' ? 'Each entry is a pair. 2 teams per game.' : (st.settings.mode === 'singles' ? 'Singles: 2 players per game (change in Match setup).' : 'Doubles: 4 players per game, paired by the queue (change in Match setup).');
+    const teams = q.kind === 'teams';
+    $('qName').placeholder = teams ? 'Team name' : 'Player name';
+    document.querySelectorAll('.q-tp').forEach((x) => x.classList.toggle('hidden', !teams));
+    $('qAdd').classList.toggle('teams', teams);
+    const row = (e, i, on) => '<div class="q-it' + (on ? ' on' : '') + '" data-id="' + e.id + '"><i>' + (on ? '●' : i + 1) + '</i><span><b>' + esc(e.name) + '</b>' + (teams && (e.p1 || e.p2) ? '<small>' + esc([e.p1, e.p2].filter(Boolean).join(' · ')) + '</small>' : '') + '</span>'
+      + (on ? '<em>ON COURT</em>' : '<button type="button" data-qm="-1" aria-label="Up">↑</button><button type="button" data-qm="1" aria-label="Down">↓</button><button type="button" data-qx aria-label="Remove">✕</button>') + '</div>';
+    $('qList').innerHTML = (q.court || []).map((e, i) => row(e, i, true)).join('') + q.line.map((e, i) => row(e, i, false)).join('') || '<div class="hint-sm q-empty">Add the ' + (teams ? 'teams' : 'players') + ' in arrival order (first paddle first).</div>';
+    $('qCount').textContent = q.line.length + ' waiting' + ((q.court || []).length ? ' · ' + q.court.length + ' on court' : '');
+    $('qMin').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === Number(q.minutes)));
+    $('qStart').classList.toggle('hidden', q.on); $('qRun').classList.toggle('hidden', !q.on); $('qClear').disabled = q.on;
+    $('qStart').disabled = q.line.length < need; $('qStart').textContent = q.line.length < need ? 'Add at least ' + need + (teams ? ' teams' : ' players') + ' to start' : '▶ Start open play (' + q.line.length + (teams ? ' teams' : ' players') + ')';
+    const stEl = $('qStat'); stEl.classList.toggle('hidden', !q.on && !q.done);
+    stEl.innerHTML = q.on ? '<b>RUNNING</b> · game ' + q.games + ' · ' + (q.endsAt ? qFmt(q.endsAt - Date.now()) + ' left' : 'no time limit') : q.done ? '<b>FINISHED</b> · ' + q.games + ' games played' : '';
+  }
+  setInterval(() => { if (st && st.queue && st.queue.on) renderQueueUI(); }, 15000);
+  const qSend = (a) => { if (send(a)) buzz(15); };
+  $('qKind').onclick = (e) => { const b = e.target.closest('button[data-v]'); if (!b || (st.queue && st.queue.on)) return; if ((st.queue || {}).line && st.queue.line.length && !confirm('Switching clears the current list. Continue?')) return; qSend({ a: 'q_kind', kind: b.dataset.v }); };
+  $('qAdd').onsubmit = (e) => {
+    e.preventDefault(); const nm = $('qName').value.trim(); if (!nm) { $('qName').focus(); return; }
+    qSend({ a: 'q_add', name: nm, p1: $('qP1').value, p2: $('qP2').value });
+    $('qName').value = ''; $('qP1').value = ''; $('qP2').value = ''; $('qName').focus();
   };
+  $('qList').onclick = (e) => {
+    const it = e.target.closest('[data-id]'); if (!it) return;
+    if (e.target.closest('[data-qx]')) qSend({ a: 'q_remove', id: it.dataset.id });
+    else if (e.target.closest('[data-qm]')) qSend({ a: 'q_move', id: it.dataset.id, dir: Number(e.target.closest('[data-qm]').dataset.qm) });
+  };
+  $('qShuffle').onclick = () => qSend({ a: 'q_shuffle' });
+  $('qClear').onclick = () => { if (confirm('Clear the whole list?')) qSend({ a: 'q_clear' }); };
+  $('qMin').onclick = (e) => { const b = e.target.closest('button[data-v]'); if (b) qSend({ a: 'q_minutes', minutes: Number(b.dataset.v) }); };
+  $('qStart').onclick = () => { qSend({ a: 'q_start' }); closeSheet(); };
+  $('qSkip').onclick = () => { if (confirm('Stop this game and call the next players? Everyone on court goes to the back of the line.')) { qSend({ a: 'q_next' }); closeSheet(); } };
+  $('qEndBtn').onclick = () => { if (confirm('End open play now? The current game stays on the scoreboard.')) qSend({ a: 'q_end' }); };
+  $('qNextBtn').onclick = () => qSend({ a: 'q_next' });
+  $('qBarOpen').onclick = () => { openSheet(); const t = document.querySelector('.sheet-tabs [data-tab="queue"]'); if (t) t.click(); };
   $('lblForm').onsubmit = (e) => {   // match name / category: saved right away, no score reset
     e.preventDefault(); const v = $('lblIn').value.replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 40); $('lblIn').value = v;
     if (draft) draft.label = v;

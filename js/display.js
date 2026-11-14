@@ -92,8 +92,15 @@
       end.classList.remove('hidden');
     } else end.classList.add('hidden');
 
+    renderQueue();
+    // open play: the end overlay tells who is next
+    const q = state.queue;
+    if (q && q.on && state.matchOver) {
+      const nx = E.publicState(state).queue.next;
+      $('endHint').innerHTML = nx ? 'NEXT UP: <b>' + esc(nx.names[0]) + '</b> vs <b>' + esc(nx.names[1]) + '</b> · tap “Next players” on the remote' : 'Tap “Next players” on the remote';
+    }
     // New match with named teams: announce who is playing ("Net Ninjas, Juan and Maria, versus …")
-    if (state.id !== lastMatchId) { lastMatchId = state.id; announceTeams(); }
+    if (state.id !== lastMatchId) { lastMatchId = state.id; if (state.lastEvent && state.lastEvent.type === 'qcall') queueCall(); else announceTeams(); }
     // Event toast
     const ev = state.lastEvent;
     if (ev && ev.t !== lastEventT) {
@@ -112,6 +119,40 @@
     const n = String(state.settings.names[t] || '').trim();
     if (!n || /^TEAM [AB]$/i.test(n)) return t ? 'teamb' : 'teama';
     return { tts: n.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()), fallback: t ? 'teamb' : 'teama' };
+  }
+  /* ---------- Open play (paddle queue) ---------- */
+  const fmtLeft = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0'); };
+  function renderQueue() {
+    const q = state.queue, el = $('qStrip'); if (!el) return;
+    const show = !!(q && (q.on || q.done) && (q.on || q.line.length));
+    el.classList.toggle('hidden', !show); document.body.classList.toggle('q-on', show);
+    if (!show) return;
+    const pub = E.publicState(state).queue;
+    $('qsTime').textContent = q.done ? 'FINISHED' : (q.endsAt ? fmtLeft(q.endsAt - Date.now()) + ' LEFT' : 'NO TIME LIMIT') + ' · GAME ' + q.games;
+    $('qsTime').classList.toggle('over', !!(q.on && q.endsAt && Date.now() >= q.endsAt));
+    $('qsNext').innerHTML = q.done ? 'Thank you for playing!' : pub.next ? 'NEXT: <b>' + esc(pub.next.names[0]) + '</b> vs <b>' + esc(pub.next.names[1]) + '</b>' : 'Waiting for more players';
+    $('qsLine').innerHTML = q.line.map((e, i) => '<span><i>' + (i + 1) + '</i>' + esc(e.name) + '</span>').join('') || '<span class="em">Line is empty</span>';
+  }
+  setInterval(() => { if (state && state.queue && state.queue.on) renderQueue(); }, 1000);
+  let qCallT = 0;
+  function queueCall() {
+    const s = state.settings, q = state.queue || {}, tc = (n) => String(n || '').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+    const pl = (t) => ((s.players || [])[t] || []).filter(Boolean);
+    const who = (t) => q.kind === 'teams' ? s.names[t] + (pl(t).length ? '<small>' + pl(t).map(esc).join(' · ') + '</small>' : '') : pl(t).map(esc).join('<br>');
+    $('qcTag').textContent = 'NOW PLAYING · GAME ' + (q.games || 1);
+    $('qcA').innerHTML = who(0); $('qcA').style.color = s.colors[0];
+    $('qcB').innerHTML = who(1); $('qcB').style.color = s.colors[1];
+    $('qcSub').textContent = q.endsAt ? 'Please go to the court · ' + fmtLeft(q.endsAt - Date.now()) + ' left in open play' : 'Please go to the court';
+    $('qCall').classList.remove('hidden'); clearTimeout(qCallT); qCallT = setTimeout(() => $('qCall').classList.add('hidden'), 9000);
+    if (!window.PBVoice || s.voice === 0) return;
+    const say = (t) => q.kind === 'teams' ? tc(s.names[t]) : pl(t).map(tc).join(' and ');
+    PBVoice.say([{ chime: true }, { tts: 'Now playing, game ' + (q.games || 1) + '. ' + say(0) + ', versus, ' + say(1) + '. Please go to the court.', rate: .9 }]);
+  }
+  function queueDone() {
+    $('qcTag').textContent = 'OPEN PLAY FINISHED'; $('qcA').innerHTML = ''; $('qcB').innerHTML = '';
+    $('qcSub').textContent = 'Thank you for playing!'; $('qCall').classList.remove('hidden');
+    clearTimeout(qCallT); qCallT = setTimeout(() => $('qCall').classList.add('hidden'), 9000);
+    if (window.PBVoice && state.settings.voice !== 0) PBVoice.say([{ chime: true }, { tts: 'Open play is finished. Thank you for playing!', rate: .9 }]);
   }
   function announceTeams() {
     if (!window.PBVoice || state.settings.voice === 0 || state.matchOver) return;
@@ -355,6 +396,7 @@
     if (action && action.a === 'rally' && action.side != null) action = { a: 'rally', team: sideTeam(action.side) };
     state = E.apply(state, action);
     save(); render();
+    if (action && (action.a === 'q_next' || action.a === 'q_end') && state.lastEvent && state.lastEvent.type === 'qdone' && state.queue && !state.queue.on) queueDone();
     if (link) link.broadcast(E.publicState(state));
     // new announcer voice chosen on the phone: switch now and let the venue hear it
     if (action && action.a === 'voice' && action.pack && window.PBVoice && state.settings.voice !== 0) {
@@ -505,7 +547,7 @@
     else if (k === 'q' || k === 'Q' || k === 'ArrowUp') { showPair(true); e.preventDefault(); }
     else if (k === 'f' || k === 'F') fullscreen();
     else if (k === 'n' || k === 'N' || k === 'Enter') {
-      if (state.matchOver) act({ a: 'new' });
+      if (state.matchOver) act(state.queue && state.queue.on ? { a: 'q_next' } : { a: 'new' });
       else if (state.gameOver) act({ a: 'next' });
     }
   });

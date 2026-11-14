@@ -138,18 +138,19 @@
       <button class="pfs-btn" id="pfsBtn"><span class="pfs-ico">🏓</span><span><b>Play for serve</b><small>Rally first — the winner serves</small></span></button>
       <button class="pfs-btn toss-btn" id="tossBtn"><span class="pfs-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5h5M9.5 13.5h5"/></svg></span><span><b>Coin toss</b><small>Random first server</small></span></button>
     </div>
+    <div class="q-bar hidden" id="qBar"><b>OPEN PLAY</b><span id="qBarTxt"></span><button class="mini-btn" id="qBarOpen" type="button">Queue</button></div>
     <div class="rally-btns" id="rallyBtns">
       <button class="rally" id="rL"><span class="lbl">Rally won by</span><span class="mid"><span class="nm"></span><span class="who"></span></span><span class="what"></span></button>
       <button class="rally" id="rR"><span class="lbl">Rally won by</span><span class="mid"><span class="nm"></span><span class="who"></span></span><span class="what"></span></button>
     </div>
     <div class="tag-row hidden" id="tagRow" role="group" aria-label="Why did the rally end?"><span>Why?</span><button data-tag="winner">Winner</button><button data-tag="net">Net</button><button data-tag="out">Out</button><button data-tag="kitchen">Kitchen</button><button data-tag="error">Error</button></div>
-    <div class="call-row" id="callRow" role="group" aria-label="Referee calls"><button data-call="out">OUT</button><button data-call="point">POINT</button><button data-call="kitchen">KITCHEN</button></div>
     <div class="to-panel hidden" id="toPanel">
       <div class="to-run hidden" id="toRun"><b id="toRunTxt">Timeout</b><span id="toLeft">1:00</span><button class="mini-btn" id="toEnd">Time in</button></div>
       <div class="to-pick" id="toPick"><button class="big-btn ghost" id="toA">Team A<small></small></button><button class="big-btn ghost" id="toB">Team B<small></small></button></div>
     </div>
     <button class="next-game hidden" id="nextBtn">Start game 2</button>
     <div class="end-btns hidden" id="endBtns">
+      <button class="big-btn end-qnext hidden" id="qNextBtn" type="button">▶ Next players<small id="qNextTxt"></small></button>
       <button class="big-btn end-new" id="endNew"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>New match</button>
       <button class="big-btn ghost end-exit" id="endExit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>Exit</button>
     </div>
@@ -171,7 +172,7 @@
     <header class="sheet-head">
       <h2>Settings</h2>
       <button class="close-x" id="sheetX" aria-label="Close">×</button>
-      <div class="sheet-tabs" role="tablist"><button role="tab" class="on" data-tab="setup">Match setup</button><button role="tab" data-tab="club">Club branding</button></div>
+      <div class="sheet-tabs" role="tablist"><button role="tab" class="on" data-tab="setup">Match setup</button><button role="tab" data-tab="queue">Open play</button><button role="tab" data-tab="club">Club branding</button></div>
     </header>
 
     <div class="account hidden tab-off" id="account" data-tab="club">
@@ -230,6 +231,17 @@
     <section class="setup-sec ref-tour hidden" id="refTour" data-tab="setup">
       <div class="rt-row"><div class="rt-txt"><b>Tournament · 1 court</b><span>You are the only referee, so you can restart it.</span></div>
       <button class="mini-btn rt-btn" id="refTourRestart" type="button">↻ Restart tournament</button></div>
+    </section>
+    <section class="setup-sec q-sec tab-off" id="qSec" data-tab="queue">
+      <h3 class="sec-title">Open play · paddle queue <small class="eb-note">After each game everyone on court goes to the back of the line and the next players are called.</small></h3>
+      <div class="q-stat hidden" id="qStat"></div>
+      <div class="field" id="qKindF"><span class="eyebrow">Queue by</span><div class="seg" id="qKind"><button type="button" data-v="players">Single players</button><button type="button" data-v="teams">Teams</button></div><small class="hint-sm" id="qKindHint"></small></div>
+      <form class="q-add" id="qAdd" autocomplete="off"><input class="text-in" id="qName" maxlength="18" placeholder="Player name"><input class="text-in q-tp hidden" id="qP1" maxlength="16" placeholder="Player 1"><input class="text-in q-tp hidden" id="qP2" maxlength="16" placeholder="Player 2"><button class="mini-btn" type="submit">＋ Add</button></form>
+      <div class="q-list" id="qList"></div>
+      <div class="q-tools"><span class="hint-sm" id="qCount"></span><button class="mini-btn" type="button" id="qShuffle">Shuffle</button><button class="mini-btn" type="button" id="qClear">Clear</button></div>
+      <div class="field"><span class="eyebrow">Open play time</span><div class="seg" id="qMin"><button type="button" data-v="60">1 h</button><button type="button" data-v="90">1.5 h</button><button type="button" data-v="120">2 h</button><button type="button" data-v="180">3 h</button><button type="button" data-v="0">No limit</button></div><small class="hint-sm">When time is up the game on court finishes, then open play ends.</small></div>
+      <button class="big-btn wide" type="button" id="qStart">▶ Start open play</button>
+      <div class="q-run hidden" id="qRun"><button class="mini-btn" type="button" id="qSkip">Call next players now</button><button class="mini-btn danger" type="button" id="qEndBtn">End open play</button></div>
     </section>
     <section class="setup-sec club-sec tab-off" id="clubSec" data-tab="club">
       <h3 class="sec-title">Club branding <span class="club-badge">LIVE pass</span></h3>

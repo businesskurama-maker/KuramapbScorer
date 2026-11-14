@@ -74,7 +74,8 @@
   }
 
   function pushHistory(st) {
-    st.history.push(snapshot(st));
+    const sn = snapshot(st); delete sn.queue;
+    st.history.push(sn);
     if (st.history.length > 300) st.history.shift();
   }
 
@@ -198,7 +199,7 @@
     const prev = st.history.pop();
     if (!prev) return st;
     const h = st.history;
-    const restored = Object.assign(prev, { history: h });
+    const restored = Object.assign(prev, { history: h, queue: st.queue });
     restored.lastEvent = { type: 'undo', team: null, t: Date.now() };
     restored.updatedAt = Date.now();
     return restored;
@@ -333,8 +334,82 @@
     return st.settings.mode === 'doubles' ? 'Player ' + (idx + 1) : st.settings.names[team];
   }
 
+  /* ---------- Open play: manual paddle queue ----------
+     Players (or teams) line up. The front of the line is called onto the court: 4 players = 2 pairs (doubles),
+     2 players (singles) or 2 teams. After the game EVERYONE on court goes to the back of the line (mixed so
+     partners change) and the next ones are called. Loops until the session time is up (the last game finishes). */
+  const qClean = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, n);
+  function qNew() { return { on: false, done: false, kind: 'players', minutes: 120, line: [], court: [], seq: 0, games: 0, endsAt: 0, startedAt: 0, calledAt: 0 }; }
+  function qNeed(st) { const q = st.queue; return q.kind === 'teams' ? 2 : (st.settings.mode === 'singles' ? 2 : 4); }
+  // the next players taken from the front of the line → names / players for a new match
+  function qMatchFor(st, group) {
+    const q = st.queue;
+    if (q.kind === 'teams') return { names: group.map((t) => t.name.slice(0, 18)), players: group.map((t) => [t.p1 || '', t.p2 || '']) };
+    if (group.length === 2) return { names: group.map((p) => p.name.slice(0, 18)), players: group.map((p) => [p.name, '']) };
+    const A = [group[0], group[1]], B = [group[2], group[3]];
+    const nm = (t) => (t[0].name.split(' ')[0] + ' & ' + t[1].name.split(' ')[0]).slice(0, 18);
+    return { names: [nm(A), nm(B)], players: [A.map((p) => p.name), B.map((p) => p.name)] };
+  }
+  function qCall(st) {
+    const q = st.queue, need = qNeed(st);
+    if (q.line.length < need) { q.court = []; return st; }
+    const group = q.line.splice(0, need);
+    q.court = group; q.games += 1; q.calledAt = Date.now();
+    const m = qMatchFor(st, group);
+    const next = newMatch(Object.assign({}, st.settings, { names: m.names, players: m.players, firstServer: 0 }));
+    next.queue = q;
+    next.lastEvent = { type: 'qcall', team: null, t: Date.now() };
+    return next;
+  }
+  // everyone who just played goes to the back of the line; winners and losers alternate so pairs change
+  function qBack(st) {
+    const q = st.queue, c = q.court || []; let back = c;
+    if (q.kind !== 'teams' && c.length === 4) {
+      const w = st.matchOver && st.winner === 1 ? 1 : 0, W = w ? [c[2], c[3]] : [c[0], c[1]], L = w ? [c[0], c[1]] : [c[2], c[3]];
+      back = [W[0], L[0], W[1], L[1]];
+    } else if (st.matchOver && st.winner === 1) back = c.slice().reverse();
+    return back;
+  }
+  function qReturn(st) { const q = st.queue; if (!(q.court || []).length) return; q.line = q.line.concat(qBack(st)); q.court = []; }
+  // who will be called next (counts the players now on court, who go to the back of the line)
+  function qPreview(st) { const q = st.queue, n = qNeed(st), all = q.line.concat(q.on ? qBack(st) : []); return all.length >= n ? qMatchFor(st, all.slice(0, n)) : null; }
+  function queueAct(st, a) {
+    if (!st.queue) st.queue = qNew();
+    const q = st.queue, now = Date.now();
+    switch (a.a) {
+      case 'q_kind': if (!q.on && /^(players|teams)$/.test(a.kind) && a.kind !== q.kind) { q.kind = a.kind; q.line = []; } break;
+      case 'q_minutes': q.minutes = Math.max(0, Math.min(720, Math.round(Number(a.minutes) || 0))); if (q.on && q.startedAt) q.endsAt = q.minutes ? q.startedAt + q.minutes * 60000 : 0; break;
+      case 'q_add': {
+        if (q.line.length + q.court.length >= 80) break;
+        const name = qClean(a.name, q.kind === 'teams' ? 18 : 16); if (!name) break;
+        const e = { id: 'q' + (++q.seq), name };
+        if (q.kind === 'teams') { e.p1 = qClean(a.p1, 16); e.p2 = qClean(a.p2, 16); }
+        q.line.push(e); break;
+      }
+      case 'q_remove': q.line = q.line.filter((e) => e.id !== a.id); break;
+      case 'q_move': { const i = q.line.findIndex((e) => e.id === a.id), j = i + (a.dir < 0 ? -1 : 1); if (i >= 0 && j >= 0 && j < q.line.length) { const t = q.line[i]; q.line[i] = q.line[j]; q.line[j] = t; } break; }
+      case 'q_shuffle': for (let i = q.line.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = q.line[i]; q.line[i] = q.line[j]; q.line[j] = t; } break;
+      case 'q_clear': if (!q.on) { q.line = []; q.court = []; q.done = false; q.games = 0; } break;
+      case 'q_start':
+        if (q.on || q.line.length < qNeed(st)) break;
+        q.on = true; q.done = false; q.games = 0; q.startedAt = now; q.endsAt = q.minutes ? now + q.minutes * 60000 : 0;
+        return qCall(st);
+      case 'q_next': {   // game finished (or skipped): rotate and call the next players
+        if (!q.on) break;
+        qReturn(st);
+        if (q.endsAt && now >= q.endsAt) { q.on = false; q.done = true; st.lastEvent = { type: 'qdone', team: null, t: now }; break; }
+        return qCall(st);
+      }
+      case 'q_end': qReturn(st); q.on = false; q.done = true; st.lastEvent = { type: 'qdone', team: null, t: now }; break;
+      default: return st;
+    }
+    st.updatedAt = now;
+    return st;
+  }
+
   function apply(st, action) {
     ensure(st);
+    if (action && /^q_/.test(action.a || '')) return queueAct(st, action);
     switch (action && action.a) {
       case 'rally': return rally(st, action.team === 1 ? 1 : 0);
       case 'undo': return undo(st);
@@ -361,7 +436,7 @@
       }
       case 'label': st.settings.label = String(action.text == null ? '' : action.text).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 40); st.updatedAt = Date.now(); return st;   // match name / category, no reset
       case 'midswap': st.settings.courtChange = action.on ? 1 : 0; return st;   // change court at half: on/off, no reset
-      case 'new': return newMatch(Object.assign({}, st.settings, action.settings || {}, { players: cleanPlayers((action.settings || st.settings).players) }));
+      case 'new': { const nm = newMatch(Object.assign({}, st.settings, action.settings || {}, { players: cleanPlayers((action.settings || st.settings).players) })); if (st.queue) nm.queue = st.queue; return nm; }
       default: return st;
     }
   }
@@ -394,6 +469,7 @@
     p.serveSide = serveSide(st);
     p.deciding = isDecidingGame(st);
     p.pfs = !!st.playForServe;
+    if (st.queue) { p.queue = clone(st.queue); p.queue.need = qNeed(st); p.queue.next = qPreview(st); }
     return p;
   }
 
