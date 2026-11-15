@@ -144,10 +144,12 @@
     go(h.get('v') || (cur ? 'monitor' : 'matches'), true);
   }
   function setHash() { const h = new URLSearchParams(); h.set('v', view); if (cur) h.set('m', cur); if (view === 'seasons' && SS.id) h.set('s', SS.id); history.replaceState(null, '', '#' + h); }
+  { const nav = document.getElementById('tabs'); const f = () => nav.classList.toggle('end', nav.scrollLeft + nav.clientWidth >= nav.scrollWidth - 4); nav.addEventListener('scroll', f, { passive: true }); addEventListener('resize', f); setTimeout(f, 300); }
   function go(v, noHash) {
     if ((v === 'monitor' || v === 'summary') && !cur) { if (v !== view) toast('Pick a match first — tap OBS Monitor on a match card, or create one.'); v = 'matches'; }
     view = v;
     document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+    { const t = document.querySelector('#tabs button.on'), nav = $('tabs'); if (t && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: t.offsetLeft - (nav.clientWidth - t.offsetWidth) / 2, behavior: 'smooth' }); }
     ['matches', 'seasons', 'setup', 'monitor', 'summary'].forEach((k) => $('v' + k[0].toUpperCase() + k.slice(1)).classList.toggle('hidden', k !== v));
     setHash();
     link.send('nav', { view: v, code: cur, draft: v === 'setup' && !cur ? draft : null });
@@ -168,10 +170,13 @@
     $('mlist').innerHTML = (data || []).map((m) => {
       const sc = (m.derived && m.derived.score) || { home: 0, away: 0 };
       const when = new Date(m.starts_at || m.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-      return '<div class="mcard"><div class="tt"><span>' + E(m.title || 'Untitled match') + (m.venue ? ' · ' + E(m.venue) : '') + '</span><span class="st ' + m.status + '">' + m.status.toUpperCase() + '</span></div>'
-        + '<div class="vs"><span style="color:' + E(m.home.color) + '">' + E(m.home.name) + '</span><b>' + sc.home + ' – ' + sc.away + '</b><span style="color:' + E(m.away.color) + '">' + E(m.away.name) + '</span></div>'
-        + '<div class="tiny">' + (m.season_id && SS.names[m.season_id] ? '<span class="ss-chip">🏆 ' + E(SS.names[m.season_id]) + '</span> ' : '') + when + ' · ID ' + m.code + (PBAuth.user && m.owner !== PBAuth.user.id ? ' · <span style="color:var(--warn)">another account</span>' : '') + '</div>'
-        + '<div class="row" style="flex-wrap:wrap"><button class="btn sm cyan" data-o="monitor" data-c="' + m.code + '">OBS Monitor</button><button class="btn sm" data-o="setup" data-c="' + m.code + '">Setup</button><button class="btn sm" data-o="summary" data-c="' + m.code + '">Stats</button><button class="btn sm ghost" data-del="' + m.code + '">Delete</button></div></div>';
+      const ssn = m.season_id && SS.names[m.season_id], ttl = m.title || 'Untitled match', dup = ssn && ssn.trim().toLowerCase() === ttl.trim().toLowerCase();
+      const other = PBAuth.user && m.owner !== PBAuth.user.id;
+      return '<div class="mcard' + (other ? ' other' : '') + '"><div class="tt"><span class="mc-ttl">' + (dup ? '<span class="ss-chip">🏆 ' + E(ssn) + '</span>' : E(ttl)) + (m.venue ? '<em> · ' + E(m.venue) + '</em>' : '') + '</span><span class="st ' + m.status + '">' + m.status.toUpperCase() + '</span></div>'
+        + '<div class="vs"><span class="mc-tm" style="color:' + E(m.home.color) + '">' + E(m.home.name) + '</span><b>' + sc.home + '<i>–</i>' + sc.away + '</b><span class="mc-tm" style="color:' + E(m.away.color) + '">' + E(m.away.name) + '</span></div>'
+        + '<div class="mc-meta">' + (ssn && !dup ? '<span class="ss-chip">🏆 ' + E(ssn) + '</span>' : '') + '<span>' + when + '</span><span>ID ' + m.code + '</span>' + (other ? '<span class="mc-oth">Another account</span>' : '') + '</div>'
+        + '<div class="mc-acts"><button class="btn sm cyan" data-o="monitor" data-c="' + m.code + '">OBS Monitor</button><button class="btn sm" data-o="setup" data-c="' + m.code + '">Setup</button><button class="btn sm" data-o="summary" data-c="' + m.code + '">Stats</button>'
+        + '<button class="btn sm mc-del" data-del="' + m.code + '" aria-label="Delete match" title="Delete match"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button></div></div>';
     }).join('') || '<div class="m-empty"><div style="font-size:34px">🏀</div><b>No matches yet</b><span class="tiny">Create a match to set up teams, rosters and the OBS scoreboard.</span></div>';
   }
   $('mlist').onclick = async (e) => {

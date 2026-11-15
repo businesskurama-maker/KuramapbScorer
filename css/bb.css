@@ -886,3 +886,36 @@ table.rt td.num { white-space: nowrap; }
 .ss-scope .seg button i { font-style: normal; opacity: .7; margin-left: 4px; }
 .ss-card.other { border-style: dashed; }
 .ss-other { display: inline-block; padding: 1px 7px; border-radius: 6px; background: rgba(255,176,32,.14); color: var(--warn, #ffb020); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-right: 4px; }
+/* ---- portal polish: header, tabs, match cards (phones) ---- */
+.p-tabs { scrollbar-width: none; }
+.p-tabs::-webkit-scrollbar { display: none; }
+#outBtn { white-space: nowrap; }
+.mcard .tt { align-items: center; }
+.mc-ttl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-ttl em { font-style: normal; }
+.mcard .vs b { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.mcard .vs b i { font-style: normal; opacity: .5; font-size: .8em; }
+.mc-tm { font-weight: 800 !important; line-height: 1.15; }
+.mc-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 11.5px; color: var(--ink3); }
+.mc-oth { color: var(--warn); font-weight: 700; }
+.mcard.other { border-style: dashed; }
+.mc-acts { display: grid; grid-template-columns: 1.4fr 1fr 1fr 40px; gap: 6px; }
+.mc-acts .btn { min-height: 36px; padding: 0 8px; font-size: 12.5px; white-space: nowrap; justify-content: center; }
+.mc-del { color: var(--ink3); background: transparent; border-color: var(--line); padding: 0 !important; }
+.mc-del:hover, .mc-del:active { color: var(--danger, #ff5a6a); border-color: rgba(255,90,106,.4); }
+@media (max-width: 600px) {
+  .p-top { flex-wrap: wrap; row-gap: 4px; }
+  .p-top > .row { display: contents; }
+  .p-brand { flex: 1 1 0; }
+  .p-brand > span { min-width: 0; }
+  .p-brand b { display: block; overflow: hidden; text-overflow: ellipsis; }
+  #outBtn { flex: none; }
+  .p-top .link-chip { order: 3; margin-left: 40px; flex: 0 0 auto; }
+  .p-top:has(.link-chip:not(.hidden))::after { content: ""; order: 2; flex-basis: 100%; height: 0; }
+  .p-brand { overflow: hidden; }
+  .p-tabs { -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+  .p-tabs.end { -webkit-mask-image: none; mask-image: none; }
+  .mcard .vs { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); }
+  .mc-tm { white-space: normal !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13.5px !important; word-break: break-word; }
+  .mcard .vs b { font-size: 24px; }
+}
