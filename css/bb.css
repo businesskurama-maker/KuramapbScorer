@@ -880,3 +880,9 @@ table.rt td.num { white-space: nowrap; }
 .gs-t tr.gs-adj small { grid-column: 1 / -1; font-size: 11px; color: var(--ink3); font-weight: 600; }
 .lk-tktx { width: 100%; min-height: 76px; margin-top: 8px; padding: 10px 12px; resize: vertical; font-size: 13px; line-height: 1.45; text-transform: uppercase; }
 .lk-tkrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0 10px; }
+/* Seasons: owner scope switch (only shown to the app owner) */
+.ss-scope { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 2px 0 12px; }
+.ss-scope .seg { flex: 0 0 auto; }
+.ss-scope .seg button i { font-style: normal; opacity: .7; margin-left: 4px; }
+.ss-card.other { border-style: dashed; }
+.ss-other { display: inline-block; padding: 1px 7px; border-radius: 6px; background: rgba(255,176,32,.14); color: var(--warn, #ffb020); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-right: 4px; }

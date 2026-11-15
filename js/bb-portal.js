@@ -436,12 +436,27 @@
     if (SS.id) return openSeason(SS.id);
     $('ssDetail').classList.add('hidden'); $('ssListView').classList.remove('hidden');
     await seasonNames();
-    $('ssList').innerHTML = SS.list.map((x) => '<button class="ss-card' + (x.status === 'ended' ? ' ended' : '') + '" data-sid="' + x.id + '">'
-      + '<span class="ss-c-lg">' + (media(x.logo, x.logo_anim) || '🏆') + '</span>'
-      + '<span class="ss-c-tx"><b>' + E(x.title) + '</b><small>' + x.teams + ' team' + (x.teams === 1 ? '' : 's') + ' · ' + x.players + ' players · ' + x.matches + ' game' + (x.matches === 1 ? '' : 's') + (x.final ? ' (' + x.final + ' final)' : '') + '</small></span>'
-      + '<span class="st ' + (x.status === 'ended' ? 'final' : 'live') + '">' + (x.status === 'ended' ? 'ENDED' : 'ACTIVE') + '</span></button>').join('')
-      || '<div class="p-card m-empty"><div style="font-size:34px">🏆</div><b>No seasons yet</b><span class="tiny">Create a season, add the teams and their players (up to 25 each), then start games inside it.</span></div>';
+    renderSeasonList();
   }
+  // Admin sees every account's seasons (server rule). Default view = own seasons; "All accounts" is opt-in.
+  const myId = () => (PBAuth.user && PBAuth.user.id) || '';
+  const isMine = (x) => !x.owner || x.owner === myId();
+  SS.all = (() => { try { return localStorage.getItem('bb.ssAll') === '1'; } catch (e) { return false; } })();
+  function renderSeasonList() {
+    const mine = SS.list.filter(isMine), others = SS.list.length - mine.length;
+    $('ssScope').classList.toggle('hidden', !others);
+    if (!others) SS.all = false;
+    $('ssScope').querySelectorAll('button').forEach((b) => b.classList.toggle('on', (b.dataset.v === 'all') === SS.all));
+    $('ssNMine').textContent = mine.length; $('ssNAll').textContent = SS.list.length;
+    $('ssScopeTx').textContent = SS.all ? 'Owner view · includes ' + others + ' season' + (others === 1 ? '' : 's') + ' from other accounts' : '';
+    const shown = SS.all ? SS.list : mine;
+    $('ssList').innerHTML = shown.map((x) => '<button class="ss-card' + (x.status === 'ended' ? ' ended' : '') + (isMine(x) ? '' : ' other') + '" data-sid="' + x.id + '">'
+      + '<span class="ss-c-lg">' + (media(x.logo, x.logo_anim) || '🏆') + '</span>'
+      + '<span class="ss-c-tx"><b>' + E(x.title) + '</b><small>' + (isMine(x) ? '' : '<span class="ss-other">Another account</span> ') + x.teams + ' team' + (x.teams === 1 ? '' : 's') + ' · ' + x.players + ' players · ' + x.matches + ' game' + (x.matches === 1 ? '' : 's') + (x.final ? ' (' + x.final + ' final)' : '') + '</small></span>'
+      + '<span class="st ' + (x.status === 'ended' ? 'final' : 'live') + '">' + (x.status === 'ended' ? 'ENDED' : 'ACTIVE') + '</span></button>').join('')
+      || '<div class="p-card m-empty"><div style="font-size:34px">🏆</div><b>No seasons yet</b><span class="tiny">Create a season, add the teams and their players (up to 25 each), then start games inside it.' + (others ? ' Seasons from other accounts are under <b>All accounts</b>.' : '') + '</span></div>';
+  }
+  $('ssScope').onclick = (e) => { const b = e.target.closest('button[data-v]'); if (!b) return; SS.all = b.dataset.v === 'all'; try { localStorage.setItem('bb.ssAll', SS.all ? '1' : '0'); } catch (x) {} renderSeasonList(); };
   $('ssList').onclick = (e) => { const b = e.target.closest('[data-sid]'); if (!b) return; SS.id = b.dataset.sid; SS.tab = 'teams'; setHash(); openSeason(SS.id); };
   $('ssNew').onclick = async () => {
     if (!passOk) { toast('Your Basketball pass has ended', true); openDonate(); return; }
@@ -700,7 +715,7 @@
       sel.innerHTML = '<option value="">' + (t ? '🏆 ' + E(t) : 'No season · single game') + '</option>'; sel.disabled = true;
     } else {
       sel.disabled = false;
-      sel.innerHTML = '<option value="">No season · single game</option>' + SS.list.filter((x) => x.status !== 'ended').map((x) => '<option value="' + x.id + '"' + (draft.season_id === x.id ? ' selected' : '') + '>🏆 ' + E(x.title) + ' · ' + x.teams + ' teams</option>').join('');
+      sel.innerHTML = '<option value="">No season · single game</option>' + SS.list.filter((x) => x.status !== 'ended' && (isMine(x) || draft.season_id === x.id)).map((x) => '<option value="' + x.id + '"' + (draft.season_id === x.id ? ' selected' : '') + '>🏆 ' + E(x.title) + ' · ' + x.teams + ' teams</option>').join('');
     }
     SS.pickCache = null;
     if (!cur && draft.season_id) {
