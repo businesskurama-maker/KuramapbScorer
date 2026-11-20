@@ -1388,3 +1388,23 @@ body.q-on .display { grid-template-rows: auto 1fr auto auto; }
 .q-chip.edit { border-color: rgba(255,107,122,.35); background: rgba(255,107,122,.08); }
 .q-chip i { font-style: normal; color: #ff6b7a; font-size: 11px; }
 .q-chips-empty { font-size: 12px; color: var(--ink-2, #9fb0c8); }
+
+/* Open play: session records + final standings */
+.q-it { grid-template-columns: 26px minmax(0, 1fr) auto auto; }
+.q-it.court, .q-it.st { grid-template-columns: 26px minmax(0, 1fr) auto; }
+.q-rec { font-style: normal; font-size: 12px; font-weight: 800; letter-spacing: .04em; padding: 3px 8px; border-radius: 8px; background: rgba(255,255,255,.07); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.q-rec.up { background: rgba(57,255,20,.14); color: #39ff14; }
+.q-rec.dn { background: rgba(255,90,106,.14); color: #ff8b97; }
+.q-it.st { min-height: 42px; padding-right: 12px; }
+.q-no.m1 { background: #ffd400; color: #1a1400; } .q-no.m2 { background: #cfd8e3; color: #12161f; } .q-no.m3 { background: #d08a4a; color: #1a0f05; }
+.q-strip .qs-line u { text-decoration: none; margin-left: .5em; opacity: .7; font-size: .9em; }
+.qc-t .qc-r { display: inline-block; margin-left: .5em; font-size: .45em; vertical-align: middle; opacity: .8; letter-spacing: .06em; }
+.qc-stand { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8vh 4vw; width: 80vw; text-align: left; }
+.qc-stand div { display: grid; grid-template-columns: 4vh minmax(0, 1fr) auto; align-items: center; gap: 1.4vw; font-size: min(3.4vh, 2.4vw); letter-spacing: .06em; color: #fff; padding: .6vh 1vw; border-radius: 1vh; background: rgba(255,255,255,.05); }
+.qc-stand div i { font-style: normal; font-weight: 800; color: var(--ink-2); }
+.qc-stand div:nth-child(1) i { color: #ffd400; } .qc-stand div:nth-child(2) i { color: #cfd8e3; } .qc-stand div:nth-child(3) i { color: #d08a4a; }
+.qc-stand div b { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qc-stand div em { font-style: normal; font-variant-numeric: tabular-nums; color: #39ff14; }
+.q-call.stand { z-index: 10; }
+.q-call.stand ~ .overlay, body:has(.q-call.stand:not(.hidden)) #endOverlay { display: none; }
+.qc-stand { grid-auto-flow: column; }

@@ -336,8 +336,8 @@
 
   /* ---------- Open play: manual paddle queue ----------
      Players (or teams) line up. The front of the line is called onto the court: 4 players = 2 pairs (doubles),
-     2 players (singles) or 2 teams. After the game EVERYONE on court goes to the back of the line (mixed so
-     partners change) and the next ones are called. Loops until the session time is up (the last game finishes). */
+     2 players (singles) or 2 teams. After the game everyone on court goes back to the stack (winners first) and
+     the next balanced game is called. Loops until the session time is up (the last game finishes). */
   const qClean = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, n);
   function qNew() { return { on: false, done: false, kind: 'players', minutes: 120, line: [], court: [], seq: 0, games: 0, endsAt: 0, startedAt: 0, calledAt: 0 }; }
   function qNeed(st) { const q = st.queue; return q.kind === 'teams' ? 2 : (st.settings.mode === 'singles' ? 2 : 4); }
@@ -361,18 +361,78 @@
     next.lastEvent = { type: 'qcall', team: null, t: Date.now() };
     return next;
   }
-  // everyone who just played goes to the back of the line; winners and losers alternate so pairs change
-  function qBack(st) {
-    const q = st.queue, c = q.court || []; let back = c;
-    if (q.kind !== 'teams' && c.length === 4) {
-      const w = st.matchOver && st.winner === 1 ? 1 : 0, W = w ? [c[2], c[3]] : [c[0], c[1]], L = w ? [c[0], c[1]] : [c[2], c[3]];
-      back = [W[0], L[0], W[1], L[1]];
-    } else if (st.matchOver && st.winner === 1) back = c.slice().reverse();
-    return back;
+  /* Traditional paddle stack + balanced matchmaking
+     - After a game the WINNING side goes back to the stack as a unit, then the LOSING side (doubles: the pair stays together).
+     - Anyone who has played fewer games is called first (everyone plays once before anyone plays twice).
+     - Among those, winners meet winners and losers meet losers: sides with the closest win–loss record are matched.
+     The line is kept in "projected" order: every block of 2 / 4 entries at the front is a ready-made game. */
+  const qRec = (e) => (e.w || 0) - (e.l || 0), qGp = (e) => e.gp || 0;
+  function qBack(st) {   // copies of the players / teams on court with the result recorded (winners first)
+    const q = st.queue, c = (q.court || []).map((e) => Object.assign({}, e));
+    if (!c.length) return [];
+    const res = st.matchOver ? (st.winner === 1 ? 1 : 0) : -1, half = c.length / 2;
+    const sideOf = (i) => (i < half ? 0 : 1);
+    c.forEach((e, i) => { e.just = 1; e.gp = qGp(e) + 1; if (res >= 0) { if (sideOf(i) === res) e.w = (e.w || 0) + 1; else e.l = (e.l || 0) + 1; } });
+    if (c.length === 4) { c[0].mate = c[1].id; c[1].mate = c[0].id; c[2].mate = c[3].id; c[3].mate = c[2].id; }
+    const A = c.slice(0, half), B = c.slice(half);
+    return res === 1 ? B.concat(A) : A.concat(B);
   }
-  function qReturn(st) { const q = st.queue; if (!(q.court || []).length) return; q.line = q.line.concat(qBack(st)); q.court = []; }
-  // who will be called next (counts the players now on court, who go to the back of the line)
-  function qPreview(st) { const q = st.queue, n = qNeed(st), all = q.line.concat(q.on ? qBack(st) : []); return all.length >= n ? qMatchFor(st, all.slice(0, n)) : null; }
+  function qPick(rem, need) {   // rem: [{e,pos}] → one balanced game (sides in order A then B)
+    const by = (x, y) => qGp(x.e) - qGp(y.e) || x.pos - y.pos;
+    const tired = (x) => (x.m ? x.m.some((k) => k.e.just) : (x.x ? x.x.e.just : x.e && x.e.just)) ? 1 : 0;   // just came off court
+    const near = (r, list) => list.slice().sort((x, y) => tired(x) - tired(y) || Math.abs(x.r - r) - Math.abs(y.r - r) || (x.sp || 0) - (y.sp || 0) || x.g - y.g || x.pos - y.pos)[0];
+    if (need === 2) {
+      const s = rem.slice().sort(by), A = s[0], rest = s.slice(1), same = rest.filter((x) => qGp(x.e) === qGp(A.e));
+      const B = near(qRec(A.e), (same.length ? same : rest).map((x) => ({ x, r: qRec(x.e), g: qGp(x.e), pos: x.pos }))).x;
+      return [A, B];
+    }
+    // doubles with single players: build units (a pair from the last game, both waiting) or singles
+    const units = [], used = new Set(), byId = {};
+    rem.forEach((x) => { byId[x.e.id] = x; });
+    rem.forEach((x) => {
+      if (used.has(x.e.id)) return; const m = x.e.mate && byId[x.e.mate];
+      if (m && !used.has(m.e.id) && m.e.mate === x.e.id) { used.add(x.e.id); used.add(m.e.id); units.push({ m: [x, m], g: Math.max(qGp(x.e), qGp(m.e)), r: (qRec(x.e) + qRec(m.e)) / 2, pos: Math.min(x.pos, m.pos) }); }
+      else { used.add(x.e.id); units.push({ m: [x], g: qGp(x.e), r: qRec(x.e), pos: x.pos }); }
+    });
+    const ord = (x, y) => x.g - y.g || x.pos - y.pos;
+    const singles = (U) => U.filter((u) => u.m.length === 1), pairs = (U) => U.filter((u) => u.m.length === 2);
+    // make a side of 2 starting from unit u, taken from the units list U (returns {side, U})
+    function sideFrom(u, U) {
+      let rest = U.filter((x) => x !== u);
+      if (u.m.length === 2) return { side: u, U: rest };
+      const sg = singles(rest), same = sg.filter((x) => x.g === u.g), pool = same.length ? same : sg;
+      if (pool.length) { const p = near(u.r, pool); rest = rest.filter((x) => x !== p); return { side: { m: [u.m[0], p.m[0]], g: Math.max(u.g, p.g), r: (u.r + p.r) / 2, pos: Math.min(u.pos, p.pos), sp: 1 }, U: rest }; }
+      // no single left: split the pair whose record is closest
+      const pr = near(u.r, pairs(rest)); rest = rest.filter((x) => x !== pr);
+      const [k, other] = Math.abs(qRec(pr.m[0].e) - u.r) <= Math.abs(qRec(pr.m[1].e) - u.r) ? pr.m : [pr.m[1], pr.m[0]];
+      rest.push({ m: [other], g: qGp(other.e), r: qRec(other.e), pos: other.pos });
+      return { side: { m: [u.m[0], k], g: Math.max(u.g, qGp(k.e)), r: (u.r + qRec(k.e)) / 2, pos: Math.min(u.pos, k.pos), sp: 2 }, U: rest };
+    }
+    let U = units.slice().sort(ord); const u0 = U[0];
+    // a lone single with no single partner on its level: if two pairs are waiting on that level, play them first (keeps pairs together)
+    if (u0.m.length === 1 && !singles(U.slice(1)).some((x) => x.g === u0.g)) {
+      const pl = pairs(U).filter((x) => x.g === u0.g);
+      if (pl.length >= 2) { const A = pl[0], B = near(A.r, pl.slice(1)); return A.m.concat(B.m); }
+    }
+    const a = sideFrom(u0, U); U = a.U.sort(ord);
+    const g1 = U[0].g, cands = [];
+    pairs(U).filter((x) => x.g === g1).forEach((x) => cands.push(x));
+    const s1 = singles(U).filter((x) => x.g === g1)[0];
+    if (s1) cands.push(sideFrom(s1, U).side);
+    const B = cands.length ? near(a.side.r, cands) : sideFrom(U[0], U).side;
+    return a.side.m.concat(B.m);
+  }
+  function qOrder(st, list) {   // projected line order: blocks of balanced games, then whoever is left
+    const need = qNeed(st); let rem = list.map((e, pos) => ({ e, pos })); const out = [];
+    while (rem.length >= need) { const g = qPick(rem, need); out.push(...g.map((x) => x.e)); const ids = new Set(g.map((x) => x.e.id)); rem = rem.filter((x) => !ids.has(x.e.id)); }
+    return out.concat(rem.map((x) => x.e));
+  }
+  const qRested = (line) => line.map((e) => { if (!e.just) return e; const x = Object.assign({}, e); delete x.just; return x; });
+  function qReturn(st) { const q = st.queue; if (!(q.court || []).length) return; q.line = qOrder(st, qRested(q.line).concat(qBack(st))); q.court = []; }
+  // who will be called next (counts the players now on court, who go back to the stack)
+  function qPreview(st) { const q = st.queue, n = qNeed(st), all = q.on && (q.court || []).length ? qOrder(st, qRested(q.line).concat(qBack(st))) : q.line; return all.length >= n ? qMatchFor(st, all.slice(0, n)) : null; }
+  // final table: everyone in the session, best record first
+  function qStandings(q) { return (q.line || []).concat(q.court || []).map((e) => ({ name: e.name, w: e.w || 0, l: e.l || 0, gp: (e.w || 0) + (e.l || 0) })).sort((a, b) => (b.w - b.l) - (a.w - a.l) || b.w - a.w || a.gp - b.gp || a.name.localeCompare(b.name)); }
   function queueAct(st, a) {
     if (!st.queue) st.queue = qNew();
     const q = st.queue, now = Date.now();
@@ -384,14 +444,15 @@
         const name = qClean(a.name, q.kind === 'teams' ? 18 : 16); if (!name) break;
         const e = { id: 'q' + (++q.seq), name };
         if (q.kind === 'teams') { e.p1 = qClean(a.p1, 16); e.p2 = qClean(a.p2, 16); }
-        q.line.push(e); break;
+        q.line.push(e); if (q.on) q.line = qOrder(st, q.line); break;
       }
-      case 'q_remove': q.line = q.line.filter((e) => e.id !== a.id); break;
+      case 'q_remove': q.line = q.line.filter((e) => e.id !== a.id); if (q.on) q.line = qOrder(st, q.line); break;
       case 'q_move': { const i = q.line.findIndex((e) => e.id === a.id), j = i + (a.dir < 0 ? -1 : 1); if (i >= 0 && j >= 0 && j < q.line.length) { const t = q.line[i]; q.line[i] = q.line[j]; q.line[j] = t; } break; }
       case 'q_shuffle': for (let i = q.line.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = q.line[i]; q.line[i] = q.line[j]; q.line[j] = t; } break;
       case 'q_clear': if (!q.on) { q.line = []; q.court = []; q.done = false; q.games = 0; } break;
       case 'q_start':
         if (q.on || q.line.length < qNeed(st)) break;
+        q.line.forEach((e) => { delete e.w; delete e.l; delete e.gp; delete e.mate; delete e.just; });
         q.on = true; q.done = false; q.games = 0; q.startedAt = now; q.endsAt = q.minutes ? now + q.minutes * 60000 : 0;
         return qCall(st);
       case 'q_next': {   // game finished (or skipped): rotate and call the next players
@@ -469,7 +530,7 @@
     p.serveSide = serveSide(st);
     p.deciding = isDecidingGame(st);
     p.pfs = !!st.playForServe;
-    if (st.queue) { p.queue = clone(st.queue); p.queue.need = qNeed(st); p.queue.next = qPreview(st); }
+    if (st.queue) { p.queue = clone(st.queue); p.queue.need = qNeed(st); p.queue.next = qPreview(st); p.queue.standings = qStandings(st.queue); }
     return p;
   }
 

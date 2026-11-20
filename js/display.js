@@ -131,14 +131,16 @@
     $('qsTime').textContent = q.done ? 'FINISHED' : (q.endsAt ? fmtLeft(q.endsAt - Date.now()) + ' LEFT' : 'NO TIME LIMIT') + ' · GAME ' + q.games;
     $('qsTime').classList.toggle('over', !!(q.on && q.endsAt && Date.now() >= q.endsAt));
     $('qsNext').innerHTML = q.done ? 'Thank you for playing!' : pub.next ? 'NEXT: <b>' + esc(pub.next.names[0]) + '</b> vs <b>' + esc(pub.next.names[1]) + '</b>' : 'Waiting for more players';
-    $('qsLine').innerHTML = q.line.map((e, i) => '<span><i>' + (i + 1) + '</i>' + esc(e.name) + '</span>').join('') || '<span class="em">Line is empty</span>';
+    $('qsLine').innerHTML = q.line.map((e, i) => '<span><i>' + (i + 1) + '</i>' + esc(e.name) + (e.gp ? '<u>' + (e.w || 0) + '–' + (e.l || 0) + '</u>' : '') + '</span>').join('') || '<span class="em">Line is empty</span>';
   }
   setInterval(() => { if (state && state.queue && state.queue.on) renderQueue(); }, 1000);
   let qCallT = 0;
   function queueCall() {
     const s = state.settings, q = state.queue || {}, tc = (n) => String(n || '').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
     const pl = (t) => ((s.players || [])[t] || []).filter(Boolean);
-    const who = (t) => q.kind === 'teams' ? s.names[t] + (pl(t).length ? '<small>' + pl(t).map(esc).join(' · ') + '</small>' : '') : pl(t).map(esc).join('<br>');
+    const c = q.court || [], half = c.length / 2, rec = (e) => e && e.gp ? '<span class="qc-r">' + (e.w || 0) + '–' + (e.l || 0) + '</span>' : '';
+    const who = (t) => q.kind === 'teams' ? esc(s.names[t]) + rec(c[t]) + (pl(t).length ? '<small>' + pl(t).map(esc).join(' · ') + '</small>' : '') : pl(t).map((n, i) => esc(n) + rec(c[t * half + i])).join('<br>');
+    $('qCall').querySelector('.qc-vs').classList.remove('hidden'); $('qCall').classList.remove('stand'); if ($('qcStand')) $('qcStand').classList.add('hidden');
     $('qcTag').textContent = 'NOW PLAYING · GAME ' + (q.games || 1);
     $('qcA').innerHTML = who(0); $('qcA').style.color = s.colors[0];
     $('qcB').innerHTML = who(1); $('qcB').style.color = s.colors[1];
@@ -149,9 +151,13 @@
     PBVoice.say([{ chime: true }, { tts: 'Now playing, game ' + (q.games || 1) + '. ' + say(0) + ', versus, ' + say(1) + '. Please go to the court.', rate: .9 }]);
   }
   function queueDone() {
-    $('qcTag').textContent = 'OPEN PLAY FINISHED'; $('qcA').innerHTML = ''; $('qcB').innerHTML = '';
+    const st = (E.publicState(state).queue || {}).standings || [];
+    $('qcTag').textContent = st.length ? 'OPEN PLAY FINISHED · STANDINGS' : 'OPEN PLAY FINISHED'; $('qcA').innerHTML = ''; $('qcB').innerHTML = '';
+    $('qCall').querySelector('.qc-vs').classList.toggle('hidden', !!st.length); $('qCall').classList.toggle('stand', !!st.length);
+    let tb = $('qcStand'); if (!tb) { tb = document.createElement('div'); tb.id = 'qcStand'; tb.className = 'qc-stand'; $('qcSub').before(tb); }
+    tb.innerHTML = st.slice(0, 16).map((x, k) => '<div><i>' + (k + 1) + '</i><b>' + esc(x.name) + '</b><em>' + x.w + '–' + x.l + '</em></div>').join(''); tb.classList.toggle('hidden', !st.length); tb.style.gridTemplateRows = 'repeat(' + Math.max(1, Math.ceil(Math.min(16, st.length) / 2)) + ', auto)';
     $('qcSub').textContent = 'Thank you for playing!'; $('qCall').classList.remove('hidden');
-    clearTimeout(qCallT); qCallT = setTimeout(() => $('qCall').classList.add('hidden'), 9000);
+    clearTimeout(qCallT); qCallT = setTimeout(() => $('qCall').classList.add('hidden'), st.length ? 60000 : 9000);
     if (window.PBVoice && state.settings.voice !== 0) PBVoice.say([{ chime: true }, { tts: 'Open play is finished. Thank you for playing!', rate: .9 }]);
   }
   function announceTeams() {

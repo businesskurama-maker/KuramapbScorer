@@ -608,6 +608,7 @@
     const row = (e, n, cls, side) => '<div class="q-it ' + cls + '" data-id="' + e.id + '">'
       + '<i class="q-no' + (side ? ' s' + side : '') + '">' + (side || n) + '</i>'
       + '<span class="q-nm"><b>' + esc(e.name) + '</b>' + (teams && (e.p1 || e.p2) ? '<small>' + esc([e.p1, e.p2].filter(Boolean).join(' · ')) + '</small>' : '') + '</span>'
+      + (e.gp ? '<em class="q-rec' + ((e.w || 0) > (e.l || 0) ? ' up' : (e.w || 0) < (e.l || 0) ? ' dn' : '') + '" title="Wins – losses this session">' + (e.w || 0) + '–' + (e.l || 0) + '</em>' : '')
       + (cls === 'court' ? '' : '<span class="q-acts"><button type="button" data-qm="-1" aria-label="Move up">▲</button><button type="button" data-qm="1" aria-label="Move down">▼</button><button type="button" data-qx aria-label="Remove">✕</button></span>') + '</div>';
     const court = q.court || [], nxt = q.line.slice(0, need), rest = q.line.slice(need);
     let html = '';
@@ -616,6 +617,7 @@
       html += '<div class="q-grp"><span>' + (court.length ? 'Up next' : 'First game') + '</span>' + (nxt.length < need ? '<em>needs ' + (need - nxt.length) + ' more</em>' : '') + '</div>' + nxt.map((e, k) => row(e, k + 1, 'next', nxt.length === need ? tag(k) : '')).join('');
       if (rest.length) html += '<div class="q-grp"><span>Waiting</span></div>' + rest.map((e, k) => row(e, need + k + 1, '', '')).join('');
     }
+    if (q.done && (q.standings || []).length) html = '<div class="q-grp"><span>Final standings</span><em>wins – losses</em></div>' + q.standings.map((x, k) => '<div class="q-it st"><i class="q-no' + (k < 3 ? ' m' + (k + 1) : '') + '">' + (k + 1) + '</i><span class="q-nm"><b>' + esc(x.name) + '</b><small>' + x.gp + ' game' + (x.gp === 1 ? '' : 's') + '</small></span><em class="q-rec' + (x.w > x.l ? ' up' : x.w < x.l ? ' dn' : '') + '">' + x.w + '–' + x.l + '</em></div>').join('') + html;
     $('qList').innerHTML = html || '<div class="q-empty"><b>No one in line yet</b><span>Add the ' + (teams ? 'teams' : 'players') + ' in arrival order: first paddle first.</span></div>';
     $('qCount').textContent = q.line.length + ' in line' + (court.length ? ' · ' + court.length + ' on court' : '');
     $('qMin').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === Number(q.minutes)));
@@ -695,7 +697,7 @@
   $('qClear').onclick = () => { if (confirm('Clear the whole list?')) qSend({ a: 'q_clear' }); };
   $('qMin').onclick = (e) => { const b = e.target.closest('button[data-v]'); if (b) qSend({ a: 'q_minutes', minutes: Number(b.dataset.v) }); };
   $('qStart').onclick = () => { qSend({ a: 'q_start' }); closeSheet(); };
-  $('qSkip').onclick = () => { if (confirm('Stop this game and call the next players? Everyone on court goes to the back of the line.')) { qSend({ a: 'q_next' }); closeSheet(); } };
+  $('qSkip').onclick = () => { if (confirm('Stop this game and call the next players? Everyone on court goes back to the line (no win or loss is recorded).')) { qSend({ a: 'q_next' }); closeSheet(); } };
   $('qEndBtn').onclick = () => { if (confirm('End open play now? The current game stays on the scoreboard.')) qSend({ a: 'q_end' }); };
   $('qNextBtn').onclick = () => qSend({ a: 'q_next' });
   $('qBarOpen').onclick = () => { openSheet(); const t = document.querySelector('.sheet-tabs [data-tab="queue"]'); if (t) t.click(); };
