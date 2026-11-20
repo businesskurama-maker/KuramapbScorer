@@ -621,6 +621,12 @@
     $('qList').innerHTML = html || '<div class="q-empty"><b>No one in line yet</b><span>Add the ' + (teams ? 'teams' : 'players') + ' in arrival order: first paddle first.</span></div>';
     $('qCount').textContent = q.line.length + ' in line' + (court.length ? ' · ' + court.length + ' on court' : '');
     $('qMin').querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === Number(q.minutes)));
+    const dbl = !teams && need === 4, mx = q.mix || 'auto';
+    $('qMixRow').classList.toggle('hidden', !dbl);
+    $('qMix').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === mx));
+    if (dbl) $('qKindHint').textContent = mx === 'pairs' ? 'Winning pairs stay together: winners play winners, losers play losers.'
+      : mx === 'mix' ? 'Mix: new partners every game. Closest records play together; best + 4th vs 2nd + 3rd keeps teams even.'
+      : 'Auto: winning pairs stay together up to 8 players; from 9 players, partners mix every game.' + (q.mixOn ? ' Mix is ON now.' : '');
     $('qStart').classList.toggle('hidden', q.on); $('qRun').classList.toggle('hidden', !q.on); $('qClear').disabled = q.on;
     $('qStart').disabled = q.line.length < need;
     $('qStart').textContent = q.line.length < need ? 'Add ' + (need - q.line.length) + ' more to start' : 'Start open play · ' + q.line.length + (teams ? ' teams' : ' players');
@@ -695,6 +701,7 @@
   };
   $('qShuffle').onclick = () => qSend({ a: 'q_shuffle' });
   $('qClear').onclick = () => { if (confirm('Clear the whole list?')) qSend({ a: 'q_clear' }); };
+  $('qMix').onclick = (e) => { const b = e.target.closest('button[data-v]'); if (b) qSend({ a: 'q_mix', v: b.dataset.v }); };
   $('qMin').onclick = (e) => { const b = e.target.closest('button[data-v]'); if (b) qSend({ a: 'q_minutes', minutes: Number(b.dataset.v) }); };
   $('qStart').onclick = () => { qSend({ a: 'q_start' }); closeSheet(); };
   $('qSkip').onclick = () => { if (confirm('Stop this game and call the next players? Everyone on court goes back to the line (no win or loss is recorded).')) { qSend({ a: 'q_next' }); closeSheet(); } };
